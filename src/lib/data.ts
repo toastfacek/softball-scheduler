@@ -1,0 +1,812 @@
+import { cache } from "react";
+import {
+  and,
+  asc,
+  eq,
+  gte,
+  inArray,
+  lt,
+  sql,
+} from "drizzle-orm";
+
+import { auth } from "@/auth";
+import { db } from "@/db";
+import {
+  adultEventResponses,
+  adultUsers,
+  battingSlots,
+  events,
+  inningAssignments,
+  lineupPlans,
+  playerEventResponses,
+  playerGuardians,
+  players,
+  reminderDeliveries,
+  seasons,
+  teamMemberships,
+  teamPositionTemplates,
+  teams,
+  type AttendanceStatus,
+  type TeamRole,
+} from "@/db/schema";
+import type { ViewerContext } from "@/lib/authz";
+import { fullName, roleLabel } from "@/lib/utils";
+
+export type LinkedPlayer = {
+  id: string;
+  name: string;
+};
+
+export type AppViewer = ViewerContext & {
+  adult: {
+    name: string | null;
+    email: string;
+    phone: string | null;
+    reminderOptIn: boolean;
+  };
+  team: {
+    name: string;
+    slug: string;
+    city: string;
+    state: string;
+    timezone: string;
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+  };
+  seasonName: string | null;
+  linkedPlayers: LinkedPlayer[];
+};
+
+export const getViewerContext = cache(async (): Promise<AppViewer | null> => {
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  const adult = await db.query.adultUsers.findFirst({
+    where: eq(adultUsers.id, session.user.id),
+  });
+
+  if (!adult?.email) {
+    return null;
+  }
+
+  const membershipRows = await db
+    .select({
+      teamId: teamMemberships.teamId,
+      role: teamMemberships.role,
+      teamName: teams.name,
+      teamSlug: teams.slug,
+      teamCity: teams.city,
+      teamState: teams.state,
+      timezone: teams.timezone,
+      primaryColor: teams.primaryColor,
+      secondaryColor: teams.secondaryColor,
+      accentColor: teams.accentColor,
+      seasonId: seasons.id,
+      seasonName: seasons.name,
+    })
+    .from(teamMemberships)
+    .innerJoin(teams, eq(teamMemberships.teamId, teams.id))
+    .leftJoin(
+      seasons,
+      and(eq(seasons.teamId, teams.id), eq(seasons.isActive, true)),
+    )
+    .where(eq(teamMemberships.userId, session.user.id))
+    .orderBy(asc(teams.name));
+
+  if (membershipRows.length === 0) {
+    return null;
+  }
+
+  const teamId = membershipRows[0].teamId;
+  const teamRows = membershipRows.filter((row) => row.teamId === teamId);
+
+  const linkedPlayerRows = await db
+    .select({
+      playerId: playerGuardians.playerId,
+      firstName: players.firstName,
+      lastName: players.lastName,
+      preferredName: players.preferredName,
+    })
+    .from(playerGuardians)
+    .innerJoin(players, eq(playerGuardians.playerId, players.id))
+    .where(
+      and(
+        eq(playerGuardians.userId, session.user.id),
+        eq(players.teamId, teamId),
+      ),
+    )
+    .orderBy(asc(players.lastName), asc(players.firstName));
+
+  return {
+    userId: session.user.id,
+    teamId,
+    seasonId: teamRows[0].seasonId,
+    roles: teamRows.map((row) => row.role),
+    linkedPlayerIds: linkedPlayerRows.map((row) => row.playerId),
+    adult: {
+      name: adult.name,
+      email: adult.email,
+      phone: adult.phone,
+      reminderOptIn: adult.reminderOptIn,
+    },
+    team: {
+      name: teamRows[0].teamName,
+      slug: teamRows[0].teamSlug,
+      city: teamRows[0].teamCity,
+      state: teamRows[0].teamState,
+      timezone: teamRows[0].timezone,
+      primaryColor: teamRows[0].primaryColor,
+      secondaryColor: teamRows[0].secondaryColor,
+      accentColor: teamRows[0].accentColor,
+    },
+    seasonName: teamRows[0].seasonName,
+    linkedPlayers: linkedPlayerRows.map((row) => ({
+      id: row.playerId,
+      name: fullName(row.firstName, row.lastName, row.preferredName),
+    })),
+  };
+});
+
+function buildPlayerResponseMap<
+  T extends {
+    eventId: string;
+    playerId: string;
+    status: AttendanceStatus;
+    note: string | null;
+    actualAttendance: string;
+  },
+>(responses: T[]) {
+  return new Map(
+    responses.map((response) => [
+      `${response.eventId}:${response.playerId}`,
+      response,
+    ]),
+  );
+}
+
+function buildAdultResponseMap<
+  T extends {
+    eventId: string;
+    userId: string;
+    status: AttendanceStatus;
+    note: string | null;
+    actualAttendance: string;
+  },
+>(responses: T[]) {
+  return new Map(
+    responses.map((response) => [`${response.eventId}:${response.userId}`, response]),
+  );
+}
+
+function summarizePlayerStatuses(
+  eventId: string,
+  teamPlayers: { id: string }[],
+  responseMap: Map<
+    string,
+    {
+      status: AttendanceStatus;
+    }
+  >,
+) {
+  const summary = {
+    AVAILABLE: 0,
+    UNAVAILABLE: 0,
+    MAYBE: 0,
+    pending: 0,
+  };
+
+  for (const player of teamPlayers) {
+    const response = responseMap.get(`${eventId}:${player.id}`);
+
+    if (!response) {
+      summary.pending += 1;
+      continue;
+    }
+
+    summary[response.status] += 1;
+  }
+
+  return summary;
+}
+
+export async function getSchedulePageData(viewer: AppViewer) {
+  const teamPlayers = await db.query.players.findMany({
+    where: eq(players.teamId, viewer.teamId),
+    orderBy: [asc(players.lastName), asc(players.firstName)],
+  });
+
+  const eventRows = await db.query.events.findMany({
+    where: eq(events.teamId, viewer.teamId),
+    orderBy: [asc(events.startsAt)],
+    limit: 18,
+  });
+
+  const eventIds = eventRows.map((event) => event.id);
+
+  const [playerResponses, adultResponses] = eventIds.length
+    ? await Promise.all([
+        db.query.playerEventResponses.findMany({
+          where: inArray(playerEventResponses.eventId, eventIds),
+        }),
+        db.query.adultEventResponses.findMany({
+          where: inArray(adultEventResponses.eventId, eventIds),
+        }),
+      ])
+    : [[], []];
+
+  const playerResponseMap = buildPlayerResponseMap(playerResponses);
+  const adultResponseMap = buildAdultResponseMap(adultResponses);
+
+  const cards = eventRows.map((event) => {
+    const playerSummary = summarizePlayerStatuses(
+      event.id,
+      teamPlayers,
+      playerResponseMap,
+    );
+
+    return {
+      ...event,
+      playerSummary,
+      viewerPlayers: viewer.linkedPlayers.map((player) => ({
+        ...player,
+        response:
+          playerResponseMap.get(`${event.id}:${player.id}`)?.status ?? null,
+      })),
+      viewerAdultResponse:
+        adultResponseMap.get(`${event.id}:${viewer.userId}`)?.status ?? null,
+    };
+  });
+
+  const nextEvent = cards.find((event) => event.status !== "COMPLETED") ?? null;
+  const needsResponseCount = cards.reduce((count, event) => {
+    return (
+      count +
+      event.viewerPlayers.filter((player) => player.response === null).length
+    );
+  }, 0);
+
+  return {
+    events: cards,
+    nextEvent,
+    stats: {
+      playerCount: teamPlayers.length,
+      coachCount: adultResponses.length,
+      needsResponseCount,
+    },
+  };
+}
+
+export async function getEventPageData(viewer: AppViewer, eventId: string) {
+  const event = await db.query.events.findFirst({
+    where: and(eq(events.id, eventId), eq(events.teamId, viewer.teamId)),
+  });
+
+  if (!event) {
+    return null;
+  }
+
+  const [teamPlayers, playerResponses, staffRows, adultResponses] =
+    await Promise.all([
+      db.query.players.findMany({
+        where: eq(players.teamId, viewer.teamId),
+        orderBy: [asc(players.lastName), asc(players.firstName)],
+      }),
+      db.query.playerEventResponses.findMany({
+        where: eq(playerEventResponses.eventId, eventId),
+      }),
+      db
+        .select({
+          userId: adultUsers.id,
+          name: adultUsers.name,
+          email: adultUsers.email,
+          phone: adultUsers.phone,
+          role: teamMemberships.role,
+        })
+        .from(teamMemberships)
+        .innerJoin(adultUsers, eq(teamMemberships.userId, adultUsers.id))
+        .where(eq(teamMemberships.teamId, viewer.teamId))
+        .orderBy(asc(adultUsers.name), asc(adultUsers.email)),
+      db.query.adultEventResponses.findMany({
+        where: eq(adultEventResponses.eventId, eventId),
+      }),
+    ]);
+
+  const playerResponseMap = buildPlayerResponseMap(playerResponses);
+  const adultResponseMap = buildAdultResponseMap(adultResponses);
+
+  const playerCards = teamPlayers.map((player) => ({
+    id: player.id,
+    name: fullName(player.firstName, player.lastName, player.preferredName),
+    response: playerResponseMap.get(`${eventId}:${player.id}`) ?? null,
+  }));
+
+  const playerSummary = summarizePlayerStatuses(
+    eventId,
+    teamPlayers,
+    playerResponseMap,
+  );
+
+  const staffByUser = new Map<
+    string,
+    {
+      userId: string;
+      name: string;
+      email: string;
+      phone: string | null;
+      roles: TeamRole[];
+      response:
+        | (typeof adultResponses)[number]
+        | null;
+    }
+  >();
+
+  for (const row of staffRows) {
+    const existing = staffByUser.get(row.userId);
+
+    if (existing) {
+      if (!existing.roles.includes(row.role)) {
+        existing.roles.push(row.role);
+      }
+      continue;
+    }
+
+    staffByUser.set(row.userId, {
+      userId: row.userId,
+      name: row.name || row.email,
+      email: row.email,
+      phone: row.phone,
+      roles: [row.role],
+      response: adultResponseMap.get(`${eventId}:${row.userId}`) ?? null,
+    });
+  }
+
+  const staff = Array.from(staffByUser.values()).sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
+
+  return {
+    event,
+    playerCards,
+    playerSummary,
+    staff,
+    viewerPlayers: viewer.linkedPlayers.map((player) => ({
+      ...player,
+      response: playerResponseMap.get(`${eventId}:${player.id}`) ?? null,
+    })),
+    viewerAdultResponse: adultResponseMap.get(`${eventId}:${viewer.userId}`) ?? null,
+  };
+}
+
+export async function getTeamPageData(viewer: AppViewer) {
+  const [playerRows, guardianRows, staffRows, positionRows] = await Promise.all([
+    db.query.players.findMany({
+      where: eq(players.teamId, viewer.teamId),
+      orderBy: [asc(players.lastName), asc(players.firstName)],
+    }),
+    db
+      .select({
+        playerId: playerGuardians.playerId,
+        userId: adultUsers.id,
+        name: adultUsers.name,
+        email: adultUsers.email,
+        phone: adultUsers.phone,
+        relationshipLabel: playerGuardians.relationshipLabel,
+        sortOrder: playerGuardians.sortOrder,
+      })
+      .from(playerGuardians)
+      .innerJoin(adultUsers, eq(playerGuardians.userId, adultUsers.id))
+      .innerJoin(players, eq(playerGuardians.playerId, players.id))
+      .where(eq(players.teamId, viewer.teamId))
+      .orderBy(asc(playerGuardians.sortOrder), asc(adultUsers.name)),
+    db
+      .select({
+        userId: adultUsers.id,
+        name: adultUsers.name,
+        email: adultUsers.email,
+        phone: adultUsers.phone,
+        role: teamMemberships.role,
+      })
+      .from(teamMemberships)
+      .innerJoin(adultUsers, eq(teamMemberships.userId, adultUsers.id))
+      .where(eq(teamMemberships.teamId, viewer.teamId))
+      .orderBy(asc(adultUsers.name), asc(adultUsers.email)),
+    db.query.teamPositionTemplates.findMany({
+      where: eq(teamPositionTemplates.teamId, viewer.teamId),
+      orderBy: [asc(teamPositionTemplates.sortOrder), asc(teamPositionTemplates.label)],
+    }),
+  ]);
+
+  const guardiansByPlayer = new Map<
+    string,
+    {
+      userId: string;
+      name: string | null;
+      email: string;
+      phone: string | null;
+      relationshipLabel: string;
+      sortOrder: number;
+    }[]
+  >();
+
+  for (const guardian of guardianRows) {
+    const existing = guardiansByPlayer.get(guardian.playerId) ?? [];
+    existing.push(guardian);
+    guardiansByPlayer.set(guardian.playerId, existing);
+  }
+
+  const staffByUser = new Map<
+    string,
+    {
+      userId: string;
+      name: string | null;
+      email: string;
+      phone: string | null;
+      roles: TeamRole[];
+    }
+  >();
+
+  for (const row of staffRows) {
+    const existing = staffByUser.get(row.userId);
+    if (existing) {
+      if (!existing.roles.includes(row.role)) {
+        existing.roles.push(row.role);
+      }
+      continue;
+    }
+
+    staffByUser.set(row.userId, {
+      userId: row.userId,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      roles: [row.role],
+    });
+  }
+
+  return {
+    players: playerRows.map((player) => ({
+      ...player,
+      displayName: fullName(
+        player.firstName,
+        player.lastName,
+        player.preferredName,
+      ),
+      guardians: guardiansByPlayer.get(player.id) ?? [],
+    })),
+    staff: Array.from(staffByUser.values())
+      .map((staffer) => ({
+        ...staffer,
+        roleLabel: staffer.roles.map((role) => roleLabel(role)).join(" · "),
+      }))
+      .sort((left, right) => (left.name || left.email).localeCompare(right.name || right.email)),
+    positions: positionRows,
+  };
+}
+
+export async function getLineupsIndexData(viewer: AppViewer) {
+  const [games, existingLineups, playerCountRow] = await Promise.all([
+    db.query.events.findMany({
+      where: and(eq(events.teamId, viewer.teamId), eq(events.type, "GAME")),
+      orderBy: [asc(events.startsAt)],
+    }),
+    db.query.lineupPlans.findMany({
+      where: eq(lineupPlans.teamId, viewer.teamId),
+    }),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(players)
+      .where(eq(players.teamId, viewer.teamId)),
+  ]);
+
+  const existingLineupIds = new Set(existingLineups.map((lineup) => lineup.eventId));
+
+  return {
+    games: games.map((game) => ({
+      ...game,
+      hasLineup: existingLineupIds.has(game.id),
+    })),
+    playerCount: playerCountRow[0]?.count ?? 0,
+  };
+}
+
+export async function getLineupEditorData(viewer: AppViewer, eventId: string) {
+  const [event, positionRows, playerRows, responseRows, existingLineup] =
+    await Promise.all([
+      db.query.events.findFirst({
+        where: and(
+          eq(events.id, eventId),
+          eq(events.teamId, viewer.teamId),
+          eq(events.type, "GAME"),
+        ),
+      }),
+      db.query.teamPositionTemplates.findMany({
+        where: and(
+          eq(teamPositionTemplates.teamId, viewer.teamId),
+          eq(teamPositionTemplates.isActive, true),
+        ),
+        orderBy: [asc(teamPositionTemplates.sortOrder), asc(teamPositionTemplates.label)],
+      }),
+      db.query.players.findMany({
+        where: eq(players.teamId, viewer.teamId),
+        orderBy: [asc(players.lastName), asc(players.firstName)],
+      }),
+      db.query.playerEventResponses.findMany({
+        where: eq(playerEventResponses.eventId, eventId),
+      }),
+      db.query.lineupPlans.findFirst({
+        where: eq(lineupPlans.eventId, eventId),
+      }),
+    ]);
+
+  if (!event) {
+    return null;
+  }
+
+  const responseMap = buildPlayerResponseMap(responseRows);
+  const battingRows = existingLineup
+    ? await db.query.battingSlots.findMany({
+        where: eq(battingSlots.lineupPlanId, existingLineup.id),
+        orderBy: [asc(battingSlots.slotNumber)],
+      })
+    : [];
+  const assignmentRows = existingLineup
+    ? await db.query.inningAssignments.findMany({
+        where: eq(inningAssignments.lineupPlanId, existingLineup.id),
+        orderBy: [
+          asc(inningAssignments.inningNumber),
+          asc(inningAssignments.positionCode),
+        ],
+      })
+    : [];
+
+  const battingBySlot = new Map(
+    battingRows.map((row) => [row.slotNumber, row.playerId]),
+  );
+  const assignmentMap = new Map(
+    assignmentRows.map((row) => [
+      `${row.inningNumber}:${row.playerId}`,
+      row.positionCode,
+    ]),
+  );
+
+  const playersWithStatus = playerRows.map((player) => {
+    const response = responseMap.get(`${eventId}:${player.id}`) ?? null;
+    return {
+      ...player,
+      displayName: fullName(
+        player.firstName,
+        player.lastName,
+        player.preferredName,
+      ),
+      eventStatus: response?.status ?? null,
+      response,
+    };
+  });
+
+  const eligiblePlayers = playersWithStatus.filter(
+    (player) => player.eventStatus !== "UNAVAILABLE",
+  );
+  const unavailablePlayers = playersWithStatus.filter(
+    (player) => player.eventStatus === "UNAVAILABLE",
+  );
+
+  return {
+    event,
+    positions: positionRows,
+    inningsCount: existingLineup?.inningsCount ?? 6,
+    battingBySlot,
+    assignmentMap,
+    eligiblePlayers,
+    unavailablePlayers,
+    allPlayers: playersWithStatus,
+  };
+}
+
+export async function getSettingsPageData(viewer: AppViewer) {
+  const membershipRows = await db.query.teamMemberships.findMany({
+    where: and(
+      eq(teamMemberships.teamId, viewer.teamId),
+      eq(teamMemberships.userId, viewer.userId),
+    ),
+    orderBy: [asc(teamMemberships.role)],
+  });
+
+  return {
+    roles: membershipRows.map((row) => row.role),
+  };
+}
+
+export async function listTeamRecipients(
+  teamId: string,
+  scope: "ALL" | "GUARDIANS" | "STAFF",
+) {
+  if (scope === "STAFF") {
+    const staffRows = await db
+      .select({
+        userId: adultUsers.id,
+        email: adultUsers.email,
+      })
+      .from(teamMemberships)
+      .innerJoin(adultUsers, eq(teamMemberships.userId, adultUsers.id))
+      .where(
+        and(
+          eq(teamMemberships.teamId, teamId),
+          inArray(teamMemberships.role, ["COACH", "ADMIN"]),
+        ),
+      );
+
+    return dedupeRecipients(staffRows);
+  }
+
+  if (scope === "GUARDIANS") {
+    const guardianRows = await db
+      .select({
+        userId: adultUsers.id,
+        email: adultUsers.email,
+      })
+      .from(playerGuardians)
+      .innerJoin(adultUsers, eq(playerGuardians.userId, adultUsers.id))
+      .innerJoin(players, eq(playerGuardians.playerId, players.id))
+      .where(eq(players.teamId, teamId));
+
+    return dedupeRecipients(guardianRows);
+  }
+
+  const allRows = await db
+    .select({
+      userId: adultUsers.id,
+      email: adultUsers.email,
+    })
+    .from(teamMemberships)
+    .innerJoin(adultUsers, eq(teamMemberships.userId, adultUsers.id))
+    .where(eq(teamMemberships.teamId, teamId));
+
+  return dedupeRecipients(allRows);
+}
+
+function dedupeRecipients(
+  rows: {
+    userId: string;
+    email: string;
+  }[],
+) {
+  return Array.from(
+    new Map(rows.map((row) => [row.email, row])).values(),
+  );
+}
+
+export async function listEventUpdateRecipients(
+  teamId: string,
+  eventId: string,
+  mode: "ALL_GUARDIANS" | "RESPONDED_PLAYERS",
+) {
+  if (mode === "ALL_GUARDIANS") {
+    return listTeamRecipients(teamId, "GUARDIANS");
+  }
+
+  const respondedPlayerRows = await db
+    .select({
+      playerId: playerEventResponses.playerId,
+    })
+    .from(playerEventResponses)
+    .where(eq(playerEventResponses.eventId, eventId));
+
+  if (respondedPlayerRows.length === 0) {
+    return [];
+  }
+
+  const guardianRows = await db
+    .select({
+      userId: adultUsers.id,
+      email: adultUsers.email,
+      playerId: playerGuardians.playerId,
+    })
+    .from(playerGuardians)
+    .innerJoin(adultUsers, eq(playerGuardians.userId, adultUsers.id))
+    .innerJoin(players, eq(playerGuardians.playerId, players.id))
+    .where(
+      and(
+        eq(players.teamId, teamId),
+        inArray(
+          playerGuardians.playerId,
+          respondedPlayerRows.map((row) => row.playerId),
+        ),
+      ),
+    );
+
+  return Array.from(
+    new Map(guardianRows.map((row) => [row.email, row])).values(),
+  );
+}
+
+export async function getPendingReminderEvents(now = new Date()) {
+  const windowStart = new Date(now.getTime() + 23 * 60 * 60 * 1000 + 45 * 60 * 1000);
+  const windowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000 + 15 * 60 * 1000);
+
+  return db.query.events.findMany({
+    where: and(
+      eq(events.status, "SCHEDULED"),
+      gte(events.startsAt, windowStart),
+      lt(events.startsAt, windowEnd),
+    ),
+    orderBy: [asc(events.startsAt)],
+  });
+}
+
+export async function getNonResponderGuardiansForEvent(eventId: string, teamId: string) {
+  const [teamPlayerRows, responseRows, guardianRows, priorDeliveries] =
+    await Promise.all([
+      db.query.players.findMany({
+        where: eq(players.teamId, teamId),
+      }),
+      db.query.playerEventResponses.findMany({
+        where: eq(playerEventResponses.eventId, eventId),
+      }),
+      db
+        .select({
+          userId: adultUsers.id,
+          email: adultUsers.email,
+          name: adultUsers.name,
+          reminderOptIn: adultUsers.reminderOptIn,
+          playerId: playerGuardians.playerId,
+          playerFirstName: players.firstName,
+          playerLastName: players.lastName,
+          preferredName: players.preferredName,
+        })
+        .from(playerGuardians)
+        .innerJoin(adultUsers, eq(playerGuardians.userId, adultUsers.id))
+        .innerJoin(players, eq(playerGuardians.playerId, players.id))
+        .where(eq(players.teamId, teamId)),
+      db.query.reminderDeliveries.findMany({
+        where: eq(reminderDeliveries.eventId, eventId),
+      }),
+    ]);
+
+  const respondedPlayerIds = new Set(responseRows.map((row) => row.playerId));
+  const alreadyRemindedUserIds = new Set(
+    priorDeliveries.map((row) => row.userId),
+  );
+  const activePlayerIds = new Set(teamPlayerRows.map((row) => row.id));
+
+  const grouped = new Map<
+    string,
+    {
+      userId: string;
+      email: string;
+      name: string | null;
+      players: string[];
+    }
+  >();
+
+  for (const row of guardianRows) {
+    if (!row.reminderOptIn) continue;
+    if (!activePlayerIds.has(row.playerId)) continue;
+    if (respondedPlayerIds.has(row.playerId)) continue;
+    if (alreadyRemindedUserIds.has(row.userId)) continue;
+
+    const existing = grouped.get(row.userId);
+    const playerName = fullName(
+      row.playerFirstName,
+      row.playerLastName,
+      row.preferredName,
+    );
+
+    if (existing) {
+      existing.players.push(playerName);
+      continue;
+    }
+
+    grouped.set(row.userId, {
+      userId: row.userId,
+      email: row.email,
+      name: row.name,
+      players: [playerName],
+    });
+  }
+
+  return Array.from(grouped.values());
+}

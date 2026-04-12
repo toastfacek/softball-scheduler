@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BGSL (Beverly Girls Softball League)
 
-## Getting Started
+A private, mobile-first softball team management app for one current-season team. Parents update player availability, coaches plan lineups, and admins keep the schedule and communication organized without turning every update into a text-thread pileup.
 
-First, run the development server:
+## What’s inside
+
+- Magic-link sign in with `Auth.js` + Resend
+- Team roster with up to two guardians per player
+- Practice and game schedule with location + directions
+- Parent RSVP flow with `Available / Unavailable / Maybe`
+- Coach/admin actual attendance tracking
+- Coach-only inning-by-inning lineup planner
+- Manual team/event emails plus automatic 24-hour non-responder reminders
+- PWA manifest so families can install the app to their home screen
+
+## Stack
+
+- `Next.js` App Router + TypeScript
+- `Drizzle ORM` + PostgreSQL
+- `Auth.js` Drizzle adapter
+- `Resend` for transactional email
+- `Vercel` for the web app
+- `Railway Postgres` for the database
+- `Railway Cron` for reminder delivery every 15 minutes
+
+## Local setup
+
+1. Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Copy the environment template:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Add your real values to `.env.local`:
 
-## Learn More
+- `DATABASE_URL`: your Railway Postgres connection string
+- `AUTH_SECRET`: a long random secret
+- `NEXT_PUBLIC_APP_URL`: your local or deployed app URL
+- `AUTH_RESEND_FROM`: a verified sender in Resend
+- `RESEND_API_KEY`: your Resend API key
 
-To learn more about Next.js, take a look at the following resources:
+4. Generate and run the database migration:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm db:generate
+pnpm db:migrate
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+5. Seed a starter team:
 
-## Deploy on Vercel
+```bash
+pnpm db:seed
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+6. Start the app:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm dev
+```
+
+## Useful commands
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm db:generate
+pnpm db:migrate
+pnpm db:seed
+pnpm cron:reminders
+```
+
+## Railway + Vercel deployment notes
+
+### Vercel app
+
+- Set the same environment variables in Vercel.
+- Deploy the Next.js app normally.
+
+### Railway Postgres
+
+- Create a PostgreSQL service in Railway.
+- Copy its `DATABASE_URL` into both local `.env.local` and Vercel.
+
+### Railway reminder cron
+
+Create a small Railway service from this same repo that runs:
+
+```bash
+pnpm cron:reminders
+```
+
+Schedule it every 15 minutes. The reminder runner is idempotent at the database level, so duplicate runs should not send duplicate reminder emails.
+
+## Demo seed accounts
+
+After `pnpm db:seed`, these emails exist as invited accounts:
+
+- `jesse.admin@example.com`
+- `marta.coach@example.com`
+- `alex.family@example.com`
+
+Use one of those emails on the sign-in screen to receive a magic link from Resend.

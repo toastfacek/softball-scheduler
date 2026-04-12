@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BGSL Prototype</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Sora:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --background: oklch(0.962 0.008 84);
+    --foreground: oklch(0.22 0.01 40);
+    --paper: oklch(0.99 0.004 84);
+    --panel: oklch(0.972 0.006 84);
+    --line: oklch(0.84 0.012 82);
+    --navy: oklch(0.29 0.012 40);
+    --navy-strong: oklch(0.19 0.01 40);
+    --harbor: oklch(0.66 0.012 255);
+    --orange: oklch(0.74 0.19 52);
+    --orange-strong: oklch(0.67 0.2 48);
+    --success: oklch(0.72 0.16 150);
+    --danger: oklch(0.63 0.18 28);
+    --warning: oklch(0.83 0.16 83);
+    --shadow: 0 28px 72px color-mix(in srgb, var(--navy-strong) 12%, transparent);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Sora', sans-serif; -webkit-font-smoothing: antialiased;
+    background: #1a1a2e;
+    display: flex; justify-content: center; align-items: flex-start;
+    min-height: 100vh; padding: 5rem 1rem 1.5rem;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; letter-spacing: -0.025em; line-height: 0.94; text-wrap: balance;
+  }
+
+  a { text-decoration: none; color: inherit; }
+  button { cursor: pointer; font-family: inherit; border: none; background: none; color: inherit; }
+
+  /* Phone frame */
+  .phone {
+    width: 390px; height: 844px; border-radius: 3rem; border: 4px solid #2a2a3e;
+    background: var(--background);
+    background-image:
+      radial-gradient(circle at top right, color-mix(in srgb, var(--orange) 16%, transparent) 0%, transparent 22%),
+      linear-gradient(135deg, color-mix(in srgb, var(--navy) 4%, var(--paper)) 0%, color-mix(in srgb, var(--background) 98%, white) 38%, color-mix(in srgb, var(--orange) 5%, white) 100%),
+      repeating-linear-gradient(118deg, color-mix(in srgb, var(--navy) 5%, transparent) 0 2px, transparent 2px 34px);
+    overflow: hidden; position: relative;
+    box-shadow: 0 0 0 2px #111, 0 40px 80px rgba(0,0,0,0.5); flex-shrink: 0;
+  }
+  .phone::before {
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 160px; height: 34px; background: #2a2a3e;
+    border-radius: 0 0 1.5rem 1.5rem; z-index: 50;
+  }
+
+  /* Top bar */
+  .top-bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 88px;
+    padding: 46px 0.625rem 0; z-index: 40;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 96%, white), color-mix(in srgb, var(--paper) 82%, transparent) 85%, transparent);
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.25rem;
+  }
+  .top-bar.hidden { display: none; }
+  .top-bar-left, .top-bar-right { display: flex; align-items: center; gap: 0.375rem; }
+  .top-bar-right { justify-content: flex-end; }
+  .top-bar-title {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: 1.125rem; color: var(--navy-strong); letter-spacing: -0.01em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;
+  }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 0.625rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--navy-strong);
+  }
+  .icon-btn:hover { background: color-mix(in srgb, var(--navy) 8%, white); }
+  .icon-btn.primary { background: var(--navy-strong); color: var(--orange); }
+
+  .phone-scroll {
+    position: absolute; inset: 0;
+    overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch; scroll-behavior: smooth;
+  }
+  .phone-scroll::-webkit-scrollbar { display: none; }
+  .phone-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .screen { display: none; min-height: 100%; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  .content { display: flex; flex-direction: column; gap: 0.625rem; padding: 96px 0.75rem 6rem; }
+  .content.no-top { padding-top: 3rem; }
+  .content.no-nav { padding-bottom: 1.5rem; }
+  .content.centered { justify-content: center; align-items: stretch; flex: 1; }
+
+  .shell-panel {
+    border-radius: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--navy) 12%, white);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 96%, white), color-mix(in srgb, var(--panel) 96%, var(--background)));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 80%, transparent), var(--shadow);
+    padding: 1rem; position: relative; overflow: visible;
+  }
+  /* Clip the orange glow to the panel's rounded top without clipping overflowing popovers */
+  .shell-panel > .orange-bar-top { border-top-left-radius: inherit; border-top-right-radius: inherit; }
+  /* Warm glow fades downward from the top edge, inside the panel — no clipping */
+  .orange-bar-top {
+    position: absolute; inset: 0 0 auto 0; height: 64px;
+    background: radial-gradient(ellipse 70% 100% at 50% 0%, color-mix(in srgb, var(--orange) 20%, transparent), transparent 72%);
+    pointer-events: none;
+  }
+
+  input, textarea, select {
+    width: 100%; border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--navy) 14%, white);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 96%, white), color-mix(in srgb, var(--paper) 86%, var(--background)));
+    padding: 0.7rem 0.75rem; color: var(--foreground);
+    font-weight: 600; font-family: 'Sora', sans-serif; font-size: 0.8rem;
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 70%, transparent); outline: none;
+  }
+  select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%232a2a3e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"),
+      linear-gradient(180deg, color-mix(in srgb, var(--paper) 96%, white), color-mix(in srgb, var(--paper) 86%, var(--background)));
+    background-position: right 0.85rem center, left top;
+    background-size: 12px 12px, 100% 100%;
+    background-repeat: no-repeat, no-repeat;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: color-mix(in srgb, var(--orange) 60%, var(--navy));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 78%, transparent), 0 0 0 3px color-mix(in srgb, var(--orange) 20%, transparent);
+  }
+  textarea { min-height: 5rem; resize: vertical; }
+  label {
+    display: block; font-size: 0.66rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: color-mix(in srgb, var(--navy) 76%, black);
+  }
+  .field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .fields { display: flex; flex-direction: column; gap: 0.625rem; }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 9999px;
+    background: linear-gradient(180deg, var(--orange), var(--orange-strong));
+    color: white; font-weight: 700; font-size: 0.8rem;
+    padding: 0.75rem 1.25rem; letter-spacing: 0.04em;
+    box-shadow: 0 12px 24px color-mix(in srgb, var(--orange-strong) 22%, transparent);
+  }
+  .btn-secondary {
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 9999px; border: 1px solid var(--line);
+    background: white; color: var(--navy-strong);
+    font-weight: 600; font-size: 0.8rem; padding: 0.65rem 0.85rem;
+  }
+  .btn-ghost {
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 9999px; background: transparent; color: var(--navy);
+    font-weight: 600; font-size: 0.8rem; padding: 0.65rem 0.85rem;
+  }
+  .btn-block { width: 100%; }
+
+  .chip { display: inline-flex; align-items: center; border-radius: 0.5rem; border: 1px solid; padding: 0.2rem 0.45rem; font-size: 0.58rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; }
+  .chip-game { border-color: color-mix(in srgb, var(--orange) 36%, white); background: color-mix(in srgb, var(--orange) 18%, white); color: var(--navy-strong); }
+  .chip-practice { border-color: color-mix(in srgb, var(--navy) 16%, white); background: color-mix(in srgb, var(--navy) 8%, white); color: var(--navy); }
+  .chip-scheduled { border-color: color-mix(in srgb, var(--navy) 16%, white); background: color-mix(in srgb, var(--navy) 10%, white); color: var(--navy-strong); }
+  .chip-available { border-color: color-mix(in srgb, var(--success) 36%, white); background: color-mix(in srgb, var(--success) 18%, white); color: color-mix(in srgb, var(--success) 72%, black); }
+  .chip-maybe { border-color: color-mix(in srgb, var(--warning) 36%, white); background: color-mix(in srgb, var(--warning) 24%, white); color: color-mix(in srgb, var(--warning) 74%, black); }
+  .chip-unavailable { border-color: color-mix(in srgb, var(--danger) 30%, white); background: color-mix(in srgb, var(--danger) 16%, white); color: color-mix(in srgb, var(--danger) 78%, black); }
+  .chip-waiting { border: 1px dashed var(--line); background: transparent; color: color-mix(in srgb, var(--navy) 64%, white); }
+  .chip-role { border-color: color-mix(in srgb, var(--harbor) 30%, white); background: color-mix(in srgb, var(--harbor) 14%, white); color: color-mix(in srgb, var(--navy) 72%, white); }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .dot-avail { background: var(--success); }
+  .dot-maybe { background: var(--warning); }
+  .dot-out { background: var(--danger); }
+  .dot-wait { background: color-mix(in srgb, var(--navy) 28%, white); }
+
+  .row-list { display: flex; flex-direction: column; }
+  .row {
+    display: flex; align-items: center; gap: 0.625rem;
+    padding: 0.75rem 0.25rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    cursor: pointer;
+  }
+  .row:last-child { border-bottom: none; }
+  .row-grow { flex: 1; min-width: 0; }
+  .row-title { font-size: 0.9rem; font-weight: 600; color: var(--navy-strong); }
+  .row-sub { font-size: 0.72rem; font-weight: 500; color: color-mix(in srgb, var(--navy) 66%, white); margin-top: 0.125rem; }
+  .row-jersey {
+    width: 36px; height: 36px; border-radius: 0.6rem;
+    background: var(--navy-strong); color: var(--orange);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1.1rem;
+  }
+  .row-chevron { color: color-mix(in srgb, var(--navy) 40%, white); flex-shrink: 0; }
+
+  .section-head {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: 1.25rem; color: var(--navy-strong); letter-spacing: -0.01em;
+    padding: 0.125rem 0.25rem 0.5rem;
+  }
+
+  .next-event {
+    border-radius: 1.25rem; padding: 1rem; position: relative; overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--navy) 28%, black);
+    background: linear-gradient(135deg, var(--navy-strong), color-mix(in srgb, var(--navy) 86%, var(--harbor)));
+    color: white; cursor: pointer;
+    box-shadow: 0 18px 36px color-mix(in srgb, var(--navy-strong) 22%, transparent);
+  }
+  .next-event::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at top right, color-mix(in srgb, var(--orange) 28%, transparent), transparent 32%);
+    pointer-events: none;
+  }
+  .next-event > * { position: relative; }
+
+  .event-row {
+    display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 0.625rem;
+    padding: 0.6rem 0.25rem; cursor: pointer;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  }
+  .event-row:last-child { border-bottom: none; }
+  .event-date { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; text-align: center; line-height: 1; }
+  .event-date .mo { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange-strong); }
+  .event-date .dy { font-size: 1.5rem; color: var(--navy-strong); margin-top: 2px; }
+
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 30;
+    padding: 0.375rem 0.5rem 1.75rem;
+    background: color-mix(in srgb, var(--navy-strong) 94%, black);
+    border-top: 1px solid color-mix(in srgb, var(--navy) 14%, white);
+  }
+  .bottom-nav.hidden { display: none; }
+  .bottom-nav-inner { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.25rem; }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+    border-radius: 0.75rem; padding: 0.5rem 0.25rem;
+    font-size: 0.58rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.6);
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
+  .nav-item.active {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--orange) 94%, white), var(--orange-strong));
+    color: var(--navy-strong);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--orange-strong) 22%, transparent);
+  }
+  .nav-icon { width: 1rem; height: 1rem; }
+
+  .response-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.375rem; }
+  .response-stat { border-radius: 0.75rem; padding: 0.5rem 0.4rem; text-align: center; }
+  .response-stat .count { font-size: 1.1rem; font-weight: 900; font-family: 'Barlow Condensed', sans-serif; line-height: 1; }
+  .response-stat .label { font-size: 0.55rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+  .stat-avail { border: 1px solid color-mix(in srgb, var(--success) 26%, white); background: color-mix(in srgb, var(--success) 10%, white); }
+  .stat-avail .count { color: color-mix(in srgb, var(--success) 78%, black); }
+  .stat-avail .label { color: color-mix(in srgb, var(--success) 68%, black); }
+  .stat-maybe { border: 1px solid color-mix(in srgb, var(--warning) 26%, white); background: color-mix(in srgb, var(--warning) 18%, white); }
+  .stat-maybe .count { color: color-mix(in srgb, var(--warning) 80%, black); }
+  .stat-maybe .label { color: color-mix(in srgb, var(--warning) 68%, black); }
+  .stat-out { border: 1px solid color-mix(in srgb, var(--danger) 22%, white); background: color-mix(in srgb, var(--danger) 10%, white); }
+  .stat-out .count { color: color-mix(in srgb, var(--danger) 82%, black); }
+  .stat-out .label { color: color-mix(in srgb, var(--danger) 68%, black); }
+  .stat-wait { border: 1px solid color-mix(in srgb, var(--navy) 12%, white); background: color-mix(in srgb, var(--navy) 8%, white); }
+  .stat-wait .count { color: var(--navy-strong); }
+  .stat-wait .label { color: color-mix(in srgb, var(--navy) 68%, white); }
+
+  .action-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.875rem 0.875rem; border-radius: 0.875rem;
+    border: 1px solid color-mix(in srgb, var(--navy) 10%, white);
+    background: color-mix(in srgb, var(--paper) 92%, white); cursor: pointer;
+  }
+  .action-row:hover { background: color-mix(in srgb, var(--orange) 6%, white); border-color: color-mix(in srgb, var(--orange) 26%, white); }
+  .action-icon {
+    width: 36px; height: 36px; border-radius: 0.625rem;
+    background: var(--navy-strong); color: var(--orange);
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  /* Lineup matrix */
+  .matrix-wrap { border-radius: 0.875rem; border: 1px solid var(--line); background: white; overflow: hidden; }
+  .matrix-scroll { overflow-x: auto; overflow-y: visible; max-width: 100%; }
+  .matrix-scroll::-webkit-scrollbar { height: 6px; }
+  .matrix-scroll::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--navy) 18%, white); border-radius: 3px; }
+  .matrix { display: grid; min-width: max-content; }
+  .mx-cell {
+    padding: 6px 4px; min-height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    border-right: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    font-size: 0.72rem; font-weight: 600;
+  }
+  .mx-head {
+    position: sticky; top: 0; z-index: 3;
+    background: color-mix(in srgb, var(--navy) 8%, white);
+    color: var(--navy-strong);
+    font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; user-select: none;
+  }
+  .mx-head.selected { background: color-mix(in srgb, var(--orange) 22%, white); color: var(--navy-strong); }
+  .mx-corner { position: sticky; top: 0; left: 0; z-index: 5; background: color-mix(in srgb, var(--navy) 10%, white); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; }
+  .mx-player {
+    position: sticky; left: 0; z-index: 2;
+    background: color-mix(in srgb, var(--paper) 96%, white);
+    justify-content: flex-start; padding-left: 8px;
+    font-size: 0.75rem; color: var(--navy-strong); gap: 6px;
+    width: 110px; min-width: 110px;
+  }
+  .mx-player .slot {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    color: var(--orange-strong); width: 14px; text-align: center;
+  }
+
+  /* Batting-order list: static slot numbers on the left, draggable cards on the right */
+  .order-slot {
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .o-slot {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: 1.15rem; color: var(--orange-strong);
+    width: 20px; text-align: center; flex-shrink: 0;
+  }
+  .order-row {
+    flex: 1;
+    display: flex; align-items: center; gap: 0.625rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--navy) 10%, white);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 96%, white), color-mix(in srgb, var(--paper) 88%, var(--background)));
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    cursor: grab;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+    will-change: transform;
+  }
+  .order-row .o-name {
+    flex: 1; font-size: 0.85rem; font-weight: 600; color: var(--navy-strong);
+  }
+  .order-row .o-grip {
+    color: color-mix(in srgb, var(--navy) 36%, white);
+    display: flex; align-items: center;
+  }
+  .order-row.dragging {
+    cursor: grabbing;
+    box-shadow: 0 14px 28px rgba(0,0,0,0.22);
+    border-color: color-mix(in srgb, var(--orange) 40%, white);
+    transition: none; z-index: 5;
+  }
+  .bench-pills {
+    display: flex; flex-wrap: wrap; gap: 0.3rem;
+    margin-top: 0.625rem; padding-top: 0.625rem;
+    border-top: 1px dashed color-mix(in srgb, var(--line) 80%, transparent);
+  }
+  .bench-pill {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.3rem 0.55rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 600; color: color-mix(in srgb, var(--navy) 70%, white);
+    background: color-mix(in srgb, var(--navy) 4%, white);
+    border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  }
+  .bench-pill.addable {
+    cursor: pointer;
+    border-color: color-mix(in srgb, var(--orange) 30%, var(--line));
+  }
+  .bench-pill.addable:hover {
+    background: color-mix(in srgb, var(--orange) 12%, white);
+    color: var(--navy-strong);
+  }
+  .bench-pill .dot { width: 6px; height: 6px; }
+  .bench-pill .plus {
+    width: 14px; height: 14px; border-radius: 999px;
+    background: var(--orange-strong); color: white;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 800; line-height: 1;
+  }
+  .order-row .o-remove {
+    width: 22px; height: 22px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    color: color-mix(in srgb, var(--navy) 38%, white);
+    margin-left: -0.25rem;
+    touch-action: auto;
+  }
+  .order-row .o-remove:hover {
+    background: color-mix(in srgb, var(--danger) 14%, white);
+    color: color-mix(in srgb, var(--danger) 80%, black);
+  }
+  .bench-pills-label {
+    font-size: 0.58rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em;
+    color: color-mix(in srgb, var(--navy) 60%, white);
+    margin-bottom: 0.375rem; width: 100%;
+  }
+  .mx-pos { min-width: 52px; background: white; }
+  .mx-pos button {
+    width: 100%; padding: 4px 0; border-radius: 0.375rem;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    font-size: 0.85rem; color: var(--navy-strong);
+    background: color-mix(in srgb, var(--navy) 4%, white);
+    border: 1px solid transparent;
+    min-height: 32px;
+  }
+  .mx-pos button:hover { background: color-mix(in srgb, var(--orange) 14%, white); }
+  .mx-pos.bn button { background: color-mix(in srgb, var(--navy) 8%, white); color: color-mix(in srgb, var(--navy) 64%, white); }
+  .mx-pos.duplicate button { background: color-mix(in srgb, var(--danger) 24%, white); border-color: var(--danger); color: color-mix(in srgb, var(--danger) 80%, black); animation: pulseBad 0.8s ease-out; }
+  .mx-col-selected { background: color-mix(in srgb, var(--orange) 8%, transparent); }
+  .mx-row-unavail .mx-pos { background: color-mix(in srgb, var(--danger) 6%, white); }
+  .mx-row-unavail .mx-player { background: color-mix(in srgb, var(--danger) 8%, white); }
+  .mx-row-maybe .mx-pos { background: color-mix(in srgb, var(--warning) 6%, white); }
+  .mx-row-maybe .mx-player { background: color-mix(in srgb, var(--warning) 10%, white); }
+  @keyframes pulseBad { 0% { transform: scale(1); } 50% { transform: scale(1.04); } 100% { transform: scale(1); } }
+
+  .pos-picker {
+    position: absolute; z-index: 60; display: none;
+    background: white; border-radius: 0.75rem;
+    border: 1px solid var(--line); padding: 0.5rem;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+  }
+  .pos-picker.open { display: block; }
+  .pos-picker-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.25rem; }
+  .pos-picker button {
+    padding: 0.4rem 0; border-radius: 0.4rem;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+    background: color-mix(in srgb, var(--navy) 4%, white); color: var(--navy-strong);
+    min-width: 40px; font-size: 0.85rem;
+  }
+  .pos-picker button:hover { background: color-mix(in srgb, var(--orange) 20%, white); }
+
+  .field-viz-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.72rem; font-weight: 700; color: var(--navy-strong);
+  }
+  .diamond { width: 100%; height: 190px; }
+  .diamond .base { fill: color-mix(in srgb, var(--paper) 96%, white); stroke: color-mix(in srgb, var(--navy) 24%, white); stroke-width: 1.5; }
+  .diamond .grass { fill: color-mix(in srgb, var(--success) 10%, white); stroke: color-mix(in srgb, var(--success) 30%, white); stroke-width: 1; }
+  .diamond .pos-dot { fill: var(--orange-strong); stroke: white; stroke-width: 2; }
+  .diamond .pos-label { font-family: 'Sora', sans-serif; font-size: 8px; font-weight: 700; fill: var(--navy-strong); text-anchor: middle; }
+  .diamond .pos-code { font-family: 'Barlow Condensed', sans-serif; font-size: 9px; font-weight: 700; fill: white; text-anchor: middle; }
+  .bench-row {
+    margin-top: 0.5rem; padding-top: 0.5rem;
+    border-top: 1px dashed var(--line);
+    display: flex; flex-wrap: wrap; gap: 0.3rem;
+    font-size: 0.68rem; color: color-mix(in srgb, var(--navy) 70%, white);
+  }
+  .bench-row .label { font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.58rem; color: var(--navy-strong); margin-right: 0.25rem; }
+
+  /* Bottom sheet */
+  .sheet-backdrop {
+    position: absolute; inset: 0; z-index: 80;
+    background: rgba(10, 12, 24, 0.48);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+  }
+  .sheet-backdrop.open { opacity: 1; pointer-events: auto; }
+  .bottom-sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 81;
+    background: var(--paper);
+    border-radius: 1.25rem 1.25rem 0 0;
+    box-shadow: 0 -20px 40px rgba(0,0,0,0.3);
+    transform: translateY(100%); transition: transform 0.25s ease;
+    padding: 0.5rem 0.875rem 1.5rem;
+    max-height: 82%; overflow-y: auto;
+  }
+  .bottom-sheet.open { transform: translateY(0); }
+
+  /* Centered confirmation modal */
+  .modal {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%) scale(0.96);
+    z-index: 82; width: calc(100% - 2rem); max-width: 320px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 96%, white), color-mix(in srgb, var(--panel) 96%, var(--background)));
+    border-radius: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--navy) 12%, white);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.35), inset 0 1px 0 color-mix(in srgb, white 80%, transparent);
+    padding: 1.25rem; text-align: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    overflow: hidden;
+  }
+  .modal.open { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+  .modal-icon {
+    margin: 0.25rem auto 0.75rem; width: 3rem; height: 3rem; border-radius: 999px;
+    background: color-mix(in srgb, var(--success) 16%, white);
+    color: color-mix(in srgb, var(--success) 78%, black);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-title { font-family: 'Barlow Condensed', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--navy-strong); }
+  .modal-body { margin-top: 0.375rem; font-size: 0.8rem; color: color-mix(in srgb, var(--navy) 70%, white); }
+  .sheet-handle {
+    width: 36px; height: 4px; border-radius: 2px;
+    background: color-mix(in srgb, var(--navy) 18%, white);
+    margin: 0.5rem auto 0.75rem;
+  }
+  .sheet-title {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 1.25rem; font-weight: 700;
+    color: var(--navy-strong); margin-bottom: 0.625rem;
+  }
+  .segmented {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+    padding: 3px; border-radius: 0.625rem;
+    background: color-mix(in srgb, var(--navy) 8%, white);
+    margin-bottom: 0.75rem;
+  }
+  .segmented button {
+    padding: 0.45rem; border-radius: 0.5rem;
+    font-size: 0.72rem; font-weight: 700;
+    color: color-mix(in srgb, var(--navy) 72%, white);
+  }
+  .segmented button.active { background: white; color: var(--navy-strong); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+  .signin-link {
+    display: block; text-align: center;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--orange-strong);
+    padding: 0.25rem 0;
+  }
+  .signin-link:hover { text-decoration: underline; }
+
+  /* Clickable location row (opens in native maps) */
+  .location-link {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    padding: 0.375rem 0.55rem; margin-left: -0.55rem;
+    border-radius: 0.5rem;
+    cursor: pointer; color: inherit;
+    transition: background 0.12s ease;
+  }
+  .location-link:hover { background: color-mix(in srgb, var(--orange) 10%, transparent); color: var(--navy-strong); }
+  .location-link .ext { color: color-mix(in srgb, var(--navy) 45%, white); margin-left: 0.125rem; flex-shrink: 0; }
+  .location-link:hover .ext { color: var(--orange-strong); }
+
+  /* Location search (autocomplete) */
+  .loc-wrap { position: relative; }
+  .loc-results {
+    display: none;
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px);
+    z-index: 20;
+    background: white;
+    border-radius: 0.75rem; border: 1px solid var(--line);
+    box-shadow: 0 14px 28px rgba(0,0,0,0.18);
+    max-height: 240px; overflow-y: auto;
+  }
+  .loc-results.open { display: block; }
+  .loc-result {
+    width: 100%; text-align: left;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+    background: transparent;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .loc-result:last-child { border-bottom: none; }
+  .loc-result:hover { background: color-mix(in srgb, var(--orange) 10%, white); }
+  .loc-name { font-size: 0.82rem; font-weight: 600; color: var(--navy-strong); }
+  .loc-addr { font-size: 0.68rem; color: color-mix(in srgb, var(--navy) 66%, white); }
+  .loc-empty, .loc-status {
+    padding: 0.6rem 0.75rem; font-size: 0.72rem;
+    color: color-mix(in srgb, var(--navy) 60%, white);
+  }
+  .loc-selected {
+    display: flex; align-items: flex-start; gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.75rem; border: 1px solid color-mix(in srgb, var(--success) 30%, white);
+    background: color-mix(in srgb, var(--success) 8%, white);
+  }
+  .loc-selected .grow { flex: 1; min-width: 0; }
+  .loc-selected .clear {
+    border: none; background: transparent;
+    color: color-mix(in srgb, var(--navy) 50%, white);
+    padding: 2px; border-radius: 999px; cursor: pointer;
+  }
+  .loc-selected .clear:hover { background: color-mix(in srgb, var(--navy) 10%, white); color: var(--navy-strong); }
+
+  .linked-list {
+    border-radius: 1.25rem; overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--navy) 12%, white);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--paper) 96%, white), color-mix(in srgb, var(--panel) 96%, var(--background)));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 80%, transparent), var(--shadow);
+  }
+  .linked-list .row { padding: 0.9rem 0.875rem; }
+  .linked-list .row:last-child { border-bottom: none; }
+  .linked-list .row.danger .row-title { color: var(--orange-strong); }
+
+  .facts-view { display: block; }
+  .facts-edit { display: none; }
+  .event.editing .facts-view { display: none; }
+  .event.editing .facts-edit { display: block; }
+
+  .proto-controls {
+    position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 100;
+    display: flex; gap: 0.2rem; flex-wrap: wrap; justify-content: center;
+    background: #2a2a3e; padding: 0.375rem; border-radius: 0.75rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    max-width: 780px;
+  }
+  .proto-group { display: flex; gap: 0.15rem; padding: 0 0.25rem; border-right: 1px solid rgba(255,255,255,0.12); }
+  .proto-group:last-child { border-right: none; }
+  .proto-btn {
+    font-family: 'Sora', sans-serif; font-size: 0.58rem; font-weight: 700;
+    padding: 0.3rem 0.45rem; border-radius: 0.4rem;
+    background: transparent; color: rgba(255,255,255,0.55);
+    text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+  }
+  .proto-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+  .proto-btn.active { background: var(--orange-strong); color: white; }
+
+  .phone-label {
+    position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,0.3); font-family: 'Sora', sans-serif;
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+
+  .muted { color: color-mix(in srgb, var(--navy) 66%, white); font-size: 0.74rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .stack-tight { display: flex; flex-direction: column; gap: 0.375rem; }
+  .hstack { display: flex; align-items: center; gap: 0.5rem; }
+  .between { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .divider { height: 1px; background: color-mix(in srgb, var(--line) 60%, transparent); margin: 0.25rem 0; }
+
+  /* Icon template — hidden, cloned at runtime */
+  template { display: none; }
+</style>
+</head>
+<body>
+
+<!-- Icon templates (cloned by JS, never assigned via innerHTML) -->
+<template id="i-back"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><polyline points="15 18 9 12 15 6"/></svg></template>
+<template id="i-plus"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></template>
+<template id="i-pencil"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></template>
+<template id="i-chevron"><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></template>
+<template id="i-grip"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg></template>
+<template id="i-x"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></template>
+
+<div class="proto-controls">
+  <div class="proto-group">
+    <button class="proto-btn" data-nav="sign-in">Sign&nbsp;In</button>
+    <button class="proto-btn" data-nav="check-email">Email</button>
+  </div>
+  <div class="proto-group">
+    <button class="proto-btn" data-nav="home">Schedule</button>
+    <button class="proto-btn" data-nav="team">Team</button>
+    <button class="proto-btn" data-nav="lineups">Lineups</button>
+    <button class="proto-btn" data-nav="settings">Settings</button>
+  </div>
+  <div class="proto-group">
+    <button class="proto-btn" data-nav="new-event">New&nbsp;Event</button>
+    <button class="proto-btn" data-nav="event">Event</button>
+    <button class="proto-btn" data-nav="rsvp">RSVP</button>
+    <button class="proto-btn" data-nav="attendance">Attendance</button>
+    <button class="proto-btn" data-nav="email">Email</button>
+    <button class="proto-btn" data-nav="lineup-editor">Editor</button>
+  </div>
+  <div class="proto-group">
+    <button class="proto-btn" data-nav="profile">Profile</button>
+    <button class="proto-btn" data-nav="broadcast">Broadcast</button>
+    <button class="proto-btn" data-nav="positions">Positions</button>
+  </div>
+</div>
+
+<div class="phone-label">BGSL &middot; iPhone 15 Pro &middot; 390 &times; 844</div>
+
+<div class="phone">
+
+  <div class="top-bar" id="top-bar">
+    <div class="top-bar-left" id="tb-left"></div>
+    <div class="top-bar-title" id="tb-title"></div>
+    <div class="top-bar-right" id="tb-right"></div>
+  </div>
+
+  <div class="phone-scroll" id="phone-scroll">
+
+    <!-- ─── SIGN IN ─── -->
+    <section id="sign-in" class="screen">
+      <div class="content no-top no-nav centered" style="gap:1rem">
+        <div style="text-align:center">
+          <div style="margin:0 auto 0.75rem; width:3.25rem; height:3.25rem; border-radius:0.875rem; background:var(--navy-strong); display:flex; align-items:center; justify-content:center; color:var(--orange)">
+            <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h1 style="font-size:2rem; color:var(--navy-strong)">Sign in to BGSL</h1>
+        </div>
+
+        <div class="shell-panel" style="padding:1.25rem" data-signin-mode="password">
+          <div class="orange-bar-top"></div>
+          <div class="segmented" style="margin-bottom:0.875rem">
+            <button class="active" data-signin="password" style="grid-column:span 1">Password</button>
+            <button data-signin="magic" style="grid-column:span 2">Magic link</button>
+          </div>
+
+          <!-- Password mode -->
+          <div class="fields signin-password">
+            <div class="field">
+              <label>Email address</label>
+              <input type="email" placeholder="parent@example.com" autocomplete="email">
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input type="password" placeholder="••••••••" autocomplete="current-password">
+            </div>
+            <button class="btn-primary btn-block" data-nav-btn="home">Sign in</button>
+            <a href="#" class="signin-link">Forgot password?</a>
+          </div>
+
+          <!-- Magic-link mode -->
+          <div class="fields signin-magic" style="display:none">
+            <div class="field">
+              <label>Email address</label>
+              <input type="email" placeholder="parent@example.com" autocomplete="email">
+            </div>
+            <button class="btn-primary btn-block" data-nav-btn="check-email">Email me a sign-in link</button>
+            <p class="muted" style="font-size:0.7rem; text-align:center">First-time sign-in or forgotten password — we'll email a one-time link.</p>
+          </div>
+        </div>
+
+        <p class="muted" style="text-align:center; font-size:0.72rem">Not on the roster? Ask a coach to add your email first.</p>
+      </div>
+    </section>
+
+    <!-- ─── CHECK EMAIL ─── -->
+    <section id="check-email" class="screen">
+      <div class="content no-top no-nav centered" style="text-align:center; gap:1rem">
+        <div style="margin:0 auto; width:3rem; height:3rem; border-radius:0.75rem; background:var(--navy-strong); display:flex; align-items:center; justify-content:center; color:var(--orange)">
+          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <h1 style="font-size:1.75rem; color:var(--navy-strong)">Check your inbox</h1>
+        <p class="muted">Magic link sent. Expires in 24 hours.</p>
+        <a href="#" data-nav-btn="sign-in" style="display:inline-block; font-size:0.8rem; font-weight:700; color:var(--orange-strong)">Back to sign in</a>
+      </div>
+    </section>
+
+    <!-- ─── HOME ─── -->
+    <section id="home" class="screen">
+      <div class="content">
+        <div class="next-event" data-nav-btn="event">
+          <div style="font-size:0.58rem; font-weight:800; text-transform:uppercase; letter-spacing:0.16em; color:color-mix(in srgb, var(--orange) 86%, white)">Next up</div>
+          <h2 style="font-size:1.75rem; color:white; margin-top:0.25rem">vs. Salem Storm</h2>
+          <div class="hstack" style="margin-top:0.375rem; font-size:0.78rem; color:rgba(255,255,255,0.82); font-weight:500">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Sat Apr 19 · 10:00 AM
+          </div>
+          <div class="hstack" style="margin-top:0.125rem; font-size:0.78rem; color:rgba(255,255,255,0.82); font-weight:500">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            Vittori Park, Beverly MA
+          </div>
+          <div style="margin-top:0.75rem; display:inline-flex; align-items:center; gap:0.375rem; border-radius:0.6rem; border:1px solid color-mix(in srgb, var(--success) 36%, transparent); background:color-mix(in srgb, var(--success) 18%, transparent); padding:0.25rem 0.5rem; font-size:0.6rem; font-weight:800; text-transform:uppercase; letter-spacing:0.1em; color:color-mix(in srgb, var(--success) 88%, white)">
+            Madeleine · available
+          </div>
+        </div>
+
+        <div class="shell-panel" style="padding:0.25rem 0.875rem">
+          <div class="section-head">Upcoming</div>
+          <div class="row-list">
+            <div class="event-row" data-nav-btn="event">
+              <div class="event-date"><div class="mo">Thu</div><div class="dy">17</div></div>
+              <div class="row-grow"><div class="row-title">Thursday fielding drills</div><div class="row-sub">5:30 PM · Practice</div></div>
+              <span class="dot dot-avail"></span>
+            </div>
+            <div class="event-row" data-nav-btn="event">
+              <div class="event-date"><div class="mo">Sat</div><div class="dy">26</div></div>
+              <div class="row-grow"><div class="row-title">vs. Gloucester Gulls</div><div class="row-sub">9:00 AM · Game</div></div>
+              <span class="dot dot-wait"></span>
+            </div>
+            <div class="event-row" data-nav-btn="event">
+              <div class="event-date"><div class="mo">Tue</div><div class="dy">29</div></div>
+              <div class="row-grow"><div class="row-title">Batting cages session</div><div class="row-sub">5:30 PM · Practice</div></div>
+              <span class="dot dot-maybe"></span>
+            </div>
+            <div class="event-row" data-nav-btn="event">
+              <div class="event-date"><div class="mo">Sat</div><div class="dy">03</div></div>
+              <div class="row-grow"><div class="row-title">@ Danvers Diamonds</div><div class="row-sub">11:00 AM · Game</div></div>
+              <span class="dot dot-wait"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── NEW EVENT ─── -->
+    <section id="new-event" class="screen">
+      <div class="content no-nav">
+        <div class="shell-panel">
+          <div class="orange-bar-top"></div>
+          <div class="fields">
+            <div class="grid-2">
+              <div class="field"><label>Type</label><select><option>GAME</option><option>PRACTICE</option></select></div>
+              <div class="field"><label>Status</label><select><option>SCHEDULED</option><option>CANCELLED</option></select></div>
+            </div>
+            <div class="field"><label>Title</label><input placeholder="vs. Salem Storm"></div>
+            <div class="grid-2">
+              <div class="field"><label>Date</label><input type="date"></div>
+              <div class="field"><label>Time</label><input type="time"></div>
+            </div>
+            <div class="field location-field">
+              <label>Location</label>
+              <div class="loc-wrap" data-location>
+                <input type="text" class="loc-input" placeholder="Search parks, fields, addresses…">
+                <div class="loc-results"></div>
+              </div>
+            </div>
+            <div class="field"><label>Description</label><textarea placeholder="Notes for families"></textarea></div>
+            <button class="btn-primary btn-block" data-action="save" data-save-kind="event-new">Save</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── TEAM ─── -->
+    <section id="team" class="screen">
+      <div class="content">
+        <div class="shell-panel" style="padding:0.25rem 0.875rem">
+          <div class="section-head">Roster</div>
+          <div class="row-list">
+            <div class="row"><span class="row-jersey">3</span><div class="row-grow"><div class="row-title">Payton Lambert</div><div class="row-sub">1 guardian</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">8</span><div class="row-grow"><div class="row-title">Josephine Petrillo</div><div class="row-sub">2 guardians</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">14</span><div class="row-grow"><div class="row-title">Sadie Shafner</div><div class="row-sub">2 guardians</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">5</span><div class="row-grow"><div class="row-title">Grace Correia</div><div class="row-sub">2 guardians</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">7</span><div class="row-grow"><div class="row-title">Madeleine Lee</div><div class="row-sub">1 guardian</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">2</span><div class="row-grow"><div class="row-title">Jaylania Prew</div><div class="row-sub">1 guardian</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">11</span><div class="row-grow"><div class="row-title">Corinne Palmer</div><div class="row-sub">2 guardians</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">6</span><div class="row-grow"><div class="row-title">Ashley Korkuch</div><div class="row-sub">2 guardians</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">9</span><div class="row-grow"><div class="row-title">Aubrie Meuse</div><div class="row-sub">1 guardian</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">12</span><div class="row-grow"><div class="row-title">Nell Kenna</div><div class="row-sub">invited · no guardian yet</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">4</span><div class="row-grow"><div class="row-title">Isla Gove</div><div class="row-sub">2 guardians</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+            <div class="row"><span class="row-jersey">10</span><div class="row-grow"><div class="row-title">Lucy Powers</div><div class="row-sub">2 guardians</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+        </div>
+
+        <div class="shell-panel" style="padding:0.25rem 0.875rem">
+          <div class="section-head">Staff</div>
+          <div class="row-list">
+            <div class="row"><div class="row-grow"><div class="row-title">Jess Lee</div><div class="row-sub">head coach</div></div><span class="chip chip-role">coach</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Michelle Lambert</div><div class="row-sub">coach</div></div><span class="chip chip-role">coach</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Mandy Petrillo</div><div class="row-sub">coach</div></div><span class="chip chip-role">coach</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Jamie Shafner</div><div class="row-sub">coach</div></div><span class="chip chip-role">coach</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Jesse Correia</div><div class="row-sub">team admin</div></div><span class="chip chip-role">admin</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── LINEUPS ─── -->
+    <section id="lineups" class="screen">
+      <div class="content">
+        <div class="shell-panel" style="padding:0.25rem 0.875rem">
+          <div class="row-list">
+            <div class="row" data-nav-btn="lineup-editor"><div class="event-date" style="width:44px"><div class="mo">Sat</div><div class="dy">19</div></div><div class="row-grow"><div class="row-title">vs. Salem Storm</div><div class="row-sub">10:00 AM · Game</div></div><span class="btn-secondary" style="padding:0.3rem 0.65rem; font-size:0.68rem">Edit</span></div>
+            <div class="row" data-nav-btn="lineup-editor"><div class="event-date" style="width:44px"><div class="mo">Sat</div><div class="dy">26</div></div><div class="row-grow"><div class="row-title">vs. Gloucester Gulls</div><div class="row-sub">9:00 AM · Game</div></div><span class="btn-primary" style="padding:0.3rem 0.65rem; font-size:0.68rem">Create</span></div>
+            <div class="row" data-nav-btn="lineup-editor"><div class="event-date" style="width:44px"><div class="mo">Sat</div><div class="dy">03</div></div><div class="row-grow"><div class="row-title">@ Danvers Diamonds</div><div class="row-sub">11:00 AM · Game</div></div><span class="btn-primary" style="padding:0.3rem 0.65rem; font-size:0.68rem">Create</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── SETTINGS ─── -->
+    <section id="settings" class="screen">
+      <div class="content">
+        <div class="linked-list">
+          <div class="row" data-nav-btn="profile"><div class="row-grow"><div class="row-title">Profile</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          <div class="row"><div class="row-grow"><div class="row-title">Notifications</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          <div class="row" data-nav-btn="broadcast"><div class="row-grow"><div class="row-title">Team broadcast</div><div class="row-sub">coach</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          <div class="row" data-nav-btn="positions"><div class="row-grow"><div class="row-title">Position templates</div><div class="row-sub">coach</div></div><svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          <div class="row danger" data-nav-btn="sign-in"><div class="row-grow"><div class="row-title">Sign out</div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── EVENT SUMMARY ─── -->
+    <section id="event" class="screen event">
+      <div class="content no-nav">
+        <div class="shell-panel facts-view">
+          <div class="orange-bar-top"></div>
+          <div class="hstack" style="margin-bottom:0.5rem">
+            <span class="chip chip-game">GAME</span>
+            <span class="chip chip-scheduled">scheduled</span>
+          </div>
+          <h2 style="font-size:1.5rem; color:var(--navy-strong)">vs. Salem Storm</h2>
+          <div class="stack-tight" style="margin-top:0.5rem; font-size:0.8rem; color:color-mix(in srgb, var(--navy) 74%, white); font-weight:500">
+            <div class="hstack"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Sat Apr 19 · 10:00 AM</div>
+            <a class="location-link" data-open-maps="Vittori Park, 30 Park St, Beverly, MA 01915">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>Vittori Park · 30 Park St, Beverly MA</span>
+              <svg class="ext" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>
+            </a>
+          </div>
+          <p style="margin-top:0.5rem; font-size:0.78rem; color:color-mix(in srgb, var(--navy) 72%, white)">First league game of the season.</p>
+        </div>
+
+        <div class="shell-panel facts-edit">
+          <div class="orange-bar-top"></div>
+          <div class="fields">
+            <div class="grid-2">
+              <div class="field"><label>Type</label><select><option>GAME</option><option>PRACTICE</option></select></div>
+              <div class="field"><label>Status</label><select><option>SCHEDULED</option><option>CANCELLED</option></select></div>
+            </div>
+            <div class="field"><label>Title</label><input value="vs. Salem Storm"></div>
+            <div class="grid-2">
+              <div class="field"><label>Date</label><input type="date" value="2026-04-19"></div>
+              <div class="field"><label>Time</label><input type="time" value="10:00"></div>
+            </div>
+            <div class="field location-field">
+              <label>Location</label>
+              <div class="loc-wrap" data-location data-initial="Vittori Park, 30 Park St, Beverly, MA 01915">
+                <input type="text" class="loc-input" placeholder="Search parks, fields, addresses…">
+                <div class="loc-results"></div>
+              </div>
+            </div>
+            <div class="hstack">
+              <button class="btn-ghost" data-action="cancel-edit">Cancel</button>
+              <button class="btn-primary btn-block" data-action="save" data-save-kind="event-edit">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="shell-panel" style="padding:0.875rem">
+          <div class="between">
+            <div>
+              <div class="row-title">Madeleine Lee</div>
+              <div class="row-sub">Your RSVP</div>
+            </div>
+            <div class="hstack">
+              <span class="chip chip-available">available</span>
+              <button class="btn-secondary" style="padding:0.35rem 0.65rem; font-size:0.7rem" data-nav-btn="rsvp">Update</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stack-tight">
+          <div class="action-row" data-nav-btn="attendance">
+            <div class="action-icon"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11l-3 3-2-2"/></svg></div>
+            <div class="row-grow"><div class="row-title">Attendance</div><div class="row-sub">9 in · 1 maybe · 1 out · 1 waiting</div></div>
+            <svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="action-row" data-nav-btn="lineup-editor">
+            <div class="action-icon"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg></div>
+            <div class="row-grow"><div class="row-title">Lineup</div><div class="row-sub">Batting order and positions</div></div>
+            <svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+          <div class="action-row" data-nav-btn="email">
+            <div class="action-icon"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+            <div class="row-grow"><div class="row-title">Email families</div><div class="row-sub">Send an update to guardians</div></div>
+            <svg class="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── RSVP ─── -->
+    <section id="rsvp" class="screen">
+      <div class="content no-nav">
+        <div class="shell-panel">
+          <div class="orange-bar-top"></div>
+          <div class="fields">
+            <div>
+              <div class="row-title">Madeleine Lee</div>
+              <div class="row-sub">vs. Salem Storm · Sat Apr 19</div>
+            </div>
+            <div class="field"><label>Status</label><select><option>Available</option><option>Maybe</option><option>Unavailable</option></select></div>
+            <div class="field"><label>Optional note</label><textarea placeholder="Running late, leaving early…"></textarea></div>
+            <button class="btn-primary btn-block" data-action="save" data-save-kind="rsvp">Save</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── ATTENDANCE ─── -->
+    <section id="attendance" class="screen">
+      <div class="content no-nav">
+        <div class="shell-panel" style="padding:0.75rem 0.875rem">
+          <div class="orange-bar-top"></div>
+          <div class="hstack" style="gap:0.375rem; margin-bottom:0.375rem">
+            <span class="chip chip-game">GAME</span>
+            <span style="font-size:0.9rem; font-weight:700; color:var(--navy-strong); font-family:'Barlow Condensed',sans-serif; letter-spacing:-0.01em">vs. Salem Storm</span>
+          </div>
+          <div class="hstack" style="font-size:0.72rem; color:color-mix(in srgb, var(--navy) 70%, white); font-weight:500; gap:0.75rem; flex-wrap:wrap">
+            <span class="hstack" style="gap:0.25rem"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Sat Apr 19 · 10:00 AM</span>
+            <span class="hstack" style="gap:0.25rem"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>Vittori Park</span>
+          </div>
+        </div>
+        <div class="shell-panel" style="padding:0.875rem">
+          <div class="response-grid">
+            <div class="response-stat stat-avail"><div class="count">9</div><div class="label">In</div></div>
+            <div class="response-stat stat-maybe"><div class="count">1</div><div class="label">Maybe</div></div>
+            <div class="response-stat stat-out"><div class="count">1</div><div class="label">Out</div></div>
+            <div class="response-stat stat-wait"><div class="count">1</div><div class="label">Wait</div></div>
+          </div>
+        </div>
+        <div class="shell-panel" style="padding:0.25rem 0.875rem">
+          <div class="row-list">
+            <div class="row"><div class="row-grow"><div class="row-title">Payton Lambert</div></div><span class="chip chip-available">available</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Josephine Petrillo</div></div><span class="chip chip-available">available</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Sadie Shafner</div></div><span class="chip chip-available">available</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Grace Correia</div></div><span class="chip chip-available">available</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Madeleine Lee</div></div><span class="chip chip-available">available</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Jaylania Prew</div></div><span class="chip chip-available">available</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Corinne Palmer</div></div><span class="chip chip-available">available</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Isla Gove</div></div><span class="chip chip-available">available</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Lucy Powers</div></div><span class="chip chip-available">available</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Jess Lee</div></div><span class="hstack"><span class="chip chip-role">coach</span><span class="chip chip-available">available</span></span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Michelle Lambert</div></div><span class="hstack"><span class="chip chip-role">coach</span><span class="chip chip-available">available</span></span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Mandy Petrillo</div></div><span class="hstack"><span class="chip chip-role">coach</span><span class="chip chip-available">available</span></span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Jamie Shafner</div></div><span class="hstack"><span class="chip chip-role">coach</span><span class="chip chip-available">available</span></span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Jesse Correia</div></div><span class="hstack"><span class="chip chip-role">admin</span><span class="chip chip-available">available</span></span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Aubrie Meuse</div><div class="row-sub">Might leave by noon</div></div><span class="chip chip-maybe">maybe</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Ashley Korkuch</div></div><span class="chip chip-unavailable">out</span></div>
+            <div class="row"><div class="row-grow"><div class="row-title">Nell Kenna</div></div><span class="chip chip-waiting">waiting</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── SEND EMAIL ─── -->
+    <section id="email" class="screen">
+      <div class="content no-nav">
+        <div class="shell-panel">
+          <div class="orange-bar-top"></div>
+          <div class="fields">
+            <div class="field"><label>Recipients</label><select><option>All guardians</option><option>Responded families</option><option>Non-responders</option></select></div>
+            <div class="field"><label>Subject</label><input value="vs. Salem Storm update"></div>
+            <div class="field"><label>Message</label><textarea placeholder="Weather updates, field changes…"></textarea></div>
+            <button class="btn-primary btn-block" data-action="send-email">Send</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── LINEUP EDITOR ─── -->
+    <section id="lineup-editor" class="screen">
+      <div class="content no-nav" style="padding-bottom:1.5rem">
+        <div class="shell-panel" style="padding:0.875rem">
+          <div class="between" style="margin-bottom:0.5rem">
+            <div class="section-head" style="padding:0">Batting order</div>
+            <div class="hstack" style="gap:0.375rem">
+              <label style="font-size:0.56rem; letter-spacing:0.1em">Innings</label>
+              <input id="innings-input" type="number" min="1" max="9" value="6" style="width:56px; padding:0.35rem 0.5rem; font-size:0.8rem">
+            </div>
+          </div>
+          <div id="order-list" class="stack-tight"></div>
+        </div>
+
+        <div class="shell-panel" style="padding:0.75rem">
+          <div class="between" style="margin-bottom:0.5rem">
+            <div class="section-head" style="padding:0">Positions</div>
+            <div class="muted" style="font-size:0.64rem">Tap cell to set</div>
+          </div>
+          <div class="matrix-wrap">
+            <div class="matrix-scroll" id="matrix-scroll">
+              <div class="matrix" id="matrix"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="shell-panel" style="padding:0.75rem">
+          <div class="field-viz-head">
+            <span id="viz-inning-label">Inning 1</span>
+            <span class="muted" style="font-size:0.62rem">Tap inning column above</span>
+          </div>
+          <svg class="diamond" viewBox="0 0 260 180">
+            <path class="grass" d="M 130 165 L 40 90 L 130 25 L 220 90 Z"/>
+            <path class="grass" d="M 20 90 Q 130 -30 240 90" opacity="0.5"/>
+            <rect class="base" x="125" y="160" width="10" height="10" transform="rotate(45 130 165)"/>
+            <rect class="base" x="35" y="85" width="10" height="10" transform="rotate(45 40 90)"/>
+            <rect class="base" x="125" y="20" width="10" height="10" transform="rotate(45 130 25)"/>
+            <rect class="base" x="215" y="85" width="10" height="10" transform="rotate(45 220 90)"/>
+            <circle cx="130" cy="105" r="8" fill="color-mix(in srgb, var(--orange) 20%, white)" stroke="color-mix(in srgb, var(--orange) 50%, white)"/>
+            <g id="field-positions"></g>
+          </svg>
+          <div id="bench-row" class="bench-row"></div>
+        </div>
+
+        <div class="hstack" style="padding:0 0.125rem">
+          <button class="btn-ghost" data-nav-btn="event">Back</button>
+          <button class="btn-primary btn-block" data-action="save" data-save-kind="lineup">Save</button>
+        </div>
+      </div>
+
+      <div class="pos-picker" id="pos-picker">
+        <div class="pos-picker-grid" id="pos-picker-grid"></div>
+      </div>
+    </section>
+
+    <!-- ─── PROFILE ─── -->
+    <section id="profile" class="screen">
+      <div class="content no-nav">
+        <div class="shell-panel">
+          <div class="orange-bar-top"></div>
+          <div class="fields">
+            <div class="field"><label>Name</label><input value="Jess Lee"></div>
+            <div class="field"><label>Email</label><input value="jess@example.com" disabled></div>
+            <div class="field"><label>Phone</label><input type="tel" placeholder="(555) 555-5555"></div>
+            <button class="btn-primary btn-block" data-action="save" data-save-kind="profile">Save</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── BROADCAST ─── -->
+    <section id="broadcast" class="screen">
+      <div class="content no-nav">
+        <div class="shell-panel">
+          <div class="orange-bar-top"></div>
+          <div class="fields">
+            <div class="field"><label>Recipients</label><select><option>All guardians</option><option>Coaches only</option></select></div>
+            <div class="field"><label>Subject</label><input placeholder="Season schedule update"></div>
+            <div class="field"><label>Message</label><textarea placeholder="Team announcement…"></textarea></div>
+            <button class="btn-primary btn-block" data-action="send-email">Send</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── POSITIONS ─── -->
+    <section id="positions" class="screen">
+      <div class="content no-nav">
+        <div class="shell-panel" style="padding:0.25rem 0.875rem">
+          <div class="section-head">Position templates</div>
+          <div class="row-list">
+            <div class="row"><div class="row-grow"><div class="row-title">P</div><div class="row-sub">Pitcher</div></div></div>
+            <div class="row"><div class="row-grow"><div class="row-title">C</div><div class="row-sub">Catcher</div></div></div>
+            <div class="row"><div class="row-grow"><div class="row-title">1B</div><div class="row-sub">First base</div></div></div>
+            <div class="row"><div class="row-grow"><div class="row-title">2B</div><div class="row-sub">Second base</div></div></div>
+            <div class="row"><div class="row-grow"><div class="row-title">3B</div><div class="row-sub">Third base</div></div></div>
+            <div class="row"><div class="row-grow"><div class="row-title">SS</div><div class="row-sub">Shortstop</div></div></div>
+            <div class="row"><div class="row-grow"><div class="row-title">LF</div><div class="row-sub">Left field</div></div></div>
+            <div class="row"><div class="row-grow"><div class="row-title">CF</div><div class="row-sub">Center field</div></div></div>
+            <div class="row"><div class="row-grow"><div class="row-title">RF</div><div class="row-sub">Right field</div></div></div>
+            <div class="row"><div class="row-grow"><div class="row-title">BN</div><div class="row-sub">Bench</div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /.phone-scroll -->
+
+  <!-- Confirmation modal -->
+  <div class="modal" id="confirm-modal">
+    <div class="orange-bar-top"></div>
+    <div class="modal-icon">
+      <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="modal-title" id="modal-title">Email sent</div>
+    <div class="modal-body" id="modal-body">Guardians will receive your update shortly.</div>
+    <button class="btn-primary btn-block" style="margin-top:1rem" data-action="close-modal">Done</button>
+  </div>
+
+  <!-- Bottom sheet -->
+  <div class="sheet-backdrop" id="sheet-backdrop"></div>
+  <div class="bottom-sheet" id="add-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheet-title">Add player</div>
+    <div class="segmented" id="segmented">
+      <button class="active" data-seg="player">Player</button>
+      <button data-seg="guardian">Guardian</button>
+      <button data-seg="staff">Staff</button>
+    </div>
+
+    <div class="fields" id="seg-player">
+      <div class="grid-2">
+        <div class="field"><label>First name</label><input placeholder="Madeleine"></div>
+        <div class="field"><label>Last name</label><input placeholder="Lee"></div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>Jersey</label><input type="number" placeholder="7"></div>
+        <div class="field"><label>Grade</label><input placeholder="4th"></div>
+      </div>
+      <button class="btn-primary btn-block" data-action="close-sheet">Add player</button>
+    </div>
+
+    <div class="fields" id="seg-guardian" style="display:none">
+      <div class="field"><label>Player</label><select><option>Madeleine Lee</option><option>Payton Lambert</option></select></div>
+      <div class="grid-2">
+        <div class="field"><label>First name</label><input></div>
+        <div class="field"><label>Last name</label><input></div>
+      </div>
+      <div class="field"><label>Email</label><input type="email" placeholder="guardian@example.com"></div>
+      <button class="btn-primary btn-block" data-action="close-sheet">Invite guardian</button>
+    </div>
+
+    <div class="fields" id="seg-staff" style="display:none">
+      <div class="grid-2">
+        <div class="field"><label>First name</label><input></div>
+        <div class="field"><label>Last name</label><input></div>
+      </div>
+      <div class="field"><label>Email</label><input type="email" placeholder="coach@example.com"></div>
+      <div class="field"><label>Role</label><select><option>Coach</option><option>Admin</option></select></div>
+      <button class="btn-primary btn-block" data-action="close-sheet">Invite staff</button>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" id="bottom-nav">
+    <div class="bottom-nav-inner">
+      <a class="nav-item" data-tab="home" data-nav-btn="home"><svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Schedule</span></a>
+      <a class="nav-item" data-tab="team" data-nav-btn="team"><svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Team</span></a>
+      <a class="nav-item" data-tab="lineups" data-nav-btn="lineups"><svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg><span>Lineups</span></a>
+      <a class="nav-item" data-tab="settings" data-nav-btn="settings"><svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+    </div>
+  </nav>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const SCREENS = {
+    'sign-in':       { top: 'none', nav: false },
+    'check-email':   { top: 'none', nav: false },
+    'home':          { top: 'tab',  title: 'Schedule',      action: 'add-event', nav: true,  tab: 'home' },
+    'new-event':     { top: 'leaf', title: 'New event',     back: 'home',        nav: false },
+    'team':          { top: 'tab',  title: 'Beverly Blaze', action: 'add-team',  nav: true,  tab: 'team' },
+    'lineups':       { top: 'tab',  title: 'Lineups',                            nav: true,  tab: 'lineups' },
+    'settings':      { top: 'tab',  title: 'Settings',                           nav: true,  tab: 'settings' },
+    'event':         { top: 'leaf', title: 'vs. Salem Storm', back: 'home', action: 'edit-event', nav: false },
+    'rsvp':          { top: 'leaf', title: 'Your RSVP',     back: 'event',       nav: false },
+    'attendance':    { top: 'leaf', title: 'Attendance',    back: 'event',       nav: false },
+    'email':         { top: 'leaf', title: 'Email families', back: 'event',      nav: false },
+    'lineup-editor': { top: 'leaf', title: 'Lineup',        back: 'event',       nav: false },
+    'profile':       { top: 'leaf', title: 'Profile',       back: 'settings',    nav: false },
+    'broadcast':     { top: 'leaf', title: 'Team broadcast', back: 'settings',   nav: false },
+    'positions':     { top: 'leaf', title: 'Position templates', back: 'settings', nav: false },
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const topBar = $('top-bar'), tbLeft = $('tb-left'), tbTitle = $('tb-title'), tbRight = $('tb-right');
+  const bottomNav = $('bottom-nav'), phoneScroll = $('phone-scroll');
+
+  function clone(templateId) {
+    return $(templateId).content.firstElementChild.cloneNode(true);
+  }
+  function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+  function makeIconBtn(templateId, cls, onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'icon-btn' + (cls ? ' ' + cls : '');
+    btn.appendChild(clone(templateId));
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  function nav(id) {
+    const cfg = SCREENS[id];
+    if (!cfg) return;
+
+    document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+
+    clear(tbLeft); clear(tbRight);
+    tbTitle.textContent = '';
+
+    if (cfg.top === 'none') {
+      topBar.classList.add('hidden');
+    } else {
+      topBar.classList.remove('hidden');
+      tbTitle.textContent = cfg.title || '';
+      if (cfg.top === 'leaf' && cfg.back) {
+        tbLeft.appendChild(makeIconBtn('i-back', null, () => nav(cfg.back)));
+      }
+      if (cfg.action === 'add-event') {
+        tbRight.appendChild(makeIconBtn('i-plus', 'primary', () => nav('new-event')));
+      } else if (cfg.action === 'add-team') {
+        tbRight.appendChild(makeIconBtn('i-plus', 'primary', openSheet));
+      } else if (cfg.action === 'edit-event') {
+        tbRight.appendChild(makeIconBtn('i-pencil', null, () => toggleEventEdit()));
+      }
+    }
+
+    bottomNav.classList.toggle('hidden', !cfg.nav);
+    document.querySelectorAll('.nav-item[data-tab]').forEach(el => {
+      el.classList.toggle('active', el.dataset.tab === cfg.tab);
+    });
+    document.querySelectorAll('.proto-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.nav === id);
+    });
+
+    phoneScroll.scrollTop = 0;
+    if (id !== 'event') $('event').classList.remove('editing');
+    if (id === 'lineup-editor') renderLineup();
+  }
+
+  function toggleEventEdit(force) {
+    const el = $('event');
+    if (force === undefined) el.classList.toggle('editing');
+    else el.classList.toggle('editing', force);
+  }
+
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-nav-btn]');
+    if (t) { e.preventDefault(); nav(t.dataset.navBtn); return; }
+    const p = e.target.closest('.proto-btn');
+    if (p) { nav(p.dataset.nav); return; }
+    const a = e.target.closest('[data-action]');
+    if (a) {
+      const act = a.dataset.action;
+      if (act === 'close-sheet') closeSheet();
+      else if (act === 'cancel-edit') toggleEventEdit(false);
+      else if (act === 'send-email') {
+        const onEmail = document.querySelector('.screen.active')?.id === 'email';
+        showModal({
+          title: onEmail ? 'Email sent' : 'Broadcast sent',
+          body: onEmail
+            ? 'Guardians will receive your update shortly.'
+            : 'All recipients will receive your message shortly.',
+          onDone: () => nav(onEmail ? 'event' : 'settings'),
+        });
+      } else if (act === 'save') {
+        const kind = a.dataset.saveKind;
+        const SAVE_COPY = {
+          'event-new':  { title: 'Event created',  body: 'Your team can now RSVP.',             to: 'home' },
+          'event-edit': { title: 'Event updated',  body: 'Guardians will see the changes.',     to: null,  after: () => toggleEventEdit(false) },
+          'rsvp':       { title: 'RSVP saved',     body: 'Coaches can see your response.',      to: 'event' },
+          'lineup':     { title: 'Lineup saved',   body: 'Your batting order and positions are set.', to: 'event' },
+          'profile':    { title: 'Profile saved',  body: 'Your account details were updated.',  to: 'settings' },
+        };
+        const cfg = SAVE_COPY[kind];
+        if (!cfg) return;
+        showModal({
+          title: cfg.title, body: cfg.body,
+          onDone: () => { if (cfg.after) cfg.after(); if (cfg.to) nav(cfg.to); },
+        });
+      } else if (act === 'close-modal') closeModal();
+    }
+  });
+
+  // Bottom sheet
+  const sheet = $('add-sheet'), backdrop = $('sheet-backdrop'), sheetTitle = $('sheet-title');
+  function openSheet() { sheet.classList.add('open'); backdrop.classList.add('open'); }
+  function closeSheet() { sheet.classList.remove('open'); backdrop.classList.remove('open'); }
+  backdrop.addEventListener('click', () => { closeSheet(); closeModal(); });
+
+  // Confirmation modal
+  const modal = $('confirm-modal');
+  let modalDone = null;
+  function showModal({ title, body, onDone }) {
+    $('modal-title').textContent = title;
+    $('modal-body').textContent = body;
+    modalDone = onDone || null;
+    backdrop.classList.add('open');
+    modal.classList.add('open');
+  }
+  function closeModal() {
+    if (!modal.classList.contains('open')) return;
+    modal.classList.remove('open');
+    backdrop.classList.remove('open');
+    const cb = modalDone; modalDone = null;
+    if (cb) cb();
+  }
+
+  const SEG_TITLES = { player: 'Add player', guardian: 'Invite guardian', staff: 'Invite staff' };
+  document.querySelectorAll('#segmented button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#segmented button').forEach(b => b.classList.toggle('active', b === btn));
+      const seg = btn.dataset.seg;
+      ['player','guardian','staff'].forEach(k => {
+        $('seg-' + k).style.display = (k === seg) ? 'flex' : 'none';
+      });
+      sheetTitle.textContent = SEG_TITLES[seg];
+    });
+  });
+
+  let sheetStartY = null;
+  sheet.addEventListener('touchstart', e => { sheetStartY = e.touches[0].clientY; }, { passive: true });
+  sheet.addEventListener('touchmove', e => {
+    if (sheetStartY === null) return;
+    if (e.touches[0].clientY - sheetStartY > 80) { closeSheet(); sheetStartY = null; }
+  }, { passive: true });
+
+  // ═══════════════ LINEUP EDITOR ═══════════════
+  const POSITIONS = ['P','C','1B','2B','3B','SS','LF','CF','RF','BN'];
+  const FIELD_COORDS = {
+    P:  { x: 130, y: 105 }, C:  { x: 130, y: 160 },
+    '1B': { x: 195, y: 100 }, '2B': { x: 160, y: 70 },
+    '3B': { x: 65,  y: 100 }, SS: { x: 100, y: 70 },
+    LF: { x: 55,  y: 45 }, CF: { x: 130, y: 28 }, RF: { x: 205, y: 45 },
+  };
+  const ROSTER = [
+    { id: 1,  name: 'Payton Lambert',     avail: 'avail' },
+    { id: 2,  name: 'Josephine Petrillo', avail: 'avail' },
+    { id: 3,  name: 'Sadie Shafner',      avail: 'avail' },
+    { id: 4,  name: 'Grace Correia',      avail: 'avail' },
+    { id: 5,  name: 'Madeleine Lee',      avail: 'avail' },
+    { id: 6,  name: 'Jaylania Prew',      avail: 'avail' },
+    { id: 7,  name: 'Corinne Palmer',     avail: 'avail' },
+    { id: 8,  name: 'Ashley Korkuch',     avail: 'out'   },
+    { id: 9,  name: 'Aubrie Meuse',       avail: 'maybe' },
+    { id: 10, name: 'Nell Kenna',         avail: 'wait'  },
+    { id: 11, name: 'Isla Gove',          avail: 'avail' },
+    { id: 12, name: 'Lucy Powers',        avail: 'avail' },
+  ];
+  const FIELD_9 = ['P','C','1B','2B','3B','SS','LF','CF','RF'];
+  const AVAIL_META = {
+    avail: { label: 'available', dotClass: 'dot-avail' },
+    maybe: { label: 'maybe',     dotClass: 'dot-maybe' },
+    out:   { label: 'out',       dotClass: 'dot-out'   },
+    wait:  { label: 'waiting',   dotClass: 'dot-wait'  },
+  };
+
+  // Batting order prepopulated with available players only
+  let battingOrder = ROSTER.filter(r => r.avail === 'avail').map(r => r.id);
+  let innings = 6;
+  let assignments = {};
+  let selectedInning = 1;
+
+  function rebuildAssignments() {
+    const next = {};
+    battingOrder.forEach((pid, idx) => {
+      const prev = assignments[pid] || [];
+      next[pid] = [];
+      for (let i = 0; i < innings; i++) {
+        next[pid][i] = prev[i] || (idx < 9 ? FIELD_9[idx] : 'BN');
+      }
+    });
+    assignments = next;
+  }
+
+  function renderLineup() {
+    innings = Math.max(1, Math.min(9, parseInt($('innings-input').value, 10) || 6));
+    if (selectedInning > innings) selectedInning = innings;
+    rebuildAssignments();
+    renderOrderList();
+    renderMatrix();
+    renderFieldViz();
+  }
+
+  function buildOrderRow(pid) {
+    const p = ROSTER.find(r => r.id === pid);
+    const row = document.createElement('div');
+    row.className = 'order-row';
+    row.dataset.pid = String(pid);
+
+    const name = document.createElement('div');
+    name.className = 'o-name';
+    name.textContent = p.name;
+    // Availability tag for non-available players the coach pulled in
+    if (p.avail !== 'avail') {
+      const meta = AVAIL_META[p.avail];
+      const tag = document.createElement('span');
+      tag.className = 'bench-pill'; tag.style.padding = '0.15rem 0.45rem'; tag.style.fontSize = '0.6rem';
+      const dot = document.createElement('span');
+      dot.className = 'dot ' + meta.dotClass;
+      tag.appendChild(dot);
+      tag.appendChild(document.createTextNode(meta.label));
+      name.appendChild(document.createTextNode(' '));
+      name.appendChild(tag);
+    }
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'o-remove'; removeBtn.type = 'button';
+    removeBtn.title = 'Remove from lineup';
+    removeBtn.appendChild(clone('i-x'));
+    removeBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = battingOrder.indexOf(pid);
+      if (idx >= 0) battingOrder.splice(idx, 1);
+      delete assignments[pid];
+      renderLineup();
+    });
+
+    const grip = document.createElement('div');
+    grip.className = 'o-grip'; grip.appendChild(clone('i-grip'));
+
+    row.appendChild(name); row.appendChild(removeBtn); row.appendChild(grip);
+    row.addEventListener('pointerdown', onDragStart);
+    return row;
+  }
+
+  function renderOrderList() {
+    const el = $('order-list');
+    clear(el);
+    battingOrder.forEach((pid, i) => {
+      const slot = document.createElement('div');
+      slot.className = 'order-slot';
+      const slotNum = document.createElement('div');
+      slotNum.className = 'o-slot';
+      slotNum.textContent = String(i + 1);
+      slot.appendChild(slotNum);
+      slot.appendChild(buildOrderRow(pid));
+      el.appendChild(slot);
+    });
+
+    // "Not in lineup" — only players NOT already in battingOrder
+    const absent = ROSTER.filter(r => !battingOrder.includes(r.id));
+    if (absent.length) {
+      const pills = document.createElement('div');
+      pills.className = 'bench-pills';
+      const label = document.createElement('div');
+      label.className = 'bench-pills-label';
+      label.textContent = 'Not in lineup · tap to add';
+      pills.appendChild(label);
+      absent.forEach(r => {
+        const meta = AVAIL_META[r.avail] || AVAIL_META.wait;
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        // Any player is addable — statuses can change last minute
+        const addable = true;
+        pill.className = 'bench-pill' + (addable ? ' addable' : '');
+        const dot = document.createElement('span');
+        dot.className = 'dot ' + meta.dotClass;
+        pill.appendChild(dot);
+        pill.appendChild(document.createTextNode(r.name.split(' ')[0] + ' · ' + meta.label));
+        const plus = document.createElement('span');
+        plus.className = 'plus'; plus.textContent = '+';
+        pill.appendChild(plus);
+        pill.addEventListener('click', () => {
+          battingOrder.push(r.id);
+          renderLineup();
+        });
+        pills.appendChild(pill);
+      });
+      el.appendChild(pills);
+    }
+  }
+
+  // ──── Pointer-based drag reorder ────
+  let dragEl = null, dragPid = null, dragStartY = 0, dragRowH = 48, dragFromIdx = 0;
+
+  function allOrderRows() {
+    return Array.from($('order-list').querySelectorAll('.order-row'));
+  }
+
+  function onDragStart(e) {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    const row = e.currentTarget;
+    dragEl = row;
+    dragPid = parseInt(row.dataset.pid, 10);
+    dragFromIdx = battingOrder.indexOf(dragPid);
+    const rows = allOrderRows();
+    if (rows.length > 1) {
+      const a = rows[0].getBoundingClientRect();
+      const b = rows[1].getBoundingClientRect();
+      dragRowH = b.top - a.top;
+    } else {
+      dragRowH = row.getBoundingClientRect().height + 6;
+    }
+    dragStartY = e.clientY;
+    row.classList.add('dragging');
+    row.setPointerCapture(e.pointerId);
+    row.addEventListener('pointermove', onDragMove);
+    row.addEventListener('pointerup', onDragEnd);
+    row.addEventListener('pointercancel', onDragEnd);
+  }
+
+  function currentTargetIdx(dy) {
+    const steps = Math.round(dy / dragRowH);
+    return Math.max(0, Math.min(battingOrder.length - 1, dragFromIdx + steps));
+  }
+
+  function onDragMove(e) {
+    if (!dragEl) return;
+    const dy = e.clientY - dragStartY;
+    dragEl.style.transform = 'translateY(' + dy + 'px)';
+    const targetIdx = currentTargetIdx(dy);
+    allOrderRows().forEach((r, i) => {
+      if (r === dragEl) return;
+      let shift = 0;
+      if (targetIdx >= dragFromIdx && i > dragFromIdx && i <= targetIdx) shift = -dragRowH;
+      if (targetIdx <  dragFromIdx && i < dragFromIdx && i >= targetIdx) shift = dragRowH;
+      r.style.transform = shift ? 'translateY(' + shift + 'px)' : '';
+    });
+  }
+
+  function onDragEnd(e) {
+    if (!dragEl) return;
+    const dy = e.clientY - dragStartY;
+    const targetIdx = currentTargetIdx(dy);
+    const row = dragEl;
+    row.classList.remove('dragging');
+    row.style.transform = '';
+    try { row.releasePointerCapture(e.pointerId); } catch (_) {}
+    row.removeEventListener('pointermove', onDragMove);
+    row.removeEventListener('pointerup', onDragEnd);
+    row.removeEventListener('pointercancel', onDragEnd);
+    allOrderRows().forEach(r => r.style.transform = '');
+    if (targetIdx !== dragFromIdx) {
+      battingOrder.splice(dragFromIdx, 1);
+      battingOrder.splice(targetIdx, 0, dragPid);
+      // Move only the .order-row between slots — slot numbers stay put
+      const rows = allOrderRows();
+      const slots = Array.from($('order-list').querySelectorAll('.order-slot'));
+      battingOrder.forEach((pid, i) => {
+        const existing = slots[i].querySelector('.order-row');
+        const match = rows.find(r => parseInt(r.dataset.pid, 10) === pid);
+        if (existing !== match) slots[i].appendChild(match);
+      });
+      // Matrix depends on order — re-render it, but leave the stable order list alone
+      renderMatrix();
+      renderFieldViz();
+    }
+    dragEl = null; dragPid = null;
+  }
+
+  function renderMatrix() {
+    const m = $('matrix');
+    clear(m);
+    m.style.gridTemplateColumns = '110px repeat(' + innings + ', 56px)';
+
+    const corner = document.createElement('div');
+    corner.className = 'mx-cell mx-corner';
+    corner.textContent = 'Order';
+    m.appendChild(corner);
+
+    for (let i = 1; i <= innings; i++) {
+      const h = document.createElement('div');
+      h.className = 'mx-cell mx-head' + (i === selectedInning ? ' selected' : '');
+      h.textContent = String(i);
+      h.addEventListener('click', () => { selectedInning = i; renderMatrix(); renderFieldViz(); });
+      m.appendChild(h);
+    }
+
+    const dupeByInning = detectDupes();
+    battingOrder.forEach((pid, i) => {
+      const player = ROSTER.find(r => r.id === pid);
+      const rowClass = player.avail === 'out' ? 'mx-row-unavail' : player.avail === 'maybe' ? 'mx-row-maybe' : '';
+
+      const pcell = document.createElement('div');
+      pcell.className = 'mx-cell mx-player ' + rowClass;
+      const slot = document.createElement('span');
+      slot.className = 'slot';
+      slot.textContent = String(i + 1);
+      pcell.appendChild(slot);
+      pcell.appendChild(document.createTextNode(player.name.split(' ')[0]));
+      m.appendChild(pcell);
+
+      for (let inn = 1; inn <= innings; inn++) {
+        const pos = assignments[pid][inn - 1];
+        const c = document.createElement('div');
+        let cls = 'mx-cell mx-pos ' + rowClass;
+        if (pos === 'BN') cls += ' bn';
+        if (inn === selectedInning) cls += ' mx-col-selected';
+        if (dupeByInning[inn - 1].has(pid)) cls += ' duplicate';
+        c.className = cls;
+        const btn = document.createElement('button');
+        btn.textContent = pos;
+        btn.addEventListener('click', (e) => { e.stopPropagation(); openPicker(btn, pid, inn - 1); });
+        c.appendChild(btn);
+        m.appendChild(c);
+      }
+    });
+  }
+
+  function detectDupes() {
+    const perInning = [];
+    for (let i = 0; i < innings; i++) {
+      const seen = {};
+      const dupes = new Set();
+      battingOrder.forEach(pid => {
+        const pos = assignments[pid][i];
+        if (pos === 'BN') return;
+        if (seen[pos] !== undefined) { dupes.add(pid); dupes.add(seen[pos]); }
+        else seen[pos] = pid;
+      });
+      perInning.push(dupes);
+    }
+    return perInning;
+  }
+
+  const picker = $('pos-picker'), pickerGrid = $('pos-picker-grid');
+  let pickerContext = null;
+  function openPicker(anchor, pid, inningIdx) {
+    pickerContext = { pid, inningIdx };
+    clear(pickerGrid);
+    POSITIONS.forEach(p => {
+      const b = document.createElement('button');
+      b.textContent = p;
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        assignments[pid][inningIdx] = p;
+        closePicker();
+        renderMatrix();
+        renderFieldViz();
+      });
+      pickerGrid.appendChild(b);
+    });
+    const editor = $('lineup-editor');
+    const aRect = anchor.getBoundingClientRect();
+    const eRect = editor.getBoundingClientRect();
+    picker.style.top = (aRect.bottom - eRect.top + 6) + 'px';
+    let left = aRect.left - eRect.left - 60;
+    if (left < 8) left = 8;
+    if (left + 220 > 370) left = 370 - 220;
+    picker.style.left = left + 'px';
+    picker.classList.add('open');
+  }
+  function closePicker() { picker.classList.remove('open'); pickerContext = null; }
+  document.addEventListener('click', (e) => {
+    if (pickerContext && !e.target.closest('.pos-picker') && !e.target.closest('.mx-pos')) closePicker();
+  });
+
+  function renderFieldViz() {
+    $('viz-inning-label').textContent = 'Inning ' + selectedInning;
+    const g = $('field-positions');
+    clear(g);
+    const benchEl = $('bench-row');
+    clear(benchEl);
+    const benchNames = [];
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+
+    battingOrder.forEach(pid => {
+      const pos = assignments[pid][selectedInning - 1];
+      const player = ROSTER.find(r => r.id === pid);
+      const firstName = player.name.split(' ')[0];
+      if (pos === 'BN') { benchNames.push(firstName); return; }
+      const c = FIELD_COORDS[pos];
+      if (!c) return;
+      const circle = document.createElementNS(SVG_NS, 'circle');
+      circle.setAttribute('cx', c.x); circle.setAttribute('cy', c.y);
+      circle.setAttribute('r', 11); circle.setAttribute('class', 'pos-dot');
+      const code = document.createElementNS(SVG_NS, 'text');
+      code.setAttribute('x', c.x); code.setAttribute('y', c.y + 3);
+      code.setAttribute('class', 'pos-code');
+      code.textContent = pos;
+      const label = document.createElementNS(SVG_NS, 'text');
+      label.setAttribute('x', c.x); label.setAttribute('y', c.y + 22);
+      label.setAttribute('class', 'pos-label');
+      label.textContent = firstName;
+      g.appendChild(circle); g.appendChild(code); g.appendChild(label);
+    });
+
+    if (benchNames.length) {
+      const lab = document.createElement('span');
+      lab.className = 'label'; lab.textContent = 'Bench';
+      benchEl.appendChild(lab);
+      benchEl.appendChild(document.createTextNode(benchNames.join(' · ')));
+    }
+  }
+
+  $('innings-input').addEventListener('change', renderLineup);
+
+  // ═══════════════ LOCATION SEARCH (Nominatim / OpenStreetMap) ═══════════════
+  // Swap the endpoint + renderer if migrating to Mapbox or Google Places.
+  function attachLocationSearch(wrap) {
+    if (wrap.dataset.wired === '1') return;
+    wrap.dataset.wired = '1';
+    const input = wrap.querySelector('.loc-input');
+    const results = wrap.querySelector('.loc-results');
+    let timer = null, controller = null;
+
+    const render = (items) => {
+      clear(results);
+      if (!items.length) {
+        const e = document.createElement('div');
+        e.className = 'loc-empty';
+        e.textContent = 'No matches. Try a broader search.';
+        results.appendChild(e);
+        results.classList.add('open');
+        return;
+      }
+      items.forEach(item => {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'loc-result';
+        const parts = item.display_name.split(', ');
+        const name = document.createElement('div');
+        name.className = 'loc-name'; name.textContent = parts[0] || item.display_name;
+        const addr = document.createElement('div');
+        addr.className = 'loc-addr'; addr.textContent = parts.slice(1).join(', ');
+        btn.appendChild(name); if (addr.textContent) btn.appendChild(addr);
+        btn.addEventListener('click', () => selectPlace(wrap, item.display_name));
+        results.appendChild(btn);
+      });
+      results.classList.add('open');
+    };
+
+    input.addEventListener('input', () => {
+      const q = input.value.trim();
+      clearTimeout(timer);
+      if (controller) { controller.abort(); controller = null; }
+      if (q.length < 3) { clear(results); results.classList.remove('open'); return; }
+      const loading = document.createElement('div');
+      loading.className = 'loc-status'; loading.textContent = 'Searching…';
+      clear(results); results.appendChild(loading); results.classList.add('open');
+      timer = setTimeout(async () => {
+        controller = new AbortController();
+        try {
+          const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=1&q=' + encodeURIComponent(q);
+          const res = await fetch(url, { signal: controller.signal });
+          const data = await res.json();
+          render(data);
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+          clear(results);
+          const e = document.createElement('div');
+          e.className = 'loc-status'; e.textContent = 'Search unavailable. Type an address and save.';
+          results.appendChild(e); results.classList.add('open');
+        }
+      }, 280);
+    });
+
+    input.addEventListener('focus', () => {
+      if (results.children.length) results.classList.add('open');
+    });
+
+    // Preselect if the wrapper was seeded with a value
+    const seed = wrap.dataset.initial;
+    if (seed) selectPlace(wrap, seed);
+  }
+
+  function selectPlace(wrap, displayName) {
+    const input = wrap.querySelector('.loc-input');
+    const results = wrap.querySelector('.loc-results');
+    results.classList.remove('open'); clear(results);
+    // Swap the input for a selected chip
+    input.style.display = 'none';
+    // Remove any prior chip
+    const prior = wrap.querySelector('.loc-selected');
+    if (prior) prior.remove();
+
+    const chip = document.createElement('div');
+    chip.className = 'loc-selected';
+    const icon = document.createElement('div');
+    icon.style.cssText = 'flex-shrink:0; padding-top:2px; color:color-mix(in srgb, var(--success) 78%, black)';
+    icon.appendChild((() => {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '16'); svg.setAttribute('height', '16');
+      svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2');
+      const p1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p1.setAttribute('d', 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z');
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', '12'); c.setAttribute('cy', '10'); c.setAttribute('r', '3');
+      svg.appendChild(p1); svg.appendChild(c);
+      return svg;
+    })());
+    const grow = document.createElement('div');
+    grow.className = 'grow';
+    const parts = displayName.split(', ');
+    const name = document.createElement('div');
+    name.className = 'loc-name'; name.textContent = parts[0];
+    const addr = document.createElement('div');
+    addr.className = 'loc-addr'; addr.textContent = parts.slice(1).join(', ');
+    grow.appendChild(name); if (addr.textContent) grow.appendChild(addr);
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button'; clearBtn.className = 'clear'; clearBtn.title = 'Change location';
+    clearBtn.appendChild(clone('i-x'));
+    clearBtn.addEventListener('click', () => {
+      chip.remove();
+      input.style.display = '';
+      input.value = '';
+      input.focus();
+    });
+    chip.appendChild(icon); chip.appendChild(grow); chip.appendChild(clearBtn);
+    wrap.appendChild(chip);
+  }
+
+  // Open location in the user's native maps app (Apple Maps on iOS/macOS, Google Maps elsewhere)
+  function openInMaps(address) {
+    const ua = navigator.userAgent || '';
+    const isApple = /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+      /Macintosh/.test(ua);
+    const q = encodeURIComponent(address);
+    const url = isApple
+      ? 'https://maps.apple.com/?q=' + q
+      : 'https://www.google.com/maps/search/?api=1&query=' + q;
+    window.open(url, '_blank', 'noopener');
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-open-maps]');
+    if (t) { e.preventDefault(); openInMaps(t.dataset.openMaps); }
+  });
+
+  // Sign-in mode toggle (password ↔ magic link)
+  document.querySelectorAll('[data-signin]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = btn.closest('[data-signin-mode]');
+      const mode = btn.dataset.signin;
+      panel.dataset.signinMode = mode;
+      panel.querySelectorAll('[data-signin]').forEach(b => b.classList.toggle('active', b === btn));
+      panel.querySelector('.signin-password').style.display = mode === 'password' ? 'flex' : 'none';
+      panel.querySelector('.signin-magic').style.display    = mode === 'magic'    ? 'flex' : 'none';
+    });
+  });
+
+  // Wire up all location fields + close dropdowns on outside click
+  document.querySelectorAll('[data-location]').forEach(attachLocationSearch);
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('[data-location] .loc-results.open').forEach(r => {
+      if (!r.closest('[data-location]').contains(e.target)) r.classList.remove('open');
+    });
+  });
+
+  // Boot
+  nav('home');
+})();
+</script>
+</body>
+</html>
