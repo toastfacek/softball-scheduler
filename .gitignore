@@ -45,3 +45,7 @@ next-env.d.ts
 .playwright-mcp/
 /output/
 /*.png
+
+# Roster data (contains personal info, never commit)
+/docs/*.xlsx
+/docs/*.csv
