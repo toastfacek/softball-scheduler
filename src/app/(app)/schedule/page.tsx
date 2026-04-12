@@ -55,6 +55,7 @@ export default async function SchedulePage() {
         }
       />
 
+      <div className="page-split">
       {data.nextEvent ? (
         <Link href={`/events/${data.nextEvent.id}`} className="next-event">
           <div
@@ -141,7 +142,7 @@ export default async function SchedulePage() {
 
       {upcoming.length > 0 ? (
         <div
-          className="shell-panel"
+          className="shell-panel page-split-stretch"
           style={{ padding: "0.25rem 0.875rem", borderRadius: "1.25rem" }}
         >
           <div className="section-head">Upcoming</div>
@@ -180,6 +181,7 @@ export default async function SchedulePage() {
           </div>
         </div>
       ) : null}
+      </div>
     </>
   );
 }

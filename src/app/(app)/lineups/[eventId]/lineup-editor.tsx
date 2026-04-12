@@ -144,7 +144,7 @@ export function LineupEditor({
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-3">
+    <form ref={formRef} onSubmit={onSubmit} className="page-lineup">
       <input type="hidden" name="eventId" value={eventId} />
       <input type="hidden" name="inningsCount" value={innings} />
       {battingOrder.map((pid, idx) => (
@@ -167,11 +167,14 @@ export function LineupEditor({
       )}
 
       {/* Condensed event header */}
-      <section className="shell-panel rounded-[1.25rem] p-3">
+      <section
+        data-lineup="header"
+        className="shell-panel rounded-[1.25rem] p-3"
+      >
         <div className="relative flex items-center justify-between gap-2">
           <div
             style={{
-              fontSize: "0.9rem",
+              fontSize: "1rem",
               fontWeight: 700,
               color: "var(--navy-strong)",
               fontFamily: "var(--font-barlow-condensed), sans-serif",
@@ -197,7 +200,10 @@ export function LineupEditor({
       </section>
 
       {/* Batting order */}
-      <section className="shell-panel rounded-[1.25rem] p-4">
+      <section
+        data-lineup="order"
+        className="shell-panel rounded-[1.25rem] p-4"
+      >
         <div className="section-head" style={{ padding: 0, marginBottom: "0.5rem" }}>
           Batting order
         </div>
@@ -209,7 +215,10 @@ export function LineupEditor({
       </section>
 
       {/* Position matrix */}
-      <section className="shell-panel rounded-[1.25rem] p-3">
+      <section
+        data-lineup="matrix"
+        className="shell-panel rounded-[1.25rem] p-3"
+      >
         <div className="flex items-center justify-between mb-2">
           <div className="section-head" style={{ padding: 0 }}>
             Positions
@@ -237,9 +246,12 @@ export function LineupEditor({
       </section>
 
       {/* Field visualizer */}
-      <section className="shell-panel rounded-[1.25rem] p-3">
+      <section
+        data-lineup="field"
+        className="shell-panel rounded-[1.25rem] p-3"
+      >
         <div className="flex items-center justify-between mb-1">
-          <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--navy-strong)" }}>
+          <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--navy-strong)", fontFamily: "var(--font-barlow-condensed), sans-serif" }}>
             Inning {selectedInning}
           </div>
           <span
@@ -248,7 +260,7 @@ export function LineupEditor({
               color: "color-mix(in srgb, var(--navy) 60%, white)",
             }}
           >
-            Tap an inning column above
+            Tap an inning column
           </span>
         </div>
         <FieldViz
@@ -259,6 +271,7 @@ export function LineupEditor({
         />
       </section>
 
+      <div data-lineup="save">
       {saveError ? (
         <div
           className="rsvp-error"
@@ -287,6 +300,7 @@ export function LineupEditor({
         <button type="submit" className="btn-primary btn-block" disabled={isPending}>
           {isPending ? "Saving…" : "Save lineup"}
         </button>
+      </div>
       </div>
     </form>
   );

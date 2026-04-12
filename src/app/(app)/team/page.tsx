@@ -29,6 +29,7 @@ export default async function TeamPage() {
         }
       />
 
+      <div className="page-split">
       <div
         className="shell-panel"
         style={{ padding: "0.25rem 0.875rem", borderRadius: "1.25rem" }}
@@ -101,6 +102,7 @@ export default async function TeamPage() {
             </div>
           ) : null}
         </div>
+      </div>
       </div>
     </>
   );
