@@ -1,0 +1,2 @@
+CREATE TYPE "public"."response_source" AS ENUM('APP', 'EMAIL_LINK', 'COACH_MANUAL');--> statement-breakpoint
+ALTER TABLE "player_event_responses" ADD COLUMN "response_source" "response_source" DEFAULT 'APP' NOT NULL;

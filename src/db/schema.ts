@@ -53,6 +53,11 @@ export const deliveryStatusEnum = pgEnum("delivery_status", [
   "FAILED",
 ]);
 export const reminderTypeEnum = pgEnum("reminder_type", ["NON_RESPONDER_24H"]);
+export const responseSourceEnum = pgEnum("response_source", [
+  "APP",
+  "EMAIL_LINK",
+  "COACH_MANUAL",
+]);
 
 export const adultUsers = pgTable(
   "adult_users",
@@ -283,6 +288,9 @@ export const playerEventResponses = pgTable(
       .notNull(),
     actualAttendance: actualAttendanceEnum("actual_attendance")
       .default("UNKNOWN")
+      .notNull(),
+    responseSource: responseSourceEnum("response_source")
+      .default("APP")
       .notNull(),
     createdAt,
     updatedAt,

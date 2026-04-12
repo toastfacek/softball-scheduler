@@ -2,6 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireTeamManager, requireViewer } from "@/actions/helpers";
@@ -41,6 +42,7 @@ export async function updateProfileAction(formData: FormData) {
     .where(eq(adultUsers.id, viewer.userId));
 
   revalidatePath("/settings");
+  redirect("/settings?saved=profile");
 }
 
 export async function sendBroadcastAction(formData: FormData) {
@@ -66,4 +68,5 @@ export async function sendBroadcastAction(formData: FormData) {
   });
 
   revalidatePath("/settings");
+  redirect("/settings?saved=broadcast");
 }

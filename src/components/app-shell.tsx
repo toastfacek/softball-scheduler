@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import {
   CalendarClock,
   ClipboardList,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 
 import type { TeamRole } from "@/db/schema";
+import { SavedFlash } from "@/components/saved-flash";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -54,6 +56,9 @@ export function AppShell({ roles, children }: AppShellProps) {
 
   return (
     <div className="app-shell">
+      <Suspense fallback={null}>
+        <SavedFlash />
+      </Suspense>
       <main className="app-main">{children}</main>
       <nav className="app-bottom-nav">
         <div className="app-bottom-nav-inner">

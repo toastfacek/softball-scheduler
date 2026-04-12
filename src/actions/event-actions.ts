@@ -2,6 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireTeamManager, requireViewer } from "@/actions/helpers";
@@ -111,6 +112,7 @@ export async function createEventAction(formData: FormData) {
   });
 
   revalidatePath("/schedule");
+  redirect("/schedule?saved=event");
 }
 
 export async function updateEventAction(formData: FormData) {
@@ -158,6 +160,7 @@ export async function updateEventAction(formData: FormData) {
 
   revalidatePath("/schedule");
   revalidatePath(`/events/${parsed.eventId}`);
+  redirect(`/events/${parsed.eventId}?saved=event-edit`);
 }
 
 export async function updatePlayerAvailabilityAction(formData: FormData) {
@@ -182,6 +185,10 @@ export async function updatePlayerAvailabilityAction(formData: FormData) {
     ),
   });
 
+  const source = viewer.roles.some((r) => r === "COACH" || r === "ADMIN")
+    ? ("COACH_MANUAL" as const)
+    : ("APP" as const);
+
   if (existing) {
     await db
       .update(playerEventResponses)
@@ -190,6 +197,7 @@ export async function updatePlayerAvailabilityAction(formData: FormData) {
         note: parsed.note || null,
         respondedByUserId: viewer.userId,
         respondedAt: new Date(),
+        responseSource: source,
         updatedAt: new Date(),
       })
       .where(eq(playerEventResponses.id, existing.id));
@@ -200,6 +208,7 @@ export async function updatePlayerAvailabilityAction(formData: FormData) {
       status: parsed.status,
       note: parsed.note || null,
       respondedByUserId: viewer.userId,
+      responseSource: source,
     });
   }
 
@@ -281,6 +290,7 @@ export async function recordRsvpFromLinkAction(input: {
           note,
           respondedByUserId: claims.guardianId,
           respondedAt: now,
+          responseSource: "EMAIL_LINK",
           updatedAt: now,
         })
         .where(eq(playerEventResponses.id, existing.id));
@@ -292,6 +302,7 @@ export async function recordRsvpFromLinkAction(input: {
         note,
         respondedByUserId: claims.guardianId,
         respondedAt: now,
+        responseSource: "EMAIL_LINK",
       });
     }
   }
@@ -483,6 +494,7 @@ export async function sendEventUpdateAction(formData: FormData) {
   });
 
   revalidatePath(`/events/${parsed.eventId}`);
+  redirect(`/events/${parsed.eventId}?saved=email`);
 }
 
 async function guardianFirstNamesById(userIds: string[]) {

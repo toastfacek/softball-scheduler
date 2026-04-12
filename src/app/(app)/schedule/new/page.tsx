@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createEventAction } from "@/actions/event-actions";
 import { EventFormFields } from "@/components/event-form-fields";
+import { LocationSearch } from "@/components/location-search";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { canManageTeam } from "@/lib/authz";
@@ -21,6 +22,7 @@ export default async function NewEventPage() {
       >
         <div className="orange-bar-top" />
         <div className="relative flex flex-col gap-4">
+          <LocationSearch />
           <EventFormFields />
           <SubmitButton label="Create event" />
         </div>

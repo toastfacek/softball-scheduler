@@ -8,6 +8,13 @@
       "when": 1775933638883,
       "tag": "0000_icy_selene",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776022689535,
+      "tag": "0001_quick_shinko_yamashiro",
+      "breakpoints": true
     }
   ]
 }

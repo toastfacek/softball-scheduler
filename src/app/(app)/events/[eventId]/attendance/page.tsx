@@ -36,6 +36,7 @@ export default async function AttendancePage({
     status: StatusKey;
     note: string | null;
     role: string | null;
+    source: "APP" | "EMAIL_LINK" | "COACH_MANUAL" | null;
   };
 
   const playerRows: Row[] = data.playerCards.map((p) => ({
@@ -44,6 +45,7 @@ export default async function AttendancePage({
     status: (p.response?.status ?? "WAITING") as StatusKey,
     note: p.response?.note ?? null,
     role: null,
+    source: p.response?.responseSource ?? null,
   }));
 
   const staffRows: Row[] = data.staff.map((s) => ({
@@ -52,6 +54,7 @@ export default async function AttendancePage({
     status: (s.response?.status ?? "WAITING") as StatusKey,
     note: s.response?.note ?? null,
     role: s.roles[0]?.toLowerCase() ?? null,
+    source: null,
   }));
 
   const rows = [...playerRows, ...staffRows].sort((a, b) => {
@@ -120,7 +123,12 @@ export default async function AttendancePage({
             <div key={row.key} className="row" style={{ cursor: "default" }}>
               <div className="row-grow">
                 <div className="row-title">{row.name}</div>
-                {row.note ? <div className="row-sub">{row.note}</div> : null}
+                {row.note || row.source ? (
+                  <div className="row-sub flex items-center gap-1.5">
+                    {row.source ? <SourceTag source={row.source} /> : null}
+                    {row.note ? <span>{row.note}</span> : null}
+                  </div>
+                ) : null}
               </div>
               <div className="flex items-center gap-1.5">
                 {row.role ? (
@@ -213,6 +221,38 @@ function StatTile({
         {label}
       </div>
     </div>
+  );
+}
+
+function SourceTag({
+  source,
+}: {
+  source: "APP" | "EMAIL_LINK" | "COACH_MANUAL";
+}) {
+  const label =
+    source === "EMAIL_LINK"
+      ? "email"
+      : source === "COACH_MANUAL"
+        ? "coach logged"
+        : "app";
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "0.05rem 0.35rem",
+        borderRadius: "0.3rem",
+        fontSize: "0.55rem",
+        fontWeight: 800,
+        textTransform: "uppercase",
+        letterSpacing: "0.1em",
+        color: "color-mix(in srgb, var(--navy) 62%, white)",
+        background: "color-mix(in srgb, var(--navy) 6%, white)",
+        border: "1px solid color-mix(in srgb, var(--line) 60%, transparent)",
+      }}
+    >
+      {label}
+    </span>
   );
 }
 

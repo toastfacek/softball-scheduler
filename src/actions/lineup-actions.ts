@@ -2,6 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireLineupManager } from "@/actions/helpers";
@@ -164,4 +165,5 @@ export async function saveLineupAction(formData: FormData) {
 
   revalidatePath("/lineups");
   revalidatePath(`/lineups/${parsed.eventId}`);
+  redirect(`/events/${parsed.eventId}?saved=lineup`);
 }

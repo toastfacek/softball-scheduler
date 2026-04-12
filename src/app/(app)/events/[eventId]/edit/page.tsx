@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { updateEventAction } from "@/actions/event-actions";
 import { EventFormFields } from "@/components/event-form-fields";
+import { LocationSearch } from "@/components/location-search";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { canManageTeam } from "@/lib/authz";
@@ -30,6 +31,7 @@ export default async function EditEventPage({
       >
         <div className="orange-bar-top" />
         <div className="relative flex flex-col gap-4">
+          <LocationSearch initialVenue={data.event.venueName} />
           <EventFormFields event={data.event} />
           <SubmitButton label="Save changes" />
         </div>

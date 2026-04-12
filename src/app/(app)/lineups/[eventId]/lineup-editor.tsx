@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 import { saveLineupAction } from "@/actions/lineup-actions";
 
@@ -129,8 +130,12 @@ export function LineupEditor({
     startTransition(async () => {
       try {
         await saveLineupAction(formData);
+        // On success the action redirects, so this path is only hit if Next's
+        // thrown redirect propagates here (which it does in RSC client calls).
         setSaved(true);
       } catch (err) {
+        // Redirects are thrown by Next.js — let them flow to the router.
+        if (isRedirectError(err)) throw err;
         setSaveError(
           err instanceof Error ? err.message : "Unable to save lineup.",
         );
