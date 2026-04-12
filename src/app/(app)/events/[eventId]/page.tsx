@@ -1,29 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Mail, MapPinned, Navigation } from "lucide-react";
 
-import {
-  markAdultActualAttendanceAction,
-  markPlayerActualAttendanceAction,
-  sendEventUpdateAction,
-  updateAdultAvailabilityAction,
-  updateEventAction,
-  updatePlayerAvailabilityAction,
-} from "@/actions/event-actions";
-import { EventFormFields } from "@/components/event-form-fields";
-import {
-  EventStatusChip,
-  EventTypeChip,
-  ResponseChip,
-} from "@/components/status-chip";
-import { SubmitButton } from "@/components/submit-button";
-import {
-  canManagePrivateContacts,
-  canManageTeam,
-} from "@/lib/authz";
+import { PageHeader } from "@/components/page-header";
+import { canManageTeam } from "@/lib/authz";
 import { getEventPageData, getViewerContext } from "@/lib/data";
 import { formatEventDateTimeRange } from "@/lib/time";
-import { appleMapsHref, formatAddress, googleMapsHref } from "@/lib/utils";
+import { formatAddress } from "@/lib/utils";
 
 export default async function EventDetailPage({
   params,
@@ -38,11 +20,9 @@ export default async function EventDetailPage({
   }
 
   const data = await getEventPageData(viewer, eventId);
+  if (!data) notFound();
 
-  if (!data) {
-    notFound();
-  }
-
+  const canManage = canManageTeam(viewer);
   const address = formatAddress([
     data.event.venueName,
     data.event.addressLine1,
@@ -51,350 +31,216 @@ export default async function EventDetailPage({
     data.event.state,
     data.event.postalCode,
   ]);
+  const mapsHref = address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+    : null;
+
+  const isGame = data.event.type === "GAME";
 
   return (
-    <div className="page-grid">
-      <section className="shell-panel overflow-hidden rounded-[2.25rem] p-6 sm:p-8">
-        <div className="flex flex-wrap items-center gap-2">
-          <EventTypeChip type={data.event.type} />
-          <EventStatusChip status={data.event.status} />
-        </div>
+    <>
+      <PageHeader
+        title={data.event.title}
+        back="/schedule"
+        action={
+          canManage ? (
+            <Link
+              href={`/events/${data.event.id}/edit`}
+              className="icon-btn"
+              aria-label="Edit event"
+            >
+              <PencilIcon />
+            </Link>
+          ) : null
+        }
+      />
 
-        <div className="mt-4 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-4">
-            <h2 className="text-4xl text-[var(--navy-strong)]">{data.event.title}</h2>
-            <p className="text-base leading-7 text-[color-mix(in_srgb,var(--navy)_74%,white)]">
+      <section className="shell-panel rounded-[1.25rem] p-4">
+        <div className="orange-bar-top" />
+        <div className="relative flex flex-wrap items-center gap-2 mb-2">
+          <span
+            className={`chip ${
+              data.event.type === "GAME" ? "chip--game" : "chip--practice"
+            }`}
+          >
+            {data.event.type}
+          </span>
+          <span className="chip chip--scheduled">
+            {data.event.status.toLowerCase()}
+          </span>
+        </div>
+        <h2
+          className="relative"
+          style={{
+            fontSize: "1.5rem",
+            color: "var(--navy-strong)",
+            fontFamily: "var(--font-barlow-condensed), sans-serif",
+            fontWeight: 700,
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {data.event.title}
+        </h2>
+        <div
+          className="relative mt-2 flex flex-col gap-1.5"
+          style={{
+            fontSize: "0.8rem",
+            color: "color-mix(in srgb, var(--navy) 74%, white)",
+            fontWeight: 500,
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <ClockIcon />
+            <span>
               {formatEventDateTimeRange(data.event.startsAt, data.event.endsAt)}
-            </p>
-            {data.event.description ? (
-              <p className="max-w-3xl text-base leading-7 text-[color-mix(in_srgb,var(--navy)_74%,white)]">
-                {data.event.description}
-              </p>
-            ) : null}
+            </span>
           </div>
-
-          <div className="rounded-[1.75rem] border border-[var(--line)] bg-white/80 p-5">
-            <div className="eyebrow">Location</div>
-            <div className="mt-3 space-y-3">
-              <div className="flex items-start gap-3">
-                <MapPinned className="mt-0.5 h-5 w-5 text-[var(--harbor)]" />
-                <div>
-                  <div className="font-semibold text-[var(--navy-strong)]">
-                    {data.event.venueName || "Venue TBD"}
-                  </div>
-                  <div className="text-sm text-[color-mix(in_srgb,var(--navy)_72%,white)]">
-                    {address || "Add a venue and address for directions."}
-                  </div>
-                </div>
-              </div>
-              {address ? (
-                <div className="flex flex-wrap gap-3">
-                  <a
-                    href={googleMapsHref(address)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white px-4 py-2 text-sm font-semibold text-[var(--navy-strong)]"
-                  >
-                    <Navigation className="h-4 w-4" />
-                    Google Maps
-                  </a>
-                  <a
-                    href={appleMapsHref(address)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white px-4 py-2 text-sm font-semibold text-[var(--navy-strong)]"
-                  >
-                    <Navigation className="h-4 w-4" />
-                    Apple Maps
-                  </a>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {data.viewerPlayers.length > 0 ? (
-        <section className="shell-panel rounded-[2.25rem] p-6 sm:p-8">
-          <div className="mb-5">
-            <div className="eyebrow">Family responses</div>
-            <h3 className="mt-2 text-2xl text-[var(--navy-strong)]">
-              Update your player availability
-            </h3>
-          </div>
-          <div className="grid gap-4 xl:grid-cols-2">
-            {data.viewerPlayers.map((player) => (
-              <form
-                key={player.id}
-                action={updatePlayerAvailabilityAction}
-                className="rounded-[1.75rem] border border-[var(--line)] bg-white/80 p-5"
-              >
-                <input type="hidden" name="eventId" value={data.event.id} />
-                <input type="hidden" name="playerId" value={player.id} />
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-lg font-semibold text-[var(--navy-strong)]">
-                      {player.name}
-                    </div>
-                    <div className="text-sm text-[color-mix(in_srgb,var(--navy)_68%,white)]">
-                      Let coaches know if anything changes.
-                    </div>
-                  </div>
-                  <ResponseChip status={player.response?.status ?? null} />
-                </div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-[0.65fr_1fr]">
-                  <div className="space-y-2">
-                    <label htmlFor={`status-${player.id}`}>Status</label>
-                    <select
-                      id={`status-${player.id}`}
-                      name="status"
-                      defaultValue={player.response?.status ?? "AVAILABLE"}
-                    >
-                      <option value="AVAILABLE">Available</option>
-                      <option value="MAYBE">Maybe</option>
-                      <option value="UNAVAILABLE">Unavailable</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor={`note-${player.id}`}>Optional note</label>
-                    <textarea
-                      id={`note-${player.id}`}
-                      name="note"
-                      defaultValue={player.response?.note ?? ""}
-                      placeholder="Running 10 minutes late, leaving early, or anything else coaches should know."
-                    />
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <SubmitButton label="Save response" />
-                </div>
-              </form>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {viewer.roles.includes("COACH") || viewer.roles.includes("ADMIN") ? (
-        <section className="shell-panel rounded-[2.25rem] p-6 sm:p-8">
-          <div className="mb-5">
-            <div className="eyebrow">Coach attendance</div>
-            <h3 className="mt-2 text-2xl text-[var(--navy-strong)]">
-              Update your coach availability
-            </h3>
-          </div>
-          <form action={updateAdultAvailabilityAction} className="grid gap-4 sm:grid-cols-[0.7fr_1fr]">
-            <input type="hidden" name="eventId" value={data.event.id} />
-            <div className="space-y-2">
-              <label htmlFor="coach-status">Status</label>
-              <select
-                id="coach-status"
-                name="status"
-                defaultValue={data.viewerAdultResponse?.status ?? "AVAILABLE"}
-              >
-                <option value="AVAILABLE">Available</option>
-                <option value="MAYBE">Maybe</option>
-                <option value="UNAVAILABLE">Unavailable</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="coach-note">Note</label>
-              <textarea
-                id="coach-note"
-                name="note"
-                defaultValue={data.viewerAdultResponse?.note ?? ""}
-                placeholder="Need to leave after warmups, arriving separately, or other coach logistics."
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <SubmitButton label="Save coach response" />
-            </div>
-          </form>
-        </section>
-      ) : null}
-
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="shell-panel rounded-[2.25rem] p-6 sm:p-8">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <div className="eyebrow">Players</div>
-              <h3 className="mt-2 text-2xl text-[var(--navy-strong)]">
-                Attendance board
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-2 text-sm">
-              <span className="stat-pill">{data.playerSummary.AVAILABLE} available</span>
-              <span className="stat-pill">{data.playerSummary.MAYBE} maybe</span>
-              <span className="stat-pill">{data.playerSummary.UNAVAILABLE} out</span>
-              <span className="stat-pill">{data.playerSummary.pending} waiting</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {data.playerCards.map((player) => (
-              <div
-                key={player.id}
-                className="rounded-[1.5rem] border border-[var(--line)] bg-white/75 p-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-lg font-semibold text-[var(--navy-strong)]">
-                      {player.name}
-                    </div>
-                    {player.response?.note ? (
-                      <div className="mt-1 text-sm text-[color-mix(in_srgb,var(--navy)_70%,white)]">
-                        {player.response.note}
-                      </div>
-                    ) : null}
-                  </div>
-                  <ResponseChip status={player.response?.status ?? null} />
-                </div>
-
-                {canManageTeam(viewer) ? (
-                  <form
-                    action={markPlayerActualAttendanceAction}
-                    className="mt-4 flex flex-wrap items-center gap-3"
-                  >
-                    <input type="hidden" name="eventId" value={data.event.id} />
-                    <input type="hidden" name="playerId" value={player.id} />
-                    <select
-                      name="actualAttendance"
-                      defaultValue={player.response?.actualAttendance ?? "UNKNOWN"}
-                      className="max-w-[220px]"
-                    >
-                      <option value="UNKNOWN">Actual attendance unknown</option>
-                      <option value="PRESENT">Present</option>
-                      <option value="ABSENT">Absent</option>
-                    </select>
-                    <SubmitButton label="Record check-in" />
-                  </form>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="page-grid">
-          <section className="shell-panel rounded-[2.25rem] p-6 sm:p-8">
-            <div className="mb-5">
-              <div className="eyebrow">Coaches and admins</div>
-              <h3 className="mt-2 text-2xl text-[var(--navy-strong)]">Staff board</h3>
-            </div>
-            <div className="space-y-3">
-              {data.staff.map((staffer) => (
-                <div
-                  key={staffer.userId}
-                  className="rounded-[1.5rem] border border-[var(--line)] bg-white/75 p-4"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-lg font-semibold text-[var(--navy-strong)]">
-                        {staffer.name}
-                      </div>
-                      <div className="text-sm text-[color-mix(in_srgb,var(--navy)_68%,white)]">
-                        {staffer.roles.join(" · ").toLowerCase()}
-                      </div>
-                      {canManagePrivateContacts(viewer) ? (
-                        <div className="mt-2 space-y-1 text-sm text-[color-mix(in_srgb,var(--navy)_70%,white)]">
-                          <div>{staffer.email}</div>
-                          {staffer.phone ? <div>{staffer.phone}</div> : null}
-                        </div>
-                      ) : null}
-                    </div>
-                    <ResponseChip status={staffer.response?.status ?? null} />
-                  </div>
-
-                  {canManageTeam(viewer) ? (
-                    <form
-                      action={markAdultActualAttendanceAction}
-                      className="mt-4 flex flex-wrap items-center gap-3"
-                    >
-                      <input type="hidden" name="eventId" value={data.event.id} />
-                      <input type="hidden" name="userId" value={staffer.userId} />
-                      <select
-                        name="actualAttendance"
-                        defaultValue={staffer.response?.actualAttendance ?? "UNKNOWN"}
-                        className="max-w-[220px]"
-                      >
-                        <option value="UNKNOWN">Actual attendance unknown</option>
-                        <option value="PRESENT">Present</option>
-                        <option value="ABSENT">Absent</option>
-                      </select>
-                      <SubmitButton label="Record check-in" />
-                    </form>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {canManageTeam(viewer) ? (
-            <section className="shell-panel rounded-[2.25rem] p-6 sm:p-8">
-              <div className="mb-5 flex items-center gap-3">
-                <Mail className="h-5 w-5 text-[var(--orange-strong)]" />
-                <div>
-                  <div className="eyebrow">Practice and game updates</div>
-                  <h3 className="mt-1 text-xl text-[var(--navy-strong)]">
-                    Send an event email
-                  </h3>
-                </div>
-              </div>
-              <form action={sendEventUpdateAction} className="space-y-4">
-                <input type="hidden" name="eventId" value={data.event.id} />
-                <div className="space-y-2">
-                  <label htmlFor="audience">Recipients</label>
-                  <select id="audience" name="audience" defaultValue="ALL_GUARDIANS">
-                    <option value="ALL_GUARDIANS">All guardians on the team</option>
-                    <option value="RESPONDED_PLAYERS">
-                      Guardians of players who already responded
-                    </option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="subject">Subject</label>
-                  <input
-                    id="subject"
-                    name="subject"
-                    defaultValue={`${data.event.title} update`}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="body">Message</label>
-                  <textarea
-                    id="body"
-                    name="body"
-                    placeholder="Share weather updates, field changes, arrival notes, or anything else the team needs."
-                  />
-                </div>
-                <SubmitButton label="Send update email" />
-              </form>
-            </section>
+          {address ? (
+            <a
+              href={mapsHref ?? "#"}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="location-link"
+              style={{ alignSelf: "flex-start" }}
+            >
+              <PinIcon />
+              <span>{address}</span>
+              <ExtIcon />
+            </a>
           ) : null}
         </div>
+        {data.event.description ? (
+          <p
+            className="relative mt-2"
+            style={{
+              fontSize: "0.85rem",
+              color: "color-mix(in srgb, var(--navy) 72%, white)",
+            }}
+          >
+            {data.event.description}
+          </p>
+        ) : null}
       </section>
 
-      {canManageTeam(viewer) ? (
-        <section className="shell-panel rounded-[2.25rem] p-6 sm:p-8">
-          <div className="mb-5">
-            <div className="eyebrow">Event admin</div>
-            <h3 className="mt-2 text-2xl text-[var(--navy-strong)]">Edit event details</h3>
-          </div>
-          <form action={updateEventAction} className="space-y-5">
-            <EventFormFields event={data.event} />
-            <div className="flex flex-wrap gap-3">
-              <SubmitButton label="Save event changes" />
-              {data.event.type === "GAME" ? (
-                <Link
-                  href={`/lineups/${data.event.id}`}
-                  className="inline-flex items-center justify-center rounded-full border border-[var(--line)] bg-white px-4 py-3 text-sm font-semibold text-[var(--navy-strong)]"
-                >
-                  Open lineup planner
-                </Link>
-              ) : null}
+      {canManage ? (
+        <div className="flex flex-col gap-2">
+          <Link
+            href={`/events/${data.event.id}/attendance`}
+            className="action-row"
+          >
+            <div className="action-icon">
+              <UsersIcon />
             </div>
-          </form>
-        </section>
+            <div className="row-grow">
+              <div className="row-title">Attendance</div>
+              <div className="row-sub">
+                {data.playerSummary.AVAILABLE} in ·{" "}
+                {data.playerSummary.MAYBE} maybe ·{" "}
+                {data.playerSummary.UNAVAILABLE} out ·{" "}
+                {data.playerSummary.pending} waiting
+              </div>
+            </div>
+            <ChevronRightIcon />
+          </Link>
+
+          {isGame ? (
+            <Link
+              href={`/lineups/${data.event.id}`}
+              className="action-row"
+            >
+              <div className="action-icon">
+                <GridIcon />
+              </div>
+              <div className="row-grow">
+                <div className="row-title">Lineup</div>
+                <div className="row-sub">Batting order and positions</div>
+              </div>
+              <ChevronRightIcon />
+            </Link>
+          ) : null}
+
+          <Link
+            href={`/events/${data.event.id}/email`}
+            className="action-row"
+          >
+            <div className="action-icon">
+              <MailIcon />
+            </div>
+            <div className="row-grow">
+              <div className="row-title">Email families</div>
+              <div className="row-sub">Send an update to guardians</div>
+            </div>
+            <ChevronRightIcon />
+          </Link>
+        </div>
       ) : null}
-    </div>
+    </>
   );
 }
 
+function ClockIcon() {
+  return (
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+function PinIcon() {
+  return (
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+function ExtIcon() {
+  return (
+    <svg className="ext" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 17L17 7" />
+      <path d="M8 7h9v9" />
+    </svg>
+  );
+}
+function PencilIcon() {
+  return (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+  );
+}
+function UsersIcon() {
+  return (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 11l-3 3-2-2" />
+    </svg>
+  );
+}
+function GridIcon() {
+  return (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="3" y1="15" x2="21" y2="15" />
+      <line x1="9" y1="3" x2="9" y2="21" />
+    </svg>
+  );
+}
+function MailIcon() {
+  return (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <polyline points="22 6 12 13 2 6" />
+    </svg>
+  );
+}
+function ChevronRightIcon() {
+  return (
+    <svg className="row-chevron" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}

@@ -44,13 +44,5 @@ export default async function PrivateLayout({
     );
   }
 
-  return (
-    <AppShell
-      teamName={viewer.team.name}
-      seasonName={viewer.seasonName}
-      roles={viewer.roles}
-    >
-      {children}
-    </AppShell>
-  );
+  return <AppShell roles={viewer.roles}>{children}</AppShell>;
 }

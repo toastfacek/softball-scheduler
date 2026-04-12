@@ -8,12 +8,17 @@ import { requireTeamManager, requireViewer } from "@/actions/helpers";
 import { db } from "@/db";
 import {
   adultEventResponses,
+  adultUsers,
   events,
   playerEventResponses,
+  playerGuardians,
   players,
 } from "@/db/schema";
+import { inArray } from "drizzle-orm";
 import { listEventUpdateRecipients } from "@/lib/data";
+import { renderEventRsvpEmail } from "@/lib/email-templates";
 import { sendTeamEmail } from "@/lib/notifications";
+import { verifyRsvpToken } from "@/lib/rsvp-tokens";
 import { localInputToDate } from "@/lib/time";
 
 const eventSchema = z.object({
@@ -202,6 +207,106 @@ export async function updatePlayerAvailabilityAction(formData: FormData) {
   revalidatePath(`/events/${parsed.eventId}`);
 }
 
+const rsvpLinkSchema = z.object({
+  token: z.string().min(10),
+  status: z.enum(["AVAILABLE", "UNAVAILABLE", "MAYBE"]),
+  note: z.string().trim().max(500).optional(),
+  playerIds: z.array(z.string().uuid()).optional(),
+});
+
+export type RsvpFromLinkResult = {
+  success: true;
+  updated: { playerId: string; playerName: string }[];
+  status: "AVAILABLE" | "UNAVAILABLE" | "MAYBE";
+};
+
+export async function recordRsvpFromLinkAction(input: {
+  token: string;
+  status: "AVAILABLE" | "UNAVAILABLE" | "MAYBE";
+  note?: string;
+  playerIds?: string[];
+}): Promise<RsvpFromLinkResult> {
+  const parsed = rsvpLinkSchema.parse(input);
+  const claims = verifyRsvpToken(parsed.token);
+  if (!claims) {
+    throw new Error("This RSVP link is invalid or has expired.");
+  }
+
+  const linked = await db
+    .select({
+      playerId: playerGuardians.playerId,
+      firstName: players.firstName,
+      lastName: players.lastName,
+      preferredName: players.preferredName,
+    })
+    .from(playerGuardians)
+    .innerJoin(players, eq(players.id, playerGuardians.playerId))
+    .where(eq(playerGuardians.userId, claims.guardianId))
+    .then((rows) =>
+      rows.map((r) => ({
+        playerId: r.playerId,
+        playerName: `${r.preferredName ?? r.firstName} ${r.lastName}`,
+      })),
+    );
+
+  if (linked.length === 0) {
+    throw new Error("This guardian has no players on the team.");
+  }
+
+  const eligibleIds = new Set(linked.map((l) => l.playerId));
+  const targetPlayerIds = parsed.playerIds
+    ? parsed.playerIds.filter((id) => eligibleIds.has(id))
+    : linked.map((l) => l.playerId);
+
+  if (targetPlayerIds.length === 0) {
+    throw new Error("No matching players for this link.");
+  }
+
+  const now = new Date();
+  const note = parsed.note?.trim() || null;
+
+  for (const playerId of targetPlayerIds) {
+    const existing = await db.query.playerEventResponses.findFirst({
+      where: and(
+        eq(playerEventResponses.eventId, claims.eventId),
+        eq(playerEventResponses.playerId, playerId),
+      ),
+    });
+
+    if (existing) {
+      await db
+        .update(playerEventResponses)
+        .set({
+          status: parsed.status,
+          note,
+          respondedByUserId: claims.guardianId,
+          respondedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(playerEventResponses.id, existing.id));
+    } else {
+      await db.insert(playerEventResponses).values({
+        eventId: claims.eventId,
+        playerId,
+        status: parsed.status,
+        note,
+        respondedByUserId: claims.guardianId,
+        respondedAt: now,
+      });
+    }
+  }
+
+  revalidatePath(`/events/${claims.eventId}`);
+
+  return {
+    success: true,
+    status: parsed.status,
+    updated: linked
+      .filter((l) => targetPlayerIds.includes(l.playerId))
+      .map((l) => ({ playerId: l.playerId, playerName: l.playerName })),
+  };
+}
+
 export async function updateAdultAvailabilityAction(formData: FormData) {
   const viewer = await requireTeamManager();
   const parsed = adultResponseSchema.parse({
@@ -345,6 +450,10 @@ export async function sendEventUpdateAction(formData: FormData) {
     parsed.audience,
   );
 
+  const guardianNames = await guardianFirstNamesById(
+    recipients.map((r) => r.userId).filter(Boolean) as string[],
+  );
+
   await sendTeamEmail({
     teamId: viewer.teamId,
     createdByUserId: viewer.userId,
@@ -356,8 +465,34 @@ export async function sendEventUpdateAction(formData: FormData) {
     metadata: {
       audience: parsed.audience,
     },
+    renderBody: (recipient) => {
+      if (!recipient.userId) {
+        // Fall back to the canonical body for unlinked recipients (no RSVP link
+        // without a guardian id to scope it to).
+        return {};
+      }
+      const firstName = guardianNames.get(recipient.userId) ?? "there";
+      return renderEventRsvpEmail({
+        event,
+        guardianId: recipient.userId,
+        guardianFirstName: firstName,
+        subjectPrefix: "Update",
+        bodyIntro: parsed.body,
+      });
+    },
   });
 
   revalidatePath(`/events/${parsed.eventId}`);
+}
+
+async function guardianFirstNamesById(userIds: string[]) {
+  if (userIds.length === 0) return new Map<string, string>();
+  const rows = await db
+    .select({ id: adultUsers.id, name: adultUsers.name })
+    .from(adultUsers)
+    .where(inArray(adultUsers.id, userIds));
+  return new Map(
+    rows.map((row) => [row.id, (row.name ?? "").split(" ")[0] || "there"]),
+  );
 }
 

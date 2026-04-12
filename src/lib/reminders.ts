@@ -5,6 +5,7 @@ import {
   getPendingReminderEvents,
 } from "@/lib/data";
 import { formatEventDateTimeRange } from "@/lib/time";
+import { renderEventRsvpEmail } from "@/lib/email-templates";
 import { sendTeamEmail } from "@/lib/notifications";
 
 export async function runReminderSweep(now = new Date()) {
@@ -30,21 +31,45 @@ export async function runReminderSweep(now = new Date()) {
       continue;
     }
 
+    const guardianById = new Map(guardians.map((g) => [g.userId, g]));
+    const dateLine = formatEventDateTimeRange(event.startsAt, event.endsAt);
+
     const message = await sendTeamEmail({
       teamId: event.teamId,
       eventId: event.id,
       kind: "REMINDER",
-      subject: `Please update softball availability for ${event.title}`,
-      body: `A quick heads-up from BGSL.\n\n${formatEventDateTimeRange(
-        event.startsAt,
-        event.endsAt,
-      )}\n${event.title}\n\nPlease update availability in the app so coaches can plan lineups and attendance. This reminder goes only to adults who still have at least one player without a response.`,
+      subject: `Please RSVP for ${event.title}`,
+      body: `A quick heads-up from BGSL.\n\n${dateLine}\n${event.title}\n\nPlease RSVP so coaches can plan lineups and attendance.`,
       recipients: guardians.map((guardian) => ({
         email: guardian.email,
         userId: guardian.userId,
       })),
       metadata: {
         reminderType: "NON_RESPONDER_24H",
+      },
+      renderBody: (recipient) => {
+        if (!recipient.userId) return {};
+        const guardian = guardianById.get(recipient.userId);
+        const firstName = (guardian?.name ?? "").split(" ")[0] || "there";
+        const players = guardian?.players ?? [];
+        const playerLine =
+          players.length > 0
+            ? `We haven't heard back about ${players.join(" & ")} yet.`
+            : "We haven't heard back about your player yet.";
+        const intro = [
+          playerLine,
+          "",
+          `**${event.title}** — ${dateLine}`,
+          "",
+          "Tap below to RSVP:",
+        ].join("\n");
+        return renderEventRsvpEmail({
+          event,
+          guardianId: recipient.userId,
+          guardianFirstName: firstName,
+          subjectPrefix: "Reminder",
+          bodyIntro: intro,
+        });
       },
     });
 

@@ -16,6 +16,12 @@ type RecipientInput = {
   playerId?: string | null;
 };
 
+type PerRecipientContent = {
+  subject?: string;
+  body?: string;
+  html?: string;
+};
+
 type SendTeamEmailInput = {
   teamId: string;
   createdByUserId?: string | null;
@@ -25,6 +31,16 @@ type SendTeamEmailInput = {
   body: string;
   recipients: RecipientInput[];
   metadata?: Record<string, string | number | boolean | null>;
+  /**
+   * Optional per-recipient content override. Return a partial content object
+   * (subject/body/html) to personalize the outbound email — useful for
+   * per-guardian RSVP link URLs. The top-level subject/body are stored on the
+   * parent email_messages row as the canonical message and used as a fallback
+   * when this hook is not provided (or returns undefined).
+   */
+  renderBody?: (
+    recipient: RecipientInput,
+  ) => PerRecipientContent | Promise<PerRecipientContent>;
 };
 
 const resend = new Resend(env.RESEND_API_KEY || "re_placeholder_key");
@@ -59,9 +75,16 @@ export async function sendTeamEmail(input: SendTeamEmailInput) {
   const sendResults = await Promise.all(
     uniqueRecipients.map(async (recipient) => {
       try {
+        const override = input.renderBody
+          ? await input.renderBody(recipient)
+          : undefined;
+        const subject = override?.subject ?? input.subject;
+        const body = override?.body ?? input.body;
+        const html = override?.html ?? markdownishToHtml(body);
+
         if (!isResendConfigured()) {
           console.info(
-            `[email:console] ${input.subject} -> ${recipient.email}\n${input.body}`,
+            `[email:console] ${subject} -> ${recipient.email}\n${body}`,
           );
 
           return {
@@ -76,9 +99,9 @@ export async function sendTeamEmail(input: SendTeamEmailInput) {
         const response = await resend.emails.send({
           from: env.AUTH_RESEND_FROM,
           to: recipient.email,
-          subject: input.subject,
-          text: input.body,
-          html: markdownishToHtml(input.body),
+          subject,
+          text: body,
+          html,
         });
 
         return {

@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { EventStatusChip } from "@/components/status-chip";
+import { PageHeader } from "@/components/page-header";
 import { getLineupsIndexData, getViewerContext } from "@/lib/data";
-import { formatEventDateTimeRange } from "@/lib/time";
+import { formatEventDay, formatEventTime } from "@/lib/time";
 
 export default async function LineupsPage() {
   const viewer = await getViewerContext();
@@ -17,42 +18,61 @@ export default async function LineupsPage() {
 
   const data = await getLineupsIndexData(viewer);
 
-  return (
-    <div className="page-grid">
-      <section className="shell-panel rounded-[2.25rem] p-6 sm:p-8">
-        <div className="eyebrow">Coach-only workspace</div>
-        <h2 className="mt-2 text-3xl text-[var(--navy-strong)]">Game lineup planner</h2>
-        <p className="mt-3 max-w-3xl text-base leading-7 text-[color-mix(in_srgb,var(--navy)_74%,white)]">
-          Build one batting order for the game, then assign defensive positions
-          inning by inning. Unavailable players still stay visible so coaches can
-          override intentionally when needed.
-        </p>
-      </section>
+  function split(date: Date) {
+    const [dayWord, monthDay] = formatEventDay(date).split(",");
+    const parts = (monthDay ?? "").trim().split(" ");
+    return { mo: dayWord.trim(), dy: parts[parts.length - 1] ?? "" };
+  }
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        {data.games.map((game) => (
-          <a
-            key={game.id}
-            href={`/lineups/${game.id}`}
-            className="shell-panel rounded-[2rem] p-5 hover:-translate-y-1"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="eyebrow">Game</div>
-                <h3 className="mt-2 text-2xl text-[var(--navy-strong)]">{game.title}</h3>
-              </div>
-              <EventStatusChip status={game.status} />
+  return (
+    <>
+      <PageHeader title="Lineups" />
+      <div
+        className="shell-panel"
+        style={{ padding: "0.25rem 0.875rem", borderRadius: "1.25rem" }}
+      >
+        <div className="row-list">
+          {data.games.map((game) => {
+            const { mo, dy } = split(game.startsAt);
+            return (
+              <Link
+                key={game.id}
+                href={`/lineups/${game.id}`}
+                className="row"
+              >
+                <div className="event-date" style={{ width: 44 }}>
+                  <div className="event-date-mo">{mo}</div>
+                  <div className="event-date-dy">{dy}</div>
+                </div>
+                <div className="row-grow">
+                  <div className="row-title">{game.title}</div>
+                  <div className="row-sub">
+                    {formatEventTime(game.startsAt)} · Game
+                  </div>
+                </div>
+                <span
+                  className={game.hasLineup ? "btn-secondary" : "btn-primary"}
+                  style={{ padding: "0.35rem 0.75rem", fontSize: "0.7rem" }}
+                >
+                  {game.hasLineup ? "Edit" : "Create"}
+                </span>
+              </Link>
+            );
+          })}
+          {data.games.length === 0 ? (
+            <div
+              className="row"
+              style={{
+                cursor: "default",
+                color: "color-mix(in srgb, var(--navy) 60%, white)",
+                fontSize: "0.85rem",
+              }}
+            >
+              No upcoming games yet.
             </div>
-            <p className="mt-3 text-sm text-[color-mix(in_srgb,var(--navy)_72%,white)]">
-              {formatEventDateTimeRange(game.startsAt, game.endsAt)}
-            </p>
-            <div className="mt-5 inline-flex rounded-full bg-[color-mix(in_srgb,var(--navy)_8%,white)] px-4 py-2 text-sm font-semibold text-[var(--navy-strong)]">
-              {game.hasLineup ? "Edit saved lineup" : "Create lineup"}
-            </div>
-          </a>
-        ))}
-      </section>
-    </div>
+          ) : null}
+        </div>
+      </div>
+    </>
   );
 }
-

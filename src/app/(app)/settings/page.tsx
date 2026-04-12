@@ -1,11 +1,9 @@
+import Link from "next/link";
+
 import { signOutAction } from "@/actions/auth-actions";
-import {
-  sendBroadcastAction,
-  updateProfileAction,
-} from "@/actions/settings-actions";
-import { SubmitButton } from "@/components/submit-button";
+import { PageHeader } from "@/components/page-header";
 import { canManageTeam } from "@/lib/authz";
-import { getSettingsPageData, getViewerContext } from "@/lib/data";
+import { getViewerContext } from "@/lib/data";
 
 export default async function SettingsPage() {
   const viewer = await getViewerContext();
@@ -14,105 +12,67 @@ export default async function SettingsPage() {
     return null;
   }
 
-  const data = await getSettingsPageData(viewer);
+  const canManage = canManageTeam(viewer);
 
   return (
-    <div className="page-grid">
-      <section className="shell-panel rounded-[2.25rem] p-6 sm:p-8">
-        <div className="eyebrow">Your profile</div>
-        <h2 className="mt-2 text-3xl text-[var(--navy-strong)]">Settings</h2>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-[color-mix(in_srgb,var(--navy)_74%,white)]">
-          Keep your contact details current, choose whether reminders should
-          reach you automatically, and send team-wide updates if you manage the
-          team.
-        </p>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <form action={updateProfileAction} className="shell-panel rounded-[2rem] p-6">
-          <div className="mb-4">
-            <div className="eyebrow">Personal details</div>
-            <h3 className="mt-2 text-2xl text-[var(--navy-strong)]">Account profile</h3>
+    <>
+      <PageHeader title="Settings" />
+      <div className="linked-list">
+        <Link href="/settings/profile" className="row">
+          <div className="row-grow">
+            <div className="row-title">Profile</div>
+            <div className="row-sub">Name, phone, reminders</div>
           </div>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="name">Name</label>
-              <input id="name" name="name" defaultValue={viewer.adult.name ?? ""} required />
+          <ChevronRightIcon />
+        </Link>
+        {canManage ? (
+          <Link href="/settings/broadcast" className="row">
+            <div className="row-grow">
+              <div className="row-title">Team broadcast</div>
+              <div className="row-sub">Send an email to the whole team</div>
             </div>
-            <div className="space-y-2">
-              <label htmlFor="email">Email</label>
-              <input id="email" value={viewer.adult.email} disabled />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="phone">Phone</label>
-              <input id="phone" name="phone" defaultValue={viewer.adult.phone ?? ""} />
-            </div>
-            <label className="flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-medium">
-              <input
-                type="checkbox"
-                name="reminderOptIn"
-                defaultChecked={viewer.adult.reminderOptIn}
-                className="h-4 w-4"
-              />
-              Email me automatic 24-hour reminder nudges if my player has not responded
-            </label>
-            <div className="stat-pill text-sm font-semibold text-[var(--navy-strong)]">
-              Roles: {data.roles.join(" · ").toLowerCase()}
-            </div>
-            <SubmitButton label="Save profile" />
+            <ChevronRightIcon />
+          </Link>
+        ) : null}
+        <form action={signOutAction} className="row danger">
+          <div className="row-grow">
+            <button
+              type="submit"
+              className="row-title"
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                color: "inherit",
+                font: "inherit",
+                textAlign: "left",
+                width: "100%",
+              }}
+            >
+              Sign out
+            </button>
           </div>
         </form>
-
-        <div className="page-grid">
-          {canManageTeam(viewer) ? (
-            <form action={sendBroadcastAction} className="shell-panel rounded-[2rem] p-6">
-              <div className="mb-4">
-                <div className="eyebrow">Manual broadcast</div>
-                <h3 className="mt-2 text-2xl text-[var(--navy-strong)]">Send a team email</h3>
-              </div>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label htmlFor="scope">Audience</label>
-                  <select id="scope" name="scope" defaultValue="ALL">
-                    <option value="ALL">Entire team</option>
-                    <option value="GUARDIANS">Guardians only</option>
-                    <option value="STAFF">Coaches and admins only</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="subject">Subject</label>
-                  <input id="subject" name="subject" placeholder="Tomorrow’s practice plan" required />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="body">Message</label>
-                  <textarea
-                    id="body"
-                    name="body"
-                    placeholder="Send a quick note about practice location changes, weather, arrival time, or anything else the group should know."
-                    required
-                  />
-                </div>
-                <SubmitButton label="Send email" />
-              </div>
-            </form>
-          ) : null}
-
-          <section className="shell-panel rounded-[2rem] p-6">
-            <div className="mb-4">
-              <div className="eyebrow">Account</div>
-              <h3 className="mt-2 text-2xl text-[var(--navy-strong)]">Sign out</h3>
-            </div>
-            <p className="mb-5 text-sm leading-6 text-[color-mix(in_srgb,var(--navy)_74%,white)]">
-              Magic-link sign in means there is no password to manage. Signing
-              out just clears this device session.
-            </p>
-            <form action={signOutAction}>
-              <SubmitButton label="Sign out" className="bg-[var(--orange-strong)] hover:bg-[var(--orange)]" />
-            </form>
-          </section>
-        </div>
-      </section>
-    </div>
+      </div>
+    </>
   );
 }
 
+function ChevronRightIcon() {
+  return (
+    <svg
+      className="row-chevron"
+      width="16"
+      height="16"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}

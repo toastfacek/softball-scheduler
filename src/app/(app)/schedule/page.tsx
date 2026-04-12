@@ -1,129 +1,234 @@
 import Link from "next/link";
-import { Plus, Sparkles } from "lucide-react";
 
-import { createEventAction } from "@/actions/event-actions";
-import { EventCard } from "@/components/event-card";
-import { EventFormFields } from "@/components/event-form-fields";
-import { SubmitButton } from "@/components/submit-button";
+import { PageHeader } from "@/components/page-header";
 import { canManageTeam } from "@/lib/authz";
 import { getSchedulePageData, getViewerContext } from "@/lib/data";
-import { formatEventDateTimeRange } from "@/lib/time";
+import {
+  formatEventDateTimeRange,
+  formatEventDay,
+  formatEventTime,
+} from "@/lib/time";
+
+type StatusBit =
+  | { kind: "dot"; className: string; label: string }
+  | null;
+
+function summaryDot(
+  viewerResponse: "AVAILABLE" | "UNAVAILABLE" | "MAYBE" | null,
+): StatusBit {
+  if (viewerResponse === "AVAILABLE")
+    return { kind: "dot", className: "dot--avail", label: "available" };
+  if (viewerResponse === "MAYBE")
+    return { kind: "dot", className: "dot--maybe", label: "maybe" };
+  if (viewerResponse === "UNAVAILABLE")
+    return { kind: "dot", className: "dot--out", label: "out" };
+  return { kind: "dot", className: "dot--wait", label: "waiting" };
+}
+
+function splitEventDay(date: Date) {
+  const [dayWord, monthDay] = formatEventDay(date).split(",");
+  const parts = (monthDay ?? "").trim().split(" ");
+  return { mo: dayWord.trim(), dy: parts[parts.length - 1] ?? "" };
+}
 
 export default async function SchedulePage() {
   const viewer = await getViewerContext();
-
-  if (!viewer) {
-    return null;
-  }
+  if (!viewer) return null;
 
   const data = await getSchedulePageData(viewer);
+  const upcoming = data.events.filter((e) => e.id !== data.nextEvent?.id);
 
   return (
-    <div className="page-grid">
-      <section className="relative overflow-hidden rounded-[2.25rem] border border-[color-mix(in_srgb,var(--navy)_26%,black)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--navy-strong)_96%,black),color-mix(in_srgb,var(--navy)_88%,var(--harbor)))] p-6 text-white shadow-[0_32px_60px_color-mix(in_srgb,var(--navy-strong)_22%,transparent)] sm:p-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--orange)_30%,transparent),transparent_32%),repeating-linear-gradient(125deg,color-mix(in_srgb,white_7%,transparent)_0_2px,transparent_2px_44px)]" />
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="relative space-y-5">
-            <div className="eyebrow flex items-center gap-2 text-[color-mix(in_srgb,var(--orange)_82%,white)]">
-              <Sparkles className="h-4 w-4" />
-              Game-week control center
-            </div>
-            <div className="space-y-3">
-              <h2 className="max-w-3xl text-5xl leading-[0.92] text-white sm:text-6xl">
-                Keep Beverly ready before first pitch.
-              </h2>
-              <p className="max-w-2xl text-base leading-7 text-white/78">
-                Track attendance, tighten logistics, and build lineups from
-                real numbers instead of group-text chaos.
-              </p>
-            </div>
+    <>
+      <PageHeader
+        title="Schedule"
+        action={
+          canManageTeam(viewer) ? (
+            <Link
+              href="/schedule/new"
+              className="icon-btn icon-btn--primary"
+              aria-label="Add event"
+            >
+              <PlusIcon />
+            </Link>
+          ) : null
+        }
+      />
 
-            {data.nextEvent ? (
-              <div className="rounded-[1.75rem] border border-white/12 bg-white/8 p-5 backdrop-blur-sm">
-                <div className="eyebrow text-white/60">On deck</div>
-                <h3 className="mt-2 text-3xl text-white">{data.nextEvent.title}</h3>
-                <p className="mt-3 text-sm font-medium text-white/74">
-                  {formatEventDateTimeRange(
-                    data.nextEvent.startsAt,
-                    data.nextEvent.endsAt,
-                  )}
-                </p>
-                <Link
-                  href={`/events/${data.nextEvent.id}`}
-                  className="mt-5 inline-flex rounded-[1rem] border border-[color-mix(in_srgb,var(--orange)_26%,transparent)] bg-[color-mix(in_srgb,var(--orange)_18%,transparent)] px-4 py-2 text-sm font-black uppercase tracking-[0.1em] text-[color-mix(in_srgb,var(--orange)_84%,white)]"
-                >
-                  Open event
-                </Link>
-              </div>
-            ) : (
-              <div className="rounded-[1.75rem] border border-dashed border-white/18 bg-white/8 p-5 text-sm font-medium text-white/72">
-                No events yet. Add a practice or game to put the season on the
-                board.
-              </div>
-            )}
+      {data.nextEvent ? (
+        <Link href={`/events/${data.nextEvent.id}`} className="next-event">
+          <div
+            style={{
+              fontSize: "0.58rem",
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.16em",
+              color: "color-mix(in srgb, var(--orange) 86%, white)",
+            }}
+          >
+            Next up
           </div>
+          <h2
+            style={{
+              fontSize: "1.75rem",
+              color: "white",
+              marginTop: "0.25rem",
+            }}
+          >
+            {data.nextEvent.title}
+          </h2>
+          <div className="next-event-meta">
+            <ClockIcon />
+            <span>
+              {formatEventDateTimeRange(
+                data.nextEvent.startsAt,
+                data.nextEvent.endsAt,
+              )}
+            </span>
+          </div>
+          {data.nextEvent.venueName ? (
+            <div className="next-event-meta">
+              <PinIcon />
+              <span>
+                {data.nextEvent.venueName}
+                {data.nextEvent.city ? `, ${data.nextEvent.city}` : ""}
+              </span>
+            </div>
+          ) : null}
+          {data.nextEvent.viewerPlayers.length > 0 ? (
+            <div
+              style={{
+                marginTop: "0.75rem",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.375rem",
+                borderRadius: "0.6rem",
+                border:
+                  "1px solid color-mix(in srgb, var(--success) 36%, transparent)",
+                background:
+                  "color-mix(in srgb, var(--success) 18%, transparent)",
+                padding: "0.25rem 0.5rem",
+                fontSize: "0.6rem",
+                fontWeight: 800,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                color: "color-mix(in srgb, var(--success) 88%, white)",
+              }}
+            >
+              {data.nextEvent.viewerPlayers[0].name.split(" ")[0]} ·{" "}
+              {(
+                data.nextEvent.viewerPlayers[0].response ?? "waiting"
+              ).toLowerCase()}
+            </div>
+          ) : null}
+        </Link>
+      ) : (
+        <div
+          className="shell-panel"
+          style={{
+            padding: "1.25rem",
+            borderRadius: "1.25rem",
+            textAlign: "center",
+            color: "color-mix(in srgb, var(--navy) 68%, white)",
+          }}
+        >
+          No events yet.{" "}
+          {canManageTeam(viewer)
+            ? "Tap + to add one."
+            : "Your coach hasn't scheduled any yet."}
+        </div>
+      )}
 
-          <div className="relative grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <div className="rounded-[1.5rem] border border-white/12 bg-white/8 p-5 backdrop-blur-sm">
-              <div className="eyebrow text-white/55">Roster size</div>
-              <div className="mt-3 text-4xl font-black text-white">
-                {data.stats.playerCount}
-              </div>
-              <p className="mt-2 text-sm font-medium text-white/72">
-                active players in the current season
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-[color-mix(in_srgb,var(--orange)_34%,transparent)] bg-[color-mix(in_srgb,var(--orange)_16%,transparent)] p-5">
-              <div className="eyebrow text-[color-mix(in_srgb,var(--orange)_82%,white)]">
-                Family follow-up
-              </div>
-              <div className="mt-3 text-4xl font-black text-white">
-                {data.stats.needsResponseCount}
-              </div>
-              <p className="mt-2 text-sm font-medium text-white/74">
-                linked-player responses still waiting
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-white/12 bg-white/8 p-5 backdrop-blur-sm">
-              <div className="eyebrow text-white/55">Timezone</div>
-              <div className="mt-3 text-xl font-black uppercase tracking-[0.08em] text-white">
-                Eastern
-              </div>
-              <p className="mt-2 text-sm font-medium text-white/72">
-                all event times are shown in Beverly time
-              </p>
-            </div>
+      {upcoming.length > 0 ? (
+        <div
+          className="shell-panel"
+          style={{ padding: "0.25rem 0.875rem", borderRadius: "1.25rem" }}
+        >
+          <div className="section-head">Upcoming</div>
+          <div className="row-list">
+            {upcoming.map((event) => {
+              const { mo, dy } = splitEventDay(event.startsAt);
+              const statusBit = summaryDot(
+                event.viewerPlayers[0]?.response ?? null,
+              );
+              return (
+                <Link
+                  key={event.id}
+                  href={`/events/${event.id}`}
+                  className="event-row"
+                >
+                  <div className="event-date">
+                    <div className="event-date-mo">{mo}</div>
+                    <div className="event-date-dy">{dy}</div>
+                  </div>
+                  <div className="row-grow">
+                    <div className="row-title">{event.title}</div>
+                    <div className="row-sub">
+                      {formatEventTime(event.startsAt)} ·{" "}
+                      {event.type === "GAME" ? "Game" : "Practice"}
+                    </div>
+                  </div>
+                  {statusBit ? (
+                    <span
+                      className={`dot ${statusBit.className}`}
+                      aria-label={statusBit.label}
+                    />
+                  ) : null}
+                </Link>
+              );
+            })}
           </div>
         </div>
-      </section>
-
-      {canManageTeam(viewer) ? (
-        <section className="shell-panel rounded-[2.25rem] p-6 sm:p-8">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-[1rem] bg-[var(--navy-strong)] text-[var(--orange)] shadow-[0_16px_24px_color-mix(in_srgb,var(--navy-strong)_18%,transparent)]">
-              <Plus className="h-6 w-6" />
-            </div>
-            <div>
-              <h2 className="text-3xl text-[var(--navy-strong)]">
-                Add a practice or game
-              </h2>
-              <p className="text-sm font-medium text-[color-mix(in_srgb,var(--navy)_70%,white)]">
-                Drop in the next event and everyone sees the same plan.
-              </p>
-            </div>
-          </div>
-          <form action={createEventAction} className="space-y-5">
-            <EventFormFields />
-            <SubmitButton label="Create event" />
-          </form>
-        </section>
       ) : null}
+    </>
+  );
+}
 
-      <section className="page-grid lg:grid-cols-2">
-        {data.events.map((event) => (
-          <EventCard key={event.id} event={event} />
-        ))}
-      </section>
-    </div>
+function PlusIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
   );
 }
