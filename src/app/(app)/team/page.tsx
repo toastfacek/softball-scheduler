@@ -1,7 +1,10 @@
 import { PageHeader } from "@/components/page-header";
-import { canManagePrivateContacts } from "@/lib/authz";
+import { ContactActions } from "@/components/contact-actions";
+import { canManagePrivateContacts, canManageTeam } from "@/lib/authz";
 import { getTeamPageData, getViewerContext } from "@/lib/data";
 import type { TeamRole } from "@/db/schema";
+
+import { RosterSection } from "./roster-section";
 
 export default async function TeamPage() {
   const viewer = await getViewerContext();
@@ -51,6 +54,7 @@ export default async function TeamPage() {
         <RosterSection
           roster={roster}
           showContacts={showContacts}
+          canEdit={canManageTeam(viewer)}
         />
       </div>
     </>
@@ -289,166 +293,24 @@ function StaffSection({
               {showContacts ? (
                 <div
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: "0.5rem",
                     fontSize: "0.78rem",
                     color: "color-mix(in srgb, var(--navy) 64%, white)",
                   }}
                 >
-                  {s.email}
-                  {s.phone ? ` · ${s.phone}` : ""}
+                  <span>{s.email}</span>
+                  <ContactActions
+                    phone={s.phone}
+                    name={s.name ?? s.email.split("@")[0]}
+                  />
                 </div>
               ) : null}
             </div>
           );
         })}
-      </div>
-    </section>
-  );
-}
-
-type Player = {
-  id: string;
-  displayName: string;
-  firstName: string;
-  lastName: string;
-  jerseyNumber: number | null;
-  guardians: {
-    userId: string;
-    name: string | null;
-    email: string;
-    phone: string | null;
-    relationshipLabel: string;
-    sortOrder: number;
-  }[];
-};
-
-function RosterSection({
-  roster,
-  showContacts,
-}: {
-  roster: Player[];
-  showContacts: boolean;
-}) {
-  return (
-    <section>
-      <SectionHead label="Roster" count={roster.length} />
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          border:
-            "1px solid color-mix(in srgb, var(--line) 60%, transparent)",
-          borderRadius: "1rem",
-          overflow: "hidden",
-          background: "var(--paper)",
-        }}
-      >
-        {roster.map((player, i) => (
-          <div
-            key={player.id}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "52px minmax(0, 1fr) minmax(0, 1.4fr)",
-              alignItems: "center",
-              gap: "1rem",
-              padding: "0.75rem 1rem",
-              borderBottom:
-                i === roster.length - 1
-                  ? "none"
-                  : "1px solid color-mix(in srgb, var(--line) 55%, transparent)",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "var(--font-barlow-condensed), sans-serif",
-                fontWeight: 700,
-                fontSize: "1.75rem",
-                lineHeight: 1,
-                textAlign: "right",
-                fontVariantNumeric: "tabular-nums",
-                color:
-                  player.jerseyNumber != null
-                    ? "var(--navy-strong)"
-                    : "color-mix(in srgb, var(--navy) 30%, white)",
-              }}
-            >
-              {player.jerseyNumber ?? "—"}
-            </div>
-            <div>
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: "var(--navy-strong)",
-                  letterSpacing: "-0.005em",
-                }}
-              >
-                {player.displayName}
-              </div>
-              {player.displayName.toLowerCase() !==
-              `${player.firstName} ${player.lastName}`.toLowerCase() ? (
-                <div
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "color-mix(in srgb, var(--navy) 52%, white)",
-                    marginTop: "0.1rem",
-                  }}
-                >
-                  {player.firstName} {player.lastName}
-                </div>
-              ) : null}
-            </div>
-            <div
-              style={{
-                fontSize: "0.82rem",
-                color: "color-mix(in srgb, var(--navy) 72%, white)",
-                lineHeight: 1.4,
-              }}
-            >
-              {player.guardians.length === 0 ? (
-                <span
-                  style={{
-                    color: "color-mix(in srgb, var(--navy) 40%, white)",
-                    fontStyle: "italic",
-                  }}
-                >
-                  No guardian linked
-                </span>
-              ) : (
-                player.guardians.map((g, idx) => (
-                  <span key={g.userId}>
-                    <span style={{ fontWeight: 600 }}>
-                      {g.name ?? g.email.split("@")[0]}
-                    </span>
-                    {showContacts && g.phone ? (
-                      <span
-                        style={{
-                          marginLeft: "0.3rem",
-                          color:
-                            "color-mix(in srgb, var(--navy) 50%, white)",
-                          fontVariantNumeric: "tabular-nums",
-                          fontSize: "0.78rem",
-                        }}
-                      >
-                        {g.phone}
-                      </span>
-                    ) : null}
-                    {idx < player.guardians.length - 1 ? (
-                      <span
-                        style={{
-                          margin: "0 0.4rem",
-                          color:
-                            "color-mix(in srgb, var(--navy) 25%, white)",
-                        }}
-                      >
-                        ·
-                      </span>
-                    ) : null}
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
-        ))}
       </div>
     </section>
   );

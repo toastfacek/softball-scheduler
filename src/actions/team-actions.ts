@@ -94,6 +94,40 @@ async function upsertAdultWithEmail(input: {
   return created.id;
 }
 
+const updatePlayerSchema = z.object({
+  playerId: z.string().uuid(),
+  preferredName: z.string().trim().optional(),
+  jerseyNumber: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value ? Number(value) : null))
+    .pipe(z.number().int().min(0).max(99).nullable()),
+});
+
+export async function updatePlayerAction(formData: FormData) {
+  const viewer = await requireTeamManager();
+  const parsed = updatePlayerSchema.parse({
+    playerId: formData.get("playerId"),
+    preferredName: formData.get("preferredName"),
+    jerseyNumber: formData.get("jerseyNumber"),
+  });
+
+  await db
+    .update(players)
+    .set({
+      preferredName: parsed.preferredName || null,
+      jerseyNumber: parsed.jerseyNumber,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(players.id, parsed.playerId), eq(players.teamId, viewer.teamId)),
+    );
+
+  revalidatePath("/team");
+  revalidatePath("/schedule");
+}
+
 export async function createPlayerAction(formData: FormData) {
   const viewer = await requireTeamManager();
   const parsed = playerSchema.parse({
