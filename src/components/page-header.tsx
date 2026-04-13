@@ -15,15 +15,15 @@ export function PageHeader({ title, back, action }: PageHeaderProps) {
   return (
     <header className="app-top-bar">
       <div className="app-top-bar-inner">
-        <div className="app-top-bar-left">
-          {back ? (
+        {back ? (
+          <div className="app-top-bar-left">
             <Link href={back} className="icon-btn" aria-label="Back">
               <ChevronLeftIcon />
             </Link>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
         <div className="app-top-bar-title">{title}</div>
-        <div className="app-top-bar-right">{action}</div>
+        {action ? <div className="app-top-bar-right">{action}</div> : null}
       </div>
     </header>
   );
@@ -41,7 +41,7 @@ export function PageHeaderWithHistoryBack({
           <BackButton />
         </div>
         <div className="app-top-bar-title">{title}</div>
-        <div className="app-top-bar-right">{action}</div>
+        {action ? <div className="app-top-bar-right">{action}</div> : null}
       </div>
     </header>
   );

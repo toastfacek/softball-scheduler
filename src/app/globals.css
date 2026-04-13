@@ -231,9 +231,9 @@ select {
 
 .app-top-bar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 40;
-  height: 52px; padding: 0 0.625rem;
-  display: grid; grid-template-columns: 1fr auto 1fr;
-  align-items: center; gap: 0.25rem;
+  height: 52px; padding: 0 0.875rem;
+  display: flex;
+  align-items: center;
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--paper) 96%, white),
@@ -246,20 +246,24 @@ select {
 }
 .app-top-bar-inner {
   width: 100%; max-width: 520px; margin: 0 auto;
-  display: grid; grid-template-columns: 1fr auto 1fr;
-  align-items: center; gap: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 .app-top-bar-left, .app-top-bar-right {
+  flex: 0 0 auto;
   display: flex; align-items: center; gap: 0.375rem;
 }
-.app-top-bar-right { justify-content: flex-end; }
+.app-top-bar-right { justify-content: flex-end; margin-left: auto; }
 .app-top-bar-title {
+  flex: 1 1 auto;
   font-family: var(--font-barlow-condensed), sans-serif;
   font-weight: 700; font-size: 1.15rem;
   color: var(--navy-strong); letter-spacing: -0.01em;
-  text-align: center;
+  text-align: left;
+  min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: none;
 }
 
 .icon-btn {
@@ -310,6 +314,7 @@ select {
 /* ——— Tablet: widen content column ——— */
 @media (min-width: 640px) {
   .app-main { max-width: 720px; padding: calc(52px + 1rem) 1.25rem calc(84px + 1.25rem); gap: 1rem; }
+  .app-top-bar { padding: 0 1.25rem; }
   .app-top-bar-inner { max-width: 720px; }
   .app-bottom-nav-inner { max-width: 720px; }
 }
