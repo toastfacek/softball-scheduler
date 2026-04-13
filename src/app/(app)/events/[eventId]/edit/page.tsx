@@ -27,7 +27,7 @@ export default async function EditEventPage({
       <PageHeader title="Edit event" back={`/events/${eventId}`} />
       <form
         action={updateEventAction}
-        className="shell-panel rounded-[1.25rem] p-5"
+        className="shell-panel rounded-tile p-5"
       >
         <div className="orange-bar-top" />
         <div className="relative flex flex-col gap-4">

@@ -56,7 +56,7 @@ export default async function EventDetailPage({
       />
 
       <div className="page-split">
-      <section className="shell-panel rounded-[1.25rem] p-4">
+      <section className="shell-panel rounded-tile p-4">
         <div className="orange-bar-top" />
         <div className="relative flex flex-wrap items-center gap-2 mb-2">
           <span

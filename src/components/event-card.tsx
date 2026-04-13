@@ -45,7 +45,7 @@ export function EventCard({ event }: EventCardProps) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className="shell-panel group relative overflow-hidden flex flex-col gap-5 rounded-[2rem] p-5 hover:-translate-y-1 sm:p-6"
+      className="shell-panel group relative overflow-hidden flex flex-col gap-5 rounded-4xl p-5 hover:-translate-y-1 sm:p-6"
     >
       <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,var(--orange-strong),color-mix(in_srgb,var(--orange)_70%,white),var(--orange-strong))]" />
       <div className="absolute right-0 top-0 h-28 w-28 bg-[radial-gradient(circle,color-mix(in_srgb,var(--orange)_18%,transparent),transparent_68%)]" />
@@ -56,7 +56,7 @@ export function EventCard({ event }: EventCardProps) {
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-3xl leading-none text-[var(--navy-strong)]">
+        <h3 className="text-3xl leading-none text-navy-strong">
           {event.title}
         </h3>
         <div className="flex items-center gap-2 text-sm font-medium text-[color-mix(in_srgb,var(--navy)_72%,white)]">
@@ -72,7 +72,7 @@ export function EventCard({ event }: EventCardProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <div className="rounded-[1.25rem] border border-[color-mix(in_srgb,var(--success)_26%,white)] bg-[color-mix(in_srgb,var(--success)_10%,white)] px-3 py-3">
+        <div className="rounded-tile border border-[color-mix(in_srgb,var(--success)_26%,white)] bg-[color-mix(in_srgb,var(--success)_10%,white)] p-3">
           <div className="text-2xl font-black text-[color-mix(in_srgb,var(--success)_78%,black)]">
             {event.playerSummary.AVAILABLE}
           </div>
@@ -80,7 +80,7 @@ export function EventCard({ event }: EventCardProps) {
             Available
           </div>
         </div>
-        <div className="rounded-[1.25rem] border border-[color-mix(in_srgb,var(--warning)_26%,white)] bg-[color-mix(in_srgb,var(--warning)_18%,white)] px-3 py-3">
+        <div className="rounded-tile border border-[color-mix(in_srgb,var(--warning)_26%,white)] bg-[color-mix(in_srgb,var(--warning)_18%,white)] p-3">
           <div className="text-2xl font-black text-[color-mix(in_srgb,var(--warning)_80%,black)]">
             {event.playerSummary.MAYBE}
           </div>
@@ -88,7 +88,7 @@ export function EventCard({ event }: EventCardProps) {
             Maybe
           </div>
         </div>
-        <div className="rounded-[1.25rem] border border-[color-mix(in_srgb,var(--danger)_22%,white)] bg-[color-mix(in_srgb,var(--danger)_10%,white)] px-3 py-3">
+        <div className="rounded-tile border border-[color-mix(in_srgb,var(--danger)_22%,white)] bg-[color-mix(in_srgb,var(--danger)_10%,white)] p-3">
           <div className="text-2xl font-black text-[color-mix(in_srgb,var(--danger)_82%,black)]">
             {event.playerSummary.UNAVAILABLE}
           </div>
@@ -96,8 +96,8 @@ export function EventCard({ event }: EventCardProps) {
             Out
           </div>
         </div>
-        <div className="rounded-[1.25rem] border border-[color-mix(in_srgb,var(--navy)_12%,white)] bg-[color-mix(in_srgb,var(--navy)_8%,white)] px-3 py-3">
-          <div className="text-2xl font-black text-[var(--navy-strong)]">
+        <div className="rounded-tile border border-[color-mix(in_srgb,var(--navy)_12%,white)] bg-[color-mix(in_srgb,var(--navy)_8%,white)] p-3">
+          <div className="text-2xl font-black text-navy-strong">
             {event.playerSummary.pending}
           </div>
           <div className="text-[0.72rem] font-black uppercase tracking-[0.16em] text-[color-mix(in_srgb,var(--navy)_68%,white)]">
@@ -107,8 +107,8 @@ export function EventCard({ event }: EventCardProps) {
       </div>
 
       {event.viewerPlayers.length > 0 ? (
-        <div className="rounded-[1.5rem] border border-[color-mix(in_srgb,var(--navy)_12%,white)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--paper)_92%,white),color-mix(in_srgb,var(--paper)_82%,var(--background)))] p-4">
-          <div className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-[var(--navy-strong)]">
+        <div className="rounded-3xl border border-[color-mix(in_srgb,var(--navy)_12%,white)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--paper)_92%,white),color-mix(in_srgb,var(--paper)_82%,var(--background)))] p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em] text-navy-strong">
             <UserCheck className="h-4 w-4" />
             Your family
           </div>
@@ -116,7 +116,7 @@ export function EventCard({ event }: EventCardProps) {
             {event.viewerPlayers.map((player) => (
               <div
                 key={player.id}
-                className="flex items-center gap-2 rounded-[1rem] border border-[var(--line)] bg-white px-3 py-2 text-sm font-medium"
+                className="flex items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2 text-sm font-medium"
               >
                 <span>{player.name}</span>
                 <ResponseChip status={player.response} />
@@ -126,7 +126,7 @@ export function EventCard({ event }: EventCardProps) {
         </div>
       ) : null}
 
-      <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.12em] text-[var(--orange-strong)]">
+      <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.12em] text-orange-strong">
         View event details
         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
       </div>

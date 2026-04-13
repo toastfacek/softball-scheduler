@@ -16,7 +16,7 @@ export default async function TeamSettingsPage() {
       <PageHeader title="Team" back="/settings" />
       <form
         action={updateTeamAction}
-        className="shell-panel rounded-[1.25rem] p-5"
+        className="shell-panel rounded-tile p-5"
       >
         <div className="orange-bar-top" />
         <div className="relative flex flex-col gap-4">

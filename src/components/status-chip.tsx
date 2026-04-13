@@ -12,14 +12,14 @@ const responseStyles: Record<AttendanceStatus, string> = {
 
 const eventStyles: Record<EventType, string> = {
   GAME:
-    "border-[color-mix(in_srgb,var(--orange)_36%,white)] bg-[color-mix(in_srgb,var(--orange)_18%,white)] text-[var(--navy-strong)]",
+    "border-[color-mix(in_srgb,var(--orange)_36%,white)] bg-[color-mix(in_srgb,var(--orange)_18%,white)] text-navy-strong",
   PRACTICE:
-    "border-[color-mix(in_srgb,var(--navy)_16%,white)] bg-[color-mix(in_srgb,var(--navy)_8%,white)] text-[var(--navy)]",
+    "border-[color-mix(in_srgb,var(--navy)_16%,white)] bg-[color-mix(in_srgb,var(--navy)_8%,white)] text-navy",
 };
 
 const eventStatusStyles: Record<EventStatus, string> = {
   SCHEDULED:
-    "border-[color-mix(in_srgb,var(--navy)_16%,white)] bg-[color-mix(in_srgb,var(--navy)_10%,white)] text-[var(--navy-strong)]",
+    "border-[color-mix(in_srgb,var(--navy)_16%,white)] bg-[color-mix(in_srgb,var(--navy)_10%,white)] text-navy-strong",
   CANCELED:
     "border-[color-mix(in_srgb,var(--danger)_28%,white)] bg-[color-mix(in_srgb,var(--danger)_14%,white)] text-[color-mix(in_srgb,var(--danger)_82%,black)]",
   COMPLETED:
@@ -37,7 +37,7 @@ export function ResponseChip({
     return (
       <span
         className={cn(
-          "inline-flex rounded-[0.8rem] border border-dashed border-[var(--line)] px-3 py-1.5 text-[0.7rem] font-black uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--navy)_64%,white)]",
+          "inline-flex rounded-[0.8rem] border border-dashed border-line px-3 py-1.5 text-[0.7rem] font-black uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--navy)_64%,white)]",
           className,
         )}
       >
