@@ -8,6 +8,8 @@ import {
   lt,
   sql,
 } from "drizzle-orm";
+import { addDays, format } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -851,9 +853,20 @@ export async function listEventUpdateRecipients(
   );
 }
 
-export async function getPendingReminderEvents(now = new Date()) {
-  const windowStart = new Date(now.getTime() + 23 * 60 * 60 * 1000 + 45 * 60 * 1000);
-  const windowEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000 + 15 * 60 * 1000);
+// Cron runs once/day at 14:00 UTC (~10am ET). We want to remind guardians
+// about every event happening on the *next calendar day* in the team's
+// timezone — i.e. at 10am Monday, catch all Tuesday events. The
+// reminder_deliveries unique index (event_id, user_id, reminder_type) keeps
+// this safe against re-runs.
+export async function getPendingReminderEvents(
+  now = new Date(),
+  teamTimeZone = "America/New_York",
+) {
+  // TODO: compute [windowStart, windowEnd) as the half-open UTC range that
+  // covers "tomorrow" in `teamTimeZone`. Hint: Intl.DateTimeFormat with
+  // timeZone + parts can get you the team-local Y/M/D for `now`, then add 1
+  // day for the start and 2 for the end. Return a Date for each bound.
+  const { windowStart, windowEnd } = computeNextDayWindow(now, teamTimeZone);
 
   return db.query.events.findMany({
     where: and(
@@ -863,6 +876,19 @@ export async function getPendingReminderEvents(now = new Date()) {
     ),
     orderBy: [asc(events.startsAt)],
   });
+}
+
+function computeNextDayWindow(
+  now: Date,
+  teamTimeZone: string,
+): { windowStart: Date; windowEnd: Date } {
+  const localNow = toZonedTime(now, teamTimeZone);
+  const tomorrow = format(addDays(localNow, 1), "yyyy-MM-dd");
+  const dayAfter = format(addDays(localNow, 2), "yyyy-MM-dd");
+  return {
+    windowStart: fromZonedTime(`${tomorrow}T00:00:00`, teamTimeZone),
+    windowEnd: fromZonedTime(`${dayAfter}T00:00:00`, teamTimeZone),
+  };
 }
 
 export async function getNonResponderGuardiansForEvent(eventId: string, teamId: string) {
