@@ -1074,6 +1074,17 @@ select {
 .event-form-datetime {
   min-width: 0;
   max-width: 100%;
+  overflow: hidden;
+}
+.event-form-datetime::-webkit-datetime-edit {
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+.event-form-datetime::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
 }
 
 /* ──── Auth pages (sign-in, check-email) ──── */
