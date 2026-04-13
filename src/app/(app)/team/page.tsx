@@ -13,10 +13,19 @@ export default async function TeamPage() {
   const showContacts = canManagePrivateContacts(viewer);
   const canManage = canManageTeam(viewer);
 
-  const admins = data.staff.filter((s) => s.roles.includes("ADMIN"));
-  const coaches = data.staff.filter(
-    (s) => s.roles.includes("COACH") && !s.roles.includes("ADMIN"),
-  );
+  const staff = data.staff
+    .filter(
+      (person) =>
+        person.roles.includes("COACH") || person.roles.includes("ADMIN"),
+    )
+    .sort((left, right) => {
+      const priority = getStaffPriority(left) - getStaffPriority(right);
+      if (priority !== 0) {
+        return priority;
+      }
+
+      return staffSortLabel(left).localeCompare(staffSortLabel(right));
+    });
 
   const roster = [...data.players].sort((a, b) => {
     const ja = a.jerseyNumber ?? Number.POSITIVE_INFINITY;
@@ -43,15 +52,8 @@ export default async function TeamPage() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
         <StaffSection
-          title="Admins"
-          roles={["ADMIN"]}
-          staff={admins}
-          showContacts={showContacts}
-        />
-        <StaffSection
-          title="Coaches"
-          roles={["COACH"]}
-          staff={coaches}
+          title="Staff"
+          staff={staff}
           showContacts={showContacts}
         />
         <RosterSection
@@ -69,7 +71,51 @@ type Staffer = {
   email: string;
   phone: string | null;
   roles: TeamRole[];
+  titles: string[];
 };
+
+function staffSortLabel(staffer: Staffer) {
+  return (staffer.name ?? staffer.email).trim().toLowerCase();
+}
+
+function isHeadCoach(staffer: Staffer) {
+  return staffer.titles.some((title) => title.toLowerCase() === "head coach");
+}
+
+function getStaffPriority(staffer: Staffer) {
+  if (isHeadCoach(staffer)) return 0;
+  if (staffer.roles.includes("COACH")) return 1;
+  if (staffer.roles.includes("ADMIN")) return 2;
+  return 3;
+}
+
+function getStaffBadges(staffer: Staffer) {
+  const badges: Array<{ label: string; variant: "lead" | "role" }> = [];
+  const explicitTitles = staffer.titles
+    .map((title) => title.trim())
+    .filter(Boolean);
+
+  for (const title of explicitTitles) {
+    badges.push({
+      label: title,
+      variant: title.toLowerCase() === "head coach" ? "lead" : "role",
+    });
+  }
+
+  if (staffer.roles.includes("COACH") && explicitTitles.length === 0) {
+    badges.push({ label: "Coach", variant: "role" });
+  }
+
+  if (staffer.roles.includes("ADMIN")) {
+    badges.push({ label: "Admin", variant: "role" });
+  }
+
+  return Array.from(
+    new Map(
+      badges.map((badge) => [badge.label.toLowerCase(), badge]),
+    ).values(),
+  );
+}
 
 function StaffSection({
   title,
@@ -77,7 +123,6 @@ function StaffSection({
   showContacts,
 }: {
   title: string;
-  roles: TeamRole[];
   staff: Staffer[];
   showContacts: boolean;
 }) {
@@ -93,43 +138,66 @@ function StaffSection({
           gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
         }}
       >
-        {staff.map((s) => (
-          <div
-            key={s.userId}
-            style={{
-              background: "var(--paper)",
-              border:
-                "1px solid color-mix(in srgb, var(--line) 60%, transparent)",
-              borderRadius: "0.9rem",
-              padding: "0.75rem 0.875rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.2rem",
-            }}
-          >
+        {staff.map((s) => {
+          const badges = getStaffBadges(s);
+
+          return (
             <div
+              key={s.userId}
               style={{
-                fontWeight: 700,
-                fontSize: "0.95rem",
-                color: "var(--navy-strong)",
-                letterSpacing: "-0.005em",
+                background: "var(--paper)",
+                border:
+                  "1px solid color-mix(in srgb, var(--line) 60%, transparent)",
+                borderRadius: "0.9rem",
+                padding: "0.75rem 0.875rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.35rem",
               }}
             >
-              {s.name ?? s.email.split("@")[0]}
-            </div>
-            {showContacts ? (
               <div
                 style={{
-                  fontSize: "0.78rem",
-                  color: "color-mix(in srgb, var(--navy) 64%, white)",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: "0.45rem",
                 }}
               >
-                {s.email}
-                {s.phone ? ` · ${s.phone}` : ""}
+                <div
+                  style={{
+                    fontWeight: 700,
+                    fontSize: "0.95rem",
+                    color: "var(--navy-strong)",
+                    letterSpacing: "-0.005em",
+                  }}
+                >
+                  {s.name ?? s.email.split("@")[0]}
+                </div>
+                {badges.map((badge) => (
+                  <span
+                    key={badge.label}
+                    className={`chip ${
+                      badge.variant === "lead" ? "chip--staff-lead" : "chip--role"
+                    }`}
+                  >
+                    {badge.label}
+                  </span>
+                ))}
               </div>
-            ) : null}
-          </div>
-        ))}
+              {showContacts ? (
+                <div
+                  style={{
+                    fontSize: "0.78rem",
+                    color: "color-mix(in srgb, var(--navy) 64%, white)",
+                  }}
+                >
+                  {s.email}
+                  {s.phone ? ` · ${s.phone}` : ""}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

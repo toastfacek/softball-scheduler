@@ -179,6 +179,7 @@ export const teamMemberships = pgTable(
       .notNull()
       .references(() => adultUsers.id, { onDelete: "cascade" }),
     role: teamRoleEnum("role").notNull(),
+    title: text("title"),
     createdAt,
     updatedAt,
   },
@@ -531,4 +532,3 @@ export type EventStatus = (typeof eventStatusEnum.enumValues)[number];
 export type AttendanceStatus = (typeof attendanceStatusEnum.enumValues)[number];
 export type ActualAttendance = (typeof actualAttendanceEnum.enumValues)[number];
 export type EmailKind = (typeof emailKindEnum.enumValues)[number];
-

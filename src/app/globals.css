@@ -529,6 +529,11 @@ select {
   background: color-mix(in srgb, var(--harbor) 14%, white);
   color: color-mix(in srgb, var(--navy) 72%, white);
 }
+.chip--staff-lead {
+  border-color: color-mix(in srgb, var(--orange) 40%, white);
+  background: color-mix(in srgb, var(--orange) 16%, white);
+  color: var(--navy-strong);
+}
 
 .btn-primary {
   display: inline-flex; align-items: center; justify-content: center;

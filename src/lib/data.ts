@@ -33,7 +33,7 @@ import {
   type TeamRole,
 } from "@/db/schema";
 import type { ViewerContext } from "@/lib/authz";
-import { fullName, roleLabel } from "@/lib/utils";
+import { fullName } from "@/lib/utils";
 
 export type LinkedPlayer = {
   id: string;
@@ -424,6 +424,7 @@ export async function getTeamPageData(viewer: AppViewer) {
         email: adultUsers.email,
         phone: adultUsers.phone,
         role: teamMemberships.role,
+        title: teamMemberships.title,
       })
       .from(teamMemberships)
       .innerJoin(adultUsers, eq(teamMemberships.userId, adultUsers.id))
@@ -461,6 +462,7 @@ export async function getTeamPageData(viewer: AppViewer) {
       email: string;
       phone: string | null;
       roles: TeamRole[];
+      titles: string[];
     }
   >();
 
@@ -469,6 +471,9 @@ export async function getTeamPageData(viewer: AppViewer) {
     if (existing) {
       if (!existing.roles.includes(row.role)) {
         existing.roles.push(row.role);
+      }
+      if (row.title && !existing.titles.includes(row.title)) {
+        existing.titles.push(row.title);
       }
       continue;
     }
@@ -479,6 +484,7 @@ export async function getTeamPageData(viewer: AppViewer) {
       email: row.email,
       phone: row.phone,
       roles: [row.role],
+      titles: row.title ? [row.title] : [],
     });
   }
 
@@ -493,10 +499,6 @@ export async function getTeamPageData(viewer: AppViewer) {
       guardians: guardiansByPlayer.get(player.id) ?? [],
     })),
     staff: Array.from(staffByUser.values())
-      .map((staffer) => ({
-        ...staffer,
-        roleLabel: staffer.roles.map((role) => roleLabel(role)).join(" · "),
-      }))
       .sort((left, right) => (left.name || left.email).localeCompare(right.name || right.email)),
     positions: positionRows,
   };

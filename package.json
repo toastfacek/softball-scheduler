@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/scripts/seed.ts",
+    "db:seed:roster": "tsx src/scripts/seed-private-roster.ts",
     "db:studio": "drizzle-kit studio",
     "cron:reminders": "tsx src/scripts/send-reminders.ts"
   },

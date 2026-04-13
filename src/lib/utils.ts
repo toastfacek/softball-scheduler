@@ -12,6 +12,20 @@ export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+export function buildEmailFromAddress(address: string, displayName: string) {
+  const trimmedAddress = address.trim();
+  const trimmedDisplayName = displayName.trim();
+
+  if (!trimmedAddress || !trimmedDisplayName) {
+    return trimmedAddress;
+  }
+
+  const match = trimmedAddress.match(/<([^>]+)>/);
+  const emailOnly = match?.[1]?.trim() ?? trimmedAddress;
+
+  return `${trimmedDisplayName} <${emailOnly}>`;
+}
+
 export function slugify(value: string) {
   return value
     .trim()

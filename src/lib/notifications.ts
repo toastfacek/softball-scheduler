@@ -8,7 +8,11 @@ import {
   type EmailKind,
 } from "@/db/schema";
 import { env, isResendConfigured } from "@/lib/env";
-import { markdownishToHtml, normalizeEmail } from "@/lib/utils";
+import {
+  buildEmailFromAddress,
+  markdownishToHtml,
+  normalizeEmail,
+} from "@/lib/utils";
 
 type RecipientInput = {
   email: string;
@@ -44,6 +48,10 @@ type SendTeamEmailInput = {
 };
 
 const resend = new Resend(env.RESEND_API_KEY || "re_placeholder_key");
+const resendFromAddress = buildEmailFromAddress(
+  env.AUTH_RESEND_FROM,
+  env.AUTH_RESEND_FROM_NAME,
+);
 
 export async function sendTeamEmail(input: SendTeamEmailInput) {
   const uniqueRecipients = Array.from(
@@ -97,7 +105,7 @@ export async function sendTeamEmail(input: SendTeamEmailInput) {
         }
 
         const response = await resend.emails.send({
-          from: env.AUTH_RESEND_FROM,
+          from: resendFromAddress,
           to: recipient.email,
           subject,
           text: body,
@@ -147,4 +155,3 @@ export async function sendTeamEmail(input: SendTeamEmailInput) {
     sendResults,
   };
 }
-

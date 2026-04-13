@@ -11,7 +11,12 @@ import {
   verificationTokens,
 } from "@/db/schema";
 import { env } from "@/lib/env";
-import { normalizeEmail } from "@/lib/utils";
+import { buildEmailFromAddress, normalizeEmail } from "@/lib/utils";
+
+const resendFromAddress = buildEmailFromAddress(
+  env.AUTH_RESEND_FROM,
+  env.AUTH_RESEND_FROM_NAME,
+);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -31,7 +36,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Resend({
       apiKey: env.RESEND_API_KEY,
-      from: env.AUTH_RESEND_FROM,
+      from: resendFromAddress,
       normalizeIdentifier(identifier) {
         return normalizeEmail(identifier);
       },
