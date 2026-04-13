@@ -1067,6 +1067,15 @@ select {
 }
 .team-checkbox input { width: auto; accent-color: var(--orange-strong); }
 
+.event-form-grid > * {
+  min-width: 0;
+}
+
+.event-form-datetime {
+  min-width: 0;
+  max-width: 100%;
+}
+
 /* ──── Auth pages (sign-in, check-email) ──── */
 .auth-shell {
   width: 100%; max-width: 380px;

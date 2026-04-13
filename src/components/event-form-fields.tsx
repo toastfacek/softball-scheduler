@@ -12,7 +12,7 @@ type EventSeed = {
 
 export function EventFormFields({ event }: { event?: EventSeed }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="event-form-grid grid gap-4 sm:grid-cols-2">
       {event?.id ? <input type="hidden" name="eventId" value={event.id} /> : null}
 
       <div className="space-y-2 sm:col-span-2">
@@ -49,6 +49,7 @@ export function EventFormFields({ event }: { event?: EventSeed }) {
           id="startsAt"
           name="startsAt"
           type="datetime-local"
+          className="event-form-datetime"
           defaultValue={event?.startsAt ? dateToLocalInput(event.startsAt) : ""}
           required
         />
@@ -66,4 +67,3 @@ export function EventFormFields({ event }: { event?: EventSeed }) {
     </div>
   );
 }
-
