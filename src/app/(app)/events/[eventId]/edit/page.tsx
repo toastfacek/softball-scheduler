@@ -31,7 +31,15 @@ export default async function EditEventPage({
       >
         <div className="orange-bar-top" />
         <div className="relative flex flex-col gap-4">
-          <LocationSearch initialVenue={data.event.venueName} />
+          <LocationSearch
+            initial={{
+              venueName: data.event.venueName ?? "",
+              addressLine1: data.event.addressLine1 ?? "",
+              city: data.event.city ?? "",
+              state: data.event.state ?? "",
+              postalCode: data.event.postalCode ?? "",
+            }}
+          />
           <EventFormFields event={data.event} />
           <SubmitButton label="Save changes" />
         </div>

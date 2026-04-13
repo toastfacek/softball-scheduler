@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { requireTeamManager, requireViewer } from "@/actions/helpers";
 import { db } from "@/db";
-import { adultUsers } from "@/db/schema";
+import { adultUsers, teams } from "@/db/schema";
 import { listTeamRecipients } from "@/lib/data";
 import { sendTeamEmail } from "@/lib/notifications";
 
@@ -16,6 +16,31 @@ const profileSchema = z.object({
   phone: z.string().trim().optional(),
   reminderOptIn: z.boolean().default(true),
 });
+
+const teamSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  brandSubtitle: z.string().trim().max(120).optional(),
+});
+
+export async function updateTeamAction(formData: FormData) {
+  const viewer = await requireTeamManager();
+  const parsed = teamSchema.parse({
+    name: formData.get("name"),
+    brandSubtitle: formData.get("brandSubtitle"),
+  });
+
+  await db
+    .update(teams)
+    .set({
+      name: parsed.name,
+      brandSubtitle: parsed.brandSubtitle || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(teams.id, viewer.teamId));
+
+  revalidatePath("/", "layout");
+  redirect("/settings?saved=team");
+}
 
 const broadcastSchema = z.object({
   scope: z.enum(["ALL", "GUARDIANS", "STAFF"]),

@@ -1,13 +1,10 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/page-header";
+import { ScheduleCalendar } from "@/components/schedule-calendar";
 import { canManageTeam } from "@/lib/authz";
 import { getSchedulePageData, getViewerContext } from "@/lib/data";
-import {
-  formatEventDateTimeRange,
-  formatEventDay,
-  formatEventTime,
-} from "@/lib/time";
+import { formatEventDay, formatEventTime } from "@/lib/time";
 
 type StatusBit =
   | { kind: "dot"; className: string; label: string }
@@ -36,14 +33,13 @@ export default async function SchedulePage() {
   if (!viewer) return null;
 
   const data = await getSchedulePageData(viewer);
-  const upcoming = data.events.filter((e) => e.id !== data.nextEvent?.id);
 
   return (
     <>
       <PageHeader
         title="Schedule"
         action={
-          canManageTeam(viewer) ? (
+          canManageTeam(viewer) && data.events.length > 0 ? (
             <Link
               href="/schedule/new"
               className="icon-btn icon-btn--primary"
@@ -55,132 +51,81 @@ export default async function SchedulePage() {
         }
       />
 
-      <div className="page-split">
-      {data.nextEvent ? (
-        <Link href={`/events/${data.nextEvent.id}`} className="next-event">
-          <div
-            style={{
-              fontSize: "0.58rem",
-              fontWeight: 800,
-              textTransform: "uppercase",
-              letterSpacing: "0.16em",
-              color: "color-mix(in srgb, var(--orange) 86%, white)",
-            }}
-          >
-            Next up
-          </div>
-          <h2
-            style={{
-              fontSize: "1.75rem",
-              color: "white",
-              marginTop: "0.25rem",
-            }}
-          >
-            {data.nextEvent.title}
-          </h2>
-          <div className="next-event-meta">
-            <ClockIcon />
-            <span>
-              {formatEventDateTimeRange(
-                data.nextEvent.startsAt,
-                data.nextEvent.endsAt,
-              )}
-            </span>
-          </div>
-          {data.nextEvent.venueName ? (
-            <div className="next-event-meta">
-              <PinIcon />
-              <span>
-                {data.nextEvent.venueName}
-                {data.nextEvent.city ? `, ${data.nextEvent.city}` : ""}
-              </span>
-            </div>
-          ) : null}
-          {data.nextEvent.viewerPlayers.length > 0 ? (
-            <div
-              style={{
-                marginTop: "0.75rem",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.375rem",
-                borderRadius: "0.6rem",
-                border:
-                  "1px solid color-mix(in srgb, var(--success) 36%, transparent)",
-                background:
-                  "color-mix(in srgb, var(--success) 18%, transparent)",
-                padding: "0.25rem 0.5rem",
-                fontSize: "0.6rem",
-                fontWeight: 800,
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                color: "color-mix(in srgb, var(--success) 88%, white)",
-              }}
-            >
-              {data.nextEvent.viewerPlayers[0].name.split(" ")[0]} ·{" "}
-              {(
-                data.nextEvent.viewerPlayers[0].response ?? "waiting"
-              ).toLowerCase()}
-            </div>
-          ) : null}
-        </Link>
-      ) : (
-        <div
-          className="shell-panel"
-          style={{
-            padding: "1.25rem",
-            borderRadius: "1.25rem",
-            textAlign: "center",
-            color: "color-mix(in srgb, var(--navy) 68%, white)",
-          }}
-        >
-          No events yet.{" "}
-          {canManageTeam(viewer)
-            ? "Tap + to add one."
-            : "Your coach hasn't scheduled any yet."}
-        </div>
-      )}
+      <div className="page-split page-split--narrow-right">
+      <div className="schedule-main-col">
+        <ScheduleCalendar
+          events={data.events.map((e) => ({
+            id: e.id,
+            title: e.title,
+            type: e.type,
+            startsAt: e.startsAt,
+          }))}
+          canAddEvents={canManageTeam(viewer)}
+        />
+      </div>
 
-      {upcoming.length > 0 ? (
-        <div
-          className="shell-panel page-split-stretch"
-          style={{ padding: "0.25rem 0.875rem", borderRadius: "1.25rem" }}
-        >
-          <div className="section-head">Upcoming</div>
-          <div className="row-list">
-            {upcoming.map((event) => {
-              const { mo, dy } = splitEventDay(event.startsAt);
-              const statusBit = summaryDot(
-                event.viewerPlayers[0]?.response ?? null,
-              );
-              return (
-                <Link
-                  key={event.id}
-                  href={`/events/${event.id}`}
-                  className="event-row"
-                >
-                  <div className="event-date">
-                    <div className="event-date-mo">{mo}</div>
-                    <div className="event-date-dy">{dy}</div>
-                  </div>
-                  <div className="row-grow">
-                    <div className="row-title">{event.title}</div>
-                    <div className="row-sub">
-                      {formatEventTime(event.startsAt)} ·{" "}
-                      {event.type === "GAME" ? "Game" : "Practice"}
+      <aside className="schedule-aside">
+        {data.events.length > 0 ? (
+          <div
+            className="shell-panel"
+            style={{ padding: "0.25rem 0.875rem", borderRadius: "1.25rem" }}
+          >
+            <div className="section-head">Events</div>
+            <div className="row-list">
+              {data.events.map((event) => {
+                const { mo, dy } = splitEventDay(event.startsAt);
+                const statusBit = summaryDot(
+                  event.viewerPlayers[0]?.response ?? null,
+                );
+                return (
+                  <Link
+                    key={event.id}
+                    href={`/events/${event.id}`}
+                    className="event-row"
+                  >
+                    <div className="event-date">
+                      <div className="event-date-mo">{mo}</div>
+                      <div className="event-date-dy">{dy}</div>
                     </div>
-                  </div>
-                  {statusBit ? (
-                    <span
-                      className={`dot ${statusBit.className}`}
-                      aria-label={statusBit.label}
-                    />
-                  ) : null}
-                </Link>
-              );
-            })}
+                    <div className="row-grow">
+                      <div className="row-title">{event.title}</div>
+                      <div className="row-sub">
+                        {formatEventTime(event.startsAt)} ·{" "}
+                        {event.type === "GAME" ? "Game" : "Practice"}
+                      </div>
+                    </div>
+                    {statusBit ? (
+                      <span
+                        className={`dot ${statusBit.className}`}
+                        aria-label={statusBit.label}
+                      />
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <div className="shell-panel schedule-empty">
+            <div className="schedule-empty-eyebrow">Season warming up</div>
+            <h2 className="schedule-empty-title">
+              {canManageTeam(viewer)
+                ? "The season is waiting."
+                : "Your coach hasn't scheduled anything yet."}
+            </h2>
+            <p className="schedule-empty-sub">
+              {canManageTeam(viewer)
+                ? "Add a practice or a game and every guardian gets an RSVP email."
+                : "You'll get an email the moment something's on the books."}
+            </p>
+            {canManageTeam(viewer) ? (
+              <Link href="/schedule/new" className="btn-primary schedule-empty-cta">
+                Schedule first event
+              </Link>
+            ) : null}
+          </div>
+        )}
+      </aside>
       </div>
     </>
   );
@@ -203,34 +148,3 @@ function PlusIcon() {
   );
 }
 
-function ClockIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  );
-}
-
-function PinIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-  );
-}

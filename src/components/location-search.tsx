@@ -66,18 +66,17 @@ function toFill(hit: NominatimHit): Fill {
 }
 
 /**
- * Location autocomplete that prefills the existing `venueName / addressLine1 /
- * city / state / postalCode` fields — designed to sit above `EventFormFields`
- * as an optional "search to populate" helper without replacing the underlying
- * text inputs (coaches can still hand-edit after selecting).
+ * Location autocomplete that is the *only* location input on the event form.
+ * Maintains venue + address in internal React state and submits via hidden
+ * inputs. Users never hand-edit individual fields; they search, pick, or clear.
  *
  * Uses OpenStreetMap Nominatim (keyless, rate-limited ~1 req/sec). For
  * production traffic swap to Mapbox / Google Places via an internal API route.
  */
 export function LocationSearch({
-  initialVenue,
+  initial,
 }: {
-  initialVenue?: string | null;
+  initial?: Partial<Fill> | null;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NominatimHit[]>([]);
@@ -85,7 +84,14 @@ export function LocationSearch({
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "empty">(
     "idle",
   );
-  const [chosen, setChosen] = useState<string | null>(initialVenue || null);
+  const [fill, setFill] = useState<Fill>({
+    venueName: initial?.venueName ?? "",
+    addressLine1: initial?.addressLine1 ?? "",
+    city: initial?.city ?? "",
+    state: initial?.state ?? "",
+    postalCode: initial?.postalCode ?? "",
+  });
+  const chosen = fill.venueName || null;
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -131,47 +137,41 @@ export function LocationSearch({
   }
 
   function select(hit: NominatimHit) {
-    const fill = toFill(hit);
-    // Populate the sibling form fields by id (set by EventFormFields).
-    for (const [id, value] of Object.entries(fill)) {
-      const el = document.getElementById(id) as
-        | HTMLInputElement
-        | HTMLTextAreaElement
-        | null;
-      if (el) {
-        el.value = value;
-      }
-    }
-    setChosen(fill.venueName || hit.display_name);
+    const next = toFill(hit);
+    if (!next.venueName) next.venueName = hit.display_name.split(",")[0] ?? "";
+    setFill(next);
     setOpen(false);
     setQuery("");
   }
 
   function clear() {
-    setChosen(null);
+    setFill({
+      venueName: "",
+      addressLine1: "",
+      city: "",
+      state: "",
+      postalCode: "",
+    });
     setQuery("");
-    for (const id of [
-      "venueName",
-      "addressLine1",
-      "city",
-      "state",
-      "postalCode",
-    ]) {
-      const el = document.getElementById(id) as HTMLInputElement | null;
-      if (el) el.value = "";
-    }
   }
+
+  const addressLine = [fill.addressLine1, fill.city, fill.state]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <div className="flex flex-col gap-1.5" ref={containerRef}>
       <label>Location</label>
+      <input type="hidden" name="venueName" value={fill.venueName} />
+      <input type="hidden" name="addressLine1" value={fill.addressLine1} />
+      <input type="hidden" name="city" value={fill.city} />
+      <input type="hidden" name="state" value={fill.state} />
+      <input type="hidden" name="postalCode" value={fill.postalCode} />
       {chosen ? (
         <div className="loc-selected">
           <div className="grow">
             <div className="row-title">{chosen}</div>
-            <div className="row-sub">
-              Tap Clear to search again or edit the address fields below.
-            </div>
+            {addressLine ? <div className="row-sub">{addressLine}</div> : null}
           </div>
           <button type="button" className="clear" onClick={clear} aria-label="Clear">
             <XIcon />

@@ -20,6 +20,7 @@ const COPY: Record<string, { title: string; body: string }> = {
     body: "Batting order and positions are set.",
   },
   profile: { title: "Profile saved", body: "Your account details were updated." },
+  team: { title: "Team updated", body: "The new name is live across the app." },
   broadcast: {
     title: "Broadcast sent",
     body: "All recipients will receive your message shortly.",

@@ -20,11 +20,21 @@ const SEG_TITLE: Record<Segment, string> = {
   staff: "Invite staff",
 };
 
-export function TeamAddSheet({ players }: { players: PlayerOption[] }) {
+export function TeamAddSheet({
+  players,
+  initial,
+}: {
+  players: PlayerOption[];
+  initial?: Segment;
+}) {
   const [open, setOpen] = useState(false);
-  const [seg, setSeg] = useState<Segment>("player");
+  const [seg, setSeg] = useState<Segment>(initial ?? "player");
 
   const close = () => setOpen(false);
+  const openAs = (s: Segment) => {
+    setSeg(s);
+    setOpen(true);
+  };
 
   return (
     <>
@@ -138,8 +148,23 @@ export function TeamAddSheet({ players }: { players: PlayerOption[] }) {
           </form>
         ) : null}
       </BottomSheet>
+
+      {/* Programmatic openers so sections can trigger the right segment. */}
+      <OpenerBridge onOpen={openAs} />
     </>
   );
+}
+
+/**
+ * Exposes a window-level helper so server-rendered section headers can
+ * dispatch a custom event to open the sheet on the right segment without
+ * needing to be turned into client components themselves.
+ */
+function OpenerBridge({ onOpen }: { onOpen: (s: Segment) => void }) {
+  if (typeof window !== "undefined") {
+    (window as unknown as { __bgslTeamAdd?: (s: Segment) => void }).__bgslTeamAdd = onOpen;
+  }
+  return null;
 }
 
 function Field({

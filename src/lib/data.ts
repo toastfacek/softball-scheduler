@@ -18,6 +18,9 @@ import {
   events,
   inningAssignments,
   lineupPlans,
+  lineupPresetAssignments,
+  lineupPresetSlots,
+  lineupPresets,
   playerEventResponses,
   playerGuardians,
   players,
@@ -46,6 +49,7 @@ export type AppViewer = ViewerContext & {
   };
   team: {
     name: string;
+    brandSubtitle: string | null;
     slug: string;
     city: string;
     state: string;
@@ -78,6 +82,7 @@ export const getViewerContext = cache(async (): Promise<AppViewer | null> => {
       teamId: teamMemberships.teamId,
       role: teamMemberships.role,
       teamName: teams.name,
+      teamBrandSubtitle: teams.brandSubtitle,
       teamSlug: teams.slug,
       teamCity: teams.city,
       teamState: teams.state,
@@ -135,6 +140,7 @@ export const getViewerContext = cache(async (): Promise<AppViewer | null> => {
     },
     team: {
       name: teamRows[0].teamName,
+      brandSubtitle: teamRows[0].teamBrandSubtitle,
       slug: teamRows[0].teamSlug,
       city: teamRows[0].teamCity,
       state: teamRows[0].teamState,
@@ -219,10 +225,12 @@ export async function getSchedulePageData(viewer: AppViewer) {
     orderBy: [asc(players.lastName), asc(players.firstName)],
   });
 
+  // No row limit: the desktop calendar navigates month-to-month and would
+  // render misleadingly-empty months if we capped here. A single team across
+  // one season is at most ~100 events, which is fine to load in full.
   const eventRows = await db.query.events.findMany({
     where: eq(events.teamId, viewer.teamId),
     orderBy: [asc(events.startsAt)],
-    limit: 18,
   });
 
   const eventIds = eventRows.map((event) => event.id);
@@ -272,6 +280,13 @@ export async function getSchedulePageData(viewer: AppViewer) {
   return {
     events: cards,
     nextEvent,
+    roster: teamPlayers.map((p) => ({
+      id: p.id,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      preferredName: p.preferredName,
+      jerseyNumber: p.jerseyNumber,
+    })),
     stats: {
       playerCount: teamPlayers.length,
       coachCount: adultResponses.length,
@@ -603,6 +618,117 @@ export async function getLineupEditorData(viewer: AppViewer, eventId: string) {
     eligiblePlayers,
     unavailablePlayers,
     allPlayers: playersWithStatus,
+  };
+}
+
+export async function listLineupPresets(viewer: AppViewer) {
+  const rows = await db.query.lineupPresets.findMany({
+    where: eq(lineupPresets.teamId, viewer.teamId),
+    orderBy: [asc(lineupPresets.name)],
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    inningsCount: row.inningsCount,
+    updatedAt: row.updatedAt,
+  }));
+}
+
+export async function getLineupPresetEditorData(
+  viewer: AppViewer,
+  presetId: string,
+) {
+  const [preset, slotRows, assignmentRows, positionRows, playerRows] =
+    await Promise.all([
+      db.query.lineupPresets.findFirst({
+        where: and(
+          eq(lineupPresets.id, presetId),
+          eq(lineupPresets.teamId, viewer.teamId),
+        ),
+      }),
+      db.query.lineupPresetSlots.findMany({
+        where: eq(lineupPresetSlots.presetId, presetId),
+      }),
+      db.query.lineupPresetAssignments.findMany({
+        where: eq(lineupPresetAssignments.presetId, presetId),
+      }),
+      db.query.teamPositionTemplates.findMany({
+        where: and(
+          eq(teamPositionTemplates.teamId, viewer.teamId),
+          eq(teamPositionTemplates.isActive, true),
+        ),
+        orderBy: [
+          asc(teamPositionTemplates.sortOrder),
+          asc(teamPositionTemplates.label),
+        ],
+      }),
+      db.query.players.findMany({
+        where: eq(players.teamId, viewer.teamId),
+        orderBy: [asc(players.lastName), asc(players.firstName)],
+      }),
+    ]);
+
+  if (!preset) return null;
+
+  const battingBySlot = new Map<number, string>();
+  for (const slot of slotRows) {
+    battingBySlot.set(slot.slotNumber, slot.playerId);
+  }
+
+  const assignmentMap = new Map<string, string>();
+  for (const assignment of assignmentRows) {
+    assignmentMap.set(
+      `${assignment.inningNumber}:${assignment.playerId}`,
+      assignment.positionCode,
+    );
+  }
+
+  return {
+    preset,
+    battingBySlot,
+    assignmentMap,
+    positions: positionRows,
+    allPlayers: playerRows.map((p) => ({
+      id: p.id,
+      displayName: fullName(p.firstName, p.lastName, p.preferredName),
+    })),
+  };
+}
+
+/** Load a preset's batting order + assignments in a form ready to be applied
+ *  in the client editor (batting order array, assignments map keyed by
+ *  inning:playerId). */
+export async function getPresetApplyPayload(
+  viewer: AppViewer,
+  presetId: string,
+) {
+  const [preset, slotRows, assignmentRows] = await Promise.all([
+    db.query.lineupPresets.findFirst({
+      where: and(
+        eq(lineupPresets.id, presetId),
+        eq(lineupPresets.teamId, viewer.teamId),
+      ),
+    }),
+    db.query.lineupPresetSlots.findMany({
+      where: eq(lineupPresetSlots.presetId, presetId),
+    }),
+    db.query.lineupPresetAssignments.findMany({
+      where: eq(lineupPresetAssignments.presetId, presetId),
+    }),
+  ]);
+
+  if (!preset) return null;
+
+  return {
+    inningsCount: preset.inningsCount,
+    battingOrder: slotRows
+      .sort((a, b) => a.slotNumber - b.slotNumber)
+      .map((s) => s.playerId),
+    assignments: assignmentRows.map((a) => ({
+      inningNumber: a.inningNumber,
+      playerId: a.playerId,
+      positionCode: a.positionCode,
+    })),
   };
 }
 
