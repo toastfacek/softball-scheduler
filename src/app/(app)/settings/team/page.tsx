@@ -35,7 +35,7 @@ export default async function TeamSettingsPage() {
                 color: "color-mix(in srgb, var(--navy) 60%, white)",
               }}
             >
-              Shows up on the sidebar, in emails, and on the RSVP page.
+              Shows up on the Team page, in emails, and on the RSVP page.
             </p>
           </div>
           <div className="flex flex-col gap-1.5">

@@ -43,15 +43,11 @@ const navigation = [
 
 type AppShellProps = {
   roles: TeamRole[];
-  brandTitle: string;
-  brandSubtitle?: string | null;
   children: React.ReactNode;
 };
 
 export function AppShell({
   roles,
-  brandTitle,
-  brandSubtitle,
   children,
 }: AppShellProps) {
   const pathname = usePathname();
@@ -68,41 +64,6 @@ export function AppShell({
       </Suspense>
       <main className="app-main">{children}</main>
       <nav className="app-bottom-nav">
-        <div
-          className="app-sidebar-brand"
-          style={{
-            padding: "0 0.625rem 1rem",
-            marginBottom: "1rem",
-            borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "var(--font-barlow-condensed), sans-serif",
-              fontWeight: 700,
-              fontSize: "1.05rem",
-              lineHeight: 1.1,
-              letterSpacing: "0.01em",
-              color: "color-mix(in srgb, var(--orange) 88%, white)",
-              textTransform: "uppercase",
-            }}
-          >
-            {brandTitle}
-          </div>
-          {brandSubtitle ? (
-            <div
-              style={{
-                marginTop: "0.35rem",
-                fontSize: "0.7rem",
-                lineHeight: 1.3,
-                color: "rgba(255, 255, 255, 0.55)",
-                letterSpacing: "0.04em",
-              }}
-            >
-              {brandSubtitle}
-            </div>
-          ) : null}
-        </div>
         <div className="app-bottom-nav-inner">
           {visibleNav.map((item) => {
             const active =

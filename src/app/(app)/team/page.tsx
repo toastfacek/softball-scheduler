@@ -37,7 +37,7 @@ export default async function TeamPage() {
   return (
     <>
       <PageHeader
-        title={viewer.team.name}
+        title="Team"
         action={
           canManage ? (
             <TeamAddSheet
@@ -51,6 +51,13 @@ export default async function TeamPage() {
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
+        <TeamOverview
+          teamName={viewer.team.name}
+          brandSubtitle={viewer.team.brandSubtitle}
+          seasonName={viewer.seasonName}
+          staffCount={staff.length}
+          rosterCount={roster.length}
+        />
         <StaffSection
           title="Staff"
           staff={staff}
@@ -62,6 +69,116 @@ export default async function TeamPage() {
         />
       </div>
     </>
+  );
+}
+
+function TeamOverview({
+  teamName,
+  brandSubtitle,
+  seasonName,
+  staffCount,
+  rosterCount,
+}: {
+  teamName: string;
+  brandSubtitle: string | null;
+  seasonName: string | null;
+  staffCount: number;
+  rosterCount: number;
+}) {
+  return (
+    <section
+      className="shell-panel relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "1.25rem",
+      }}
+    >
+      <div className="orange-bar-top" />
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+        <div
+          style={{
+            fontFamily: "var(--font-barlow-condensed), sans-serif",
+            fontWeight: 700,
+            fontSize: "2.25rem",
+            lineHeight: 0.92,
+            letterSpacing: "-0.02em",
+            color: "var(--navy-strong)",
+            textTransform: "uppercase",
+          }}
+        >
+          {teamName}
+        </div>
+        {brandSubtitle ? (
+          <div
+            style={{
+              fontSize: "0.86rem",
+              lineHeight: 1.5,
+              color: "color-mix(in srgb, var(--navy) 68%, white)",
+              fontWeight: 600,
+            }}
+          >
+            {brandSubtitle}
+          </div>
+        ) : null}
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+          gap: "0.75rem",
+        }}
+      >
+        <TeamOverviewStat label="Season" value={seasonName ?? "Current"} />
+        <TeamOverviewStat label="Staff" value={String(staffCount)} />
+        <TeamOverviewStat label="Roster" value={String(rosterCount)} />
+      </div>
+    </section>
+  );
+}
+
+function TeamOverviewStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: "1rem",
+        padding: "0.85rem 0.95rem",
+        background: "color-mix(in srgb, var(--paper) 88%, white)",
+        border: "1px solid color-mix(in srgb, var(--line) 55%, transparent)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.25rem",
+      }}
+    >
+      <div
+        style={{
+          fontSize: "0.68rem",
+          fontWeight: 800,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "color-mix(in srgb, var(--navy) 54%, white)",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontWeight: 700,
+          fontSize: label === "Season" ? "0.95rem" : "1.15rem",
+          color: "var(--navy-strong)",
+          lineHeight: 1.2,
+        }}
+      >
+        {value}
+      </div>
+    </div>
   );
 }
 
