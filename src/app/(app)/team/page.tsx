@@ -1,9 +1,7 @@
 import { PageHeader } from "@/components/page-header";
-import { canManagePrivateContacts, canManageTeam } from "@/lib/authz";
+import { canManagePrivateContacts } from "@/lib/authz";
 import { getTeamPageData, getViewerContext } from "@/lib/data";
 import type { TeamRole } from "@/db/schema";
-
-import { TeamAddSheet } from "./team-add-sheet";
 
 export default async function TeamPage() {
   const viewer = await getViewerContext();
@@ -11,7 +9,6 @@ export default async function TeamPage() {
 
   const data = await getTeamPageData(viewer);
   const showContacts = canManagePrivateContacts(viewer);
-  const canManage = canManageTeam(viewer);
 
   const staff = data.staff
     .filter(
@@ -36,19 +33,7 @@ export default async function TeamPage() {
 
   return (
     <>
-      <PageHeader
-        title="Team"
-        action={
-          canManage ? (
-            <TeamAddSheet
-              players={data.players.map((p) => ({
-                id: p.id,
-                displayName: p.displayName,
-              }))}
-            />
-          ) : null
-        }
-      />
+      <PageHeader title="Team" />
 
       <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
         <TeamOverview
