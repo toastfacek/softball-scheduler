@@ -23,11 +23,11 @@ export default async function PrivateLayout({
     return (
       <main className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto flex min-h-[80vh] max-w-2xl items-center">
-          <section className="shell-panel relative w-full overflow-hidden rounded-[2.5rem] p-8 sm:p-10">
+          <section className="shell-panel relative w-full overflow-hidden rounded-shell p-8 sm:p-10">
             <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,var(--orange-strong),color-mix(in_srgb,var(--orange)_70%,white),var(--orange-strong))]" />
             <div className="space-y-4">
               <div className="eyebrow">Roster access pending</div>
-              <h1 className="text-5xl text-[var(--navy-strong)]">
+              <h1 className="text-5xl text-navy-strong">
                 Your account is real, but it isn’t linked to a team yet.
               </h1>
               <p className="text-base leading-7 font-medium text-[color-mix(in_srgb,var(--navy)_74%,white)]">

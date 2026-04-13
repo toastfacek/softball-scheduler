@@ -20,8 +20,21 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-navy: var(--navy);
+  --color-navy-strong: var(--navy-strong);
+  --color-harbor: var(--harbor);
+  --color-orange: var(--orange);
+  --color-orange-strong: var(--orange-strong);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
   --font-sans: var(--font-sora);
   --font-display: var(--font-barlow-condensed);
+  --radius-tile: 1.25rem;
+  --radius-shell: 2.5rem;
 }
 
 * {

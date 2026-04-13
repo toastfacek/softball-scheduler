@@ -15,7 +15,7 @@ export default async function BroadcastPage() {
   return (
     <>
       <PageHeader title="Team broadcast" back="/settings" />
-      <form action={sendBroadcastAction} className="shell-panel rounded-[1.25rem] p-5">
+      <form action={sendBroadcastAction} className="shell-panel rounded-tile p-5">
         <div className="orange-bar-top" />
         <div className="relative flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">

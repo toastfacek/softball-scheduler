@@ -67,7 +67,7 @@ export default async function AttendancePage({
     <>
       <PageHeader title="Attendance" back={`/events/${eventId}`} />
 
-      <section className="shell-panel rounded-[1.25rem] p-4">
+      <section className="shell-panel rounded-tile p-4">
         <div className="orange-bar-top" />
         <div className="relative flex items-center gap-2 mb-1">
           <span
@@ -105,7 +105,7 @@ export default async function AttendancePage({
         </div>
       </section>
 
-      <section className="shell-panel rounded-[1.25rem] p-4">
+      <section className="shell-panel rounded-tile p-4">
         <div className="grid grid-cols-4 gap-2">
           <StatTile count={data.playerSummary.AVAILABLE} label="In" variant="avail" />
           <StatTile count={data.playerSummary.MAYBE} label="Maybe" variant="maybe" />

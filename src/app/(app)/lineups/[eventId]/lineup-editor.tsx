@@ -258,7 +258,7 @@ export function LineupEditor({
       {/* Condensed event/preset header */}
       <section
         data-lineup="header"
-        className="shell-panel rounded-[1.25rem] p-3"
+        className="shell-panel rounded-tile p-3"
         style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
       >
         <div className="relative flex items-center justify-between gap-2">
@@ -351,7 +351,7 @@ export function LineupEditor({
       {/* Batting order */}
       <section
         data-lineup="order"
-        className="shell-panel rounded-[1.25rem] p-4"
+        className="shell-panel rounded-tile p-4"
       >
         <div className="section-head" style={{ padding: 0, marginBottom: "0.5rem" }}>
           Batting order
@@ -366,7 +366,7 @@ export function LineupEditor({
       {/* Position matrix */}
       <section
         data-lineup="matrix"
-        className="shell-panel rounded-[1.25rem] p-3"
+        className="shell-panel rounded-tile p-3"
       >
         <div className="flex items-center justify-between mb-2">
           <div className="section-head" style={{ padding: 0 }}>
@@ -397,7 +397,7 @@ export function LineupEditor({
       {/* Field visualizer */}
       <section
         data-lineup="field"
-        className="shell-panel rounded-[1.25rem] p-3"
+        className="shell-panel rounded-tile p-3"
       >
         <div className="flex items-center justify-between mb-1">
           <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--navy-strong)", fontFamily: "var(--font-barlow-condensed), sans-serif" }}>

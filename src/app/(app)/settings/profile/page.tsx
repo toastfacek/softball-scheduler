@@ -13,7 +13,7 @@ export default async function ProfilePage() {
   return (
     <>
       <PageHeader title="Profile" back="/settings" />
-      <form action={updateProfileAction} className="shell-panel rounded-[1.25rem] p-5">
+      <form action={updateProfileAction} className="shell-panel rounded-tile p-5">
         <div className="orange-bar-top" />
         <div className="relative flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -39,7 +39,7 @@ export default async function ProfilePage() {
               placeholder="(555) 555-5555"
             />
           </div>
-          <label className="flex items-center gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-medium">
+          <label className="flex items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 text-sm font-medium">
             <input
               type="checkbox"
               name="reminderOptIn"
