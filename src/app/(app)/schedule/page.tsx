@@ -61,6 +61,7 @@ export default async function SchedulePage() {
             startsAt: e.startsAt,
           }))}
           canAddEvents={canManageTeam(viewer)}
+          timezone={viewer.team.timezone}
         />
       </div>
 

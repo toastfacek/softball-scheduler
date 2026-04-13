@@ -66,9 +66,13 @@ function toFill(hit: NominatimHit): Fill {
 }
 
 /**
- * Location autocomplete that is the *only* location input on the event form.
- * Maintains venue + address in internal React state and submits via hidden
- * inputs. Users never hand-edit individual fields; they search, pick, or clear.
+ * Location autocomplete with a manual-entry fallback.
+ *
+ * Primary path: Nominatim search → pick → fields populate. Hidden inputs carry
+ * the structured pieces into the form action. When autocomplete misses (no
+ * results, network error, custom field name) the user can flip into manual
+ * mode and type the fields directly. Manual mode is also auto-engaged from
+ * existing rows that have address data but no recognizable venue match.
  *
  * Uses OpenStreetMap Nominatim (keyless, rate-limited ~1 req/sec). For
  * production traffic swap to Mapbox / Google Places via an internal API route.
@@ -91,6 +95,7 @@ export function LocationSearch({
     state: initial?.state ?? "",
     postalCode: initial?.postalCode ?? "",
   });
+  const [manual, setManual] = useState(false);
   const chosen = fill.venueName || null;
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,11 +158,70 @@ export function LocationSearch({
       postalCode: "",
     });
     setQuery("");
+    setManual(false);
+  }
+
+  function updateField<K extends keyof Fill>(key: K, value: string) {
+    setFill((prev) => ({ ...prev, [key]: value }));
   }
 
   const addressLine = [fill.addressLine1, fill.city, fill.state]
     .filter(Boolean)
     .join(", ");
+
+  if (manual) {
+    return (
+      <div className="flex flex-col gap-1.5" ref={containerRef}>
+        <div className="flex items-center justify-between">
+          <label>Location</label>
+          <button
+            type="button"
+            className="loc-toggle"
+            onClick={() => setManual(false)}
+          >
+            Search instead
+          </button>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <input
+            name="venueName"
+            value={fill.venueName}
+            onChange={(e) => updateField("venueName", e.target.value)}
+            placeholder="Venue name (e.g. Lynch Park, Field 2)"
+            className="sm:col-span-2"
+          />
+          <input
+            name="addressLine1"
+            value={fill.addressLine1}
+            onChange={(e) => updateField("addressLine1", e.target.value)}
+            placeholder="Street address"
+            className="sm:col-span-2"
+          />
+          <input
+            name="city"
+            value={fill.city}
+            onChange={(e) => updateField("city", e.target.value)}
+            placeholder="City"
+          />
+          <div className="grid grid-cols-[1fr_2fr] gap-2">
+            <input
+              name="state"
+              value={fill.state}
+              onChange={(e) => updateField("state", e.target.value)}
+              placeholder="State"
+              maxLength={2}
+            />
+            <input
+              name="postalCode"
+              value={fill.postalCode}
+              onChange={(e) => updateField("postalCode", e.target.value)}
+              placeholder="ZIP"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-1.5" ref={containerRef}>
@@ -173,6 +237,15 @@ export function LocationSearch({
             <div className="row-title">{chosen}</div>
             {addressLine ? <div className="row-sub">{addressLine}</div> : null}
           </div>
+          <button
+            type="button"
+            className="clear"
+            onClick={() => setManual(true)}
+            aria-label="Edit"
+            title="Edit fields"
+          >
+            <PencilIcon />
+          </button>
           <button type="button" className="clear" onClick={clear} aria-label="Clear">
             <XIcon />
           </button>
@@ -193,11 +266,25 @@ export function LocationSearch({
               <div className="loc-status">Searching…</div>
             ) : status === "error" ? (
               <div className="loc-status">
-                Search unavailable. Type the address below instead.
+                Search unavailable.{" "}
+                <button
+                  type="button"
+                  className="loc-toggle"
+                  onClick={() => setManual(true)}
+                >
+                  Enter manually
+                </button>
               </div>
             ) : status === "empty" ? (
               <div className="loc-empty">
-                No matches. Try a broader search.
+                No matches.{" "}
+                <button
+                  type="button"
+                  className="loc-toggle"
+                  onClick={() => setManual(true)}
+                >
+                  Enter manually
+                </button>
               </div>
             ) : (
               results.map((hit, idx) => {
@@ -220,7 +307,32 @@ export function LocationSearch({
           </div>
         </div>
       )}
+      <button
+        type="button"
+        className="loc-toggle self-start"
+        onClick={() => setManual(true)}
+      >
+        Can&rsquo;t find it? Enter manually
+      </button>
     </div>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
   );
 }
 

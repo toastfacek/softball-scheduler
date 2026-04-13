@@ -15,6 +15,7 @@ import {
   startOfWeek,
   subMonths,
 } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 import type { EventType } from "@/db/schema";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ type CalendarEvent = {
 type Props = {
   events: CalendarEvent[];
   canAddEvents: boolean;
+  timezone: string;
 };
 
 function parseMonthParam(raw: string | null): Date {
@@ -44,7 +46,7 @@ function monthParamOf(date: Date): string {
   return format(date, "yyyy-MM");
 }
 
-export function ScheduleCalendar({ events, canAddEvents }: Props) {
+export function ScheduleCalendar({ events, canAddEvents, timezone }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const cursor = parseMonthParam(searchParams.get("m"));
@@ -55,13 +57,15 @@ export function ScheduleCalendar({ events, canAddEvents }: Props) {
     const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
     const eventsByDay = new Map<string, CalendarEvent[]>();
     for (const event of events) {
-      const key = format(event.startsAt, "yyyy-MM-dd");
+      // Bucket by the team-timezone calendar day so a 7pm ET game doesn't
+      // jump to the next day for a parent viewing from PT.
+      const key = formatInTimeZone(event.startsAt, timezone, "yyyy-MM-dd");
       const bucket = eventsByDay.get(key) ?? [];
       bucket.push(event);
       eventsByDay.set(key, bucket);
     }
     return { days, eventsByDay };
-  }, [cursor, events]);
+  }, [cursor, events, timezone]);
 
   function goToMonth(next: Date) {
     const params = new URLSearchParams(searchParams.toString());
@@ -184,7 +188,7 @@ export function ScheduleCalendar({ events, canAddEvents }: Props) {
                       )}
                     >
                       <span className="cal-event-time">
-                        {format(event.startsAt, "h:mm a")}
+                        {formatInTimeZone(event.startsAt, timezone, "h:mm a")}
                       </span>
                       <span className="cal-event-title">{event.title}</span>
                     </Link>
