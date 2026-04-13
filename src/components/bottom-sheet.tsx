@@ -20,14 +20,18 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
     return () => window.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
+  if (!open) {
+    return null;
+  }
+
   return (
     <>
       <div
-        className={`bottom-sheet-backdrop${open ? " bottom-sheet-backdrop--open" : ""}`}
+        className="bottom-sheet-backdrop bottom-sheet-backdrop--open"
         onClick={onClose}
       />
       <div
-        className={`bottom-sheet${open ? " bottom-sheet--open" : ""}`}
+        className="bottom-sheet bottom-sheet--open"
         role="dialog"
         aria-modal="true"
       >
