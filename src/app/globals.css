@@ -91,6 +91,24 @@ select {
     outline: none;
   }
 
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 2.75rem;
+    background-image:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--paper) 96%, white),
+        color-mix(in srgb, var(--paper) 86%, var(--background))
+      ),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231f3157' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat, no-repeat;
+    background-position: 0 0, right 1rem center;
+    background-size: 100% 100%, 14px 14px;
+    cursor: pointer;
+  }
+
   input:focus,
   textarea:focus,
   select:focus {
@@ -286,6 +304,9 @@ select {
 }
 .app-nav-icon { width: 1rem; height: 1rem; }
 
+.app-sidebar-season { display: none; }
+.app-sidebar-brand { display: none; }
+
 /* ——— Tablet: widen content column ——— */
 @media (min-width: 640px) {
   .app-main { max-width: 720px; padding: calc(52px + 1rem) 1.25rem calc(84px + 1.25rem); gap: 1rem; }
@@ -297,39 +318,62 @@ select {
 @media (min-width: 1024px) {
   .app-shell {
     display: grid;
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: 240px minmax(0, 1fr);
     min-height: 100dvh;
   }
   .app-main {
     grid-column: 2;
-    max-width: 1100px;
+    max-width: none;
     margin: 0;
-    padding: 2.5rem 3rem 3rem;
-    gap: 1.25rem;
+    padding: 2.75rem clamp(2.5rem, 4vw, 4rem) 3.5rem;
+    gap: 1.5rem;
   }
+  /* Desktop top bar: proper page header with a bottom divider. Sits at the top
+     of the main column, no position/background tricks — just typography and a
+     hairline underline to anchor it to the content. */
   .app-top-bar {
-    position: sticky;
-    top: 0; left: auto; right: auto;
-    grid-column: 2;
-    height: 72px;
-    padding: 0 3rem;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--paper) 98%, white),
-      color-mix(in srgb, var(--paper) 88%, transparent)
-    );
+    position: static;
+    height: auto;
+    padding: 0 0 1.25rem;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+    margin-bottom: 1.75rem;
   }
   .app-top-bar-inner {
-    max-width: 1100px;
-    margin: 0;
-    grid-template-columns: auto 1fr auto;
-  }
-  .app-top-bar-title {
-    text-align: left;
-    font-size: 1.55rem;
+    width: 100%;
     max-width: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
-  .app-top-bar-right { justify-content: flex-end; }
+  .app-top-bar-left { flex: 0 0 auto; }
+  .app-top-bar-title {
+    flex: 1 1 auto;
+    text-align: left;
+    font-family: var(--font-barlow-condensed), sans-serif;
+    font-weight: 700;
+    font-size: 2.25rem;
+    line-height: 1;
+    letter-spacing: -0.015em;
+    color: var(--navy-strong);
+    max-width: none;
+    overflow: visible;
+  }
+  .app-top-bar-right {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    margin-left: auto;
+  }
+  .app-top-bar-right .icon-btn--primary {
+    width: 44px; height: 44px;
+    border-radius: 0.75rem;
+  }
 
   /* Bottom nav becomes the sidebar rail */
   .app-bottom-nav {
@@ -348,23 +392,29 @@ select {
     border-right: 1px solid color-mix(in srgb, var(--navy) 28%, white);
   }
   .app-bottom-nav::before {
-    /* Team mark — editorial label at the top of the rail */
-    content: "BEVERLY BLAZE";
+    /* Brand mark is now rendered as a real DOM node (.app-sidebar-brand) so it
+       can be data-driven. Pseudo-element kept here but cleared to preserve
+       selector specificity history in the file. */
+    content: none;
+  }
+  .app-sidebar-season {
     display: block;
-    font-family: var(--font-barlow-condensed), sans-serif;
-    font-weight: 700;
-    font-size: 0.75rem;
-    letter-spacing: 0.26em;
-    color: color-mix(in srgb, var(--orange) 86%, white);
     padding: 0 0.625rem 1.5rem;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-family: var(--font-barlow-condensed), sans-serif;
+    font-weight: 600;
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.42);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     margin-bottom: 1rem;
   }
+  .app-sidebar-brand { display: block; }
   .app-bottom-nav-inner {
     max-width: none;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 0.125rem;
-    flex: 1;
+    /* Don't stretch; let Settings drop to the bottom via margin-top: auto. */
   }
   .app-nav-item {
     flex-direction: row;
@@ -408,11 +458,11 @@ select {
   .page-split {
     display: grid;
     grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-    gap: 2rem;
+    gap: 2.5rem;
     align-items: start;
   }
   .page-split--equal { grid-template-columns: 1fr 1fr; }
-  .page-split--narrow-right { grid-template-columns: minmax(0, 1fr) 340px; }
+  .page-split--narrow-right { grid-template-columns: minmax(0, 1fr) 320px; }
 
   /* Lineup editor: batting order | matrix | field viz */
   .page-lineup {
@@ -877,6 +927,14 @@ select {
   background: color-mix(in srgb, var(--navy) 10%, white);
   color: var(--navy-strong);
 }
+.loc-toggle {
+  background: none; border: none; padding: 0;
+  font: inherit; font-size: 0.72rem; font-weight: 600;
+  color: var(--orange-strong);
+  cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.loc-toggle:hover { color: var(--navy-strong); }
 
 /* ──── Clickable location link (opens in native maps) ──── */
 .location-link {
@@ -1240,3 +1298,338 @@ select {
   text-align: center; padding-top: 0.5rem;
 }
 
+
+/* ──── Schedule page: desktop 2-col — main stream + roster aside ──── */
+.schedule-main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+@media (min-width: 1024px) {
+  .schedule-main-col { gap: 1rem; }
+}
+
+.schedule-empty {
+  padding: 1.5rem 1.25rem;
+  border-radius: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      80% 60% at 50% -10%,
+      color-mix(in srgb, var(--orange) 20%, transparent),
+      transparent 70%
+    ),
+    var(--paper);
+}
+.schedule-empty-eyebrow {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--orange-strong) 90%, black);
+}
+.schedule-empty-title {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.65rem, 1.2rem + 2vw, 2.8rem);
+  line-height: 1;
+  color: var(--navy-strong);
+  margin-top: 0.375rem;
+  letter-spacing: -0.01em;
+}
+.schedule-empty-sub {
+  margin-top: 0.6rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--navy) 72%, white);
+  max-width: 42ch;
+}
+.schedule-empty-cta {
+  display: inline-flex;
+  margin-top: 1.1rem;
+  width: auto;
+}
+@media (min-width: 1024px) {
+  .schedule-empty {
+    padding: 3rem 3rem 3.25rem;
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .schedule-empty-title {
+    max-width: 18ch;
+  }
+  .schedule-empty-sub {
+    max-width: 48ch;
+  }
+}
+
+.roster-aside {
+  padding: 0.875rem 0.875rem 1rem;
+  border-radius: 1.25rem;
+}
+.roster-aside-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.roster-aside-count {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--navy) 52%, white);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.roster-aside-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.roster-aside-row {
+  display: grid;
+  grid-template-columns: 2.25rem 1fr;
+  align-items: baseline;
+  gap: 0.625rem;
+  padding: 0.5rem 0.125rem;
+  border-bottom: 1px dashed color-mix(in srgb, var(--line) 60%, transparent);
+}
+.roster-aside-row:last-child { border-bottom: none; }
+.roster-aside-jersey {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--navy-strong);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.roster-aside-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--navy) 82%, black);
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+}
+.roster-aside-last {
+  font-weight: 500;
+  color: color-mix(in srgb, var(--navy) 58%, white);
+}
+
+/* On mobile/tablet the roster aside lives below the main stream — keep it
+   but make it feel less prominent. */
+@media (max-width: 1023px) {
+  .roster-aside { margin-top: 0.5rem; }
+}
+
+/* ──── Schedule calendar (desktop) ──── */
+@layer components {
+.schedule-calendar {
+  background: var(--paper);
+  border: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  border-radius: 1.25rem;
+  padding: 1rem 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.25rem 0.5rem;
+}
+.cal-title {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.005em;
+  color: var(--navy-strong);
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.cal-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  min-width: 34px;
+  padding: 0 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--navy) 80%, black);
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cal-nav-btn:hover {
+  background: color-mix(in srgb, var(--navy) 6%, white);
+}
+.cal-nav-today {
+  padding: 0 0.75rem;
+}
+.cal-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 34px;
+  padding: 0 0.75rem 0 0.625rem;
+  margin-left: 0.375rem;
+  border-radius: 0.5rem;
+  background: var(--navy-strong);
+  color: var(--orange);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+}
+.cal-add-btn:hover {
+  background: color-mix(in srgb, var(--navy-strong) 92%, black);
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding-bottom: 0.375rem;
+}
+.cal-weekday {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--navy) 52%, white);
+  text-align: center;
+  padding: 0.375rem 0;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  background: color-mix(in srgb, var(--line) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.cal-day {
+  background: var(--paper);
+  min-height: 96px;
+  padding: 0.375rem 0.5rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: relative;
+  transition: background 120ms ease;
+}
+.cal-day--clickable { cursor: pointer; }
+.cal-day--clickable:hover {
+  background: color-mix(in srgb, var(--orange) 5%, var(--paper));
+}
+.cal-day--clickable:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: -2px;
+}
+
+.cal-day--other {
+  background: color-mix(in srgb, var(--paper) 70%, var(--background));
+}
+.cal-day--other .cal-day-num {
+  color: color-mix(in srgb, var(--navy) 30%, white);
+}
+
+.cal-day-num {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--navy) 85%, black);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.cal-day--today .cal-day-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin: -0.125rem -0.25rem;
+  border-radius: 999px;
+  background: var(--orange-strong);
+  color: white;
+}
+
+.cal-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+}
+
+.cal-event {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 2px solid transparent;
+}
+.cal-event--game {
+  background: color-mix(in srgb, var(--orange) 16%, var(--paper));
+  border-left-color: var(--orange-strong);
+  color: color-mix(in srgb, var(--orange-strong) 80%, black);
+}
+.cal-event--practice {
+  background: color-mix(in srgb, var(--navy) 10%, var(--paper));
+  border-left-color: var(--navy-strong);
+  color: color-mix(in srgb, var(--navy-strong) 90%, black);
+}
+.cal-event:hover {
+  filter: brightness(0.96);
+}
+.cal-event-time {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+.cal-event-title {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-event-more {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--navy) 55%, white);
+  padding: 0.1rem 0.4rem;
+}
+
+/* Hide calendar on mobile — list view handles that context better */
+.schedule-calendar { display: none; }
+@media (min-width: 1024px) {
+  .schedule-calendar { display: flex; }
+}
+} /* end @layer components */

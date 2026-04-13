@@ -26,13 +26,22 @@ export default async function SettingsPage() {
           <ChevronRightIcon />
         </Link>
         {canManage ? (
-          <Link href="/settings/broadcast" className="row">
-            <div className="row-grow">
-              <div className="row-title">Team broadcast</div>
-              <div className="row-sub">Send an email to the whole team</div>
-            </div>
-            <ChevronRightIcon />
-          </Link>
+          <>
+            <Link href="/settings/team" className="row">
+              <div className="row-grow">
+                <div className="row-title">Team</div>
+                <div className="row-sub">Name and subtitle</div>
+              </div>
+              <ChevronRightIcon />
+            </Link>
+            <Link href="/settings/broadcast" className="row">
+              <div className="row-grow">
+                <div className="row-title">Team broadcast</div>
+                <div className="row-sub">Send an email to the whole team</div>
+              </div>
+              <ChevronRightIcon />
+            </Link>
+          </>
         ) : null}
         <form action={signOutAction} className="row danger">
           <div className="row-grow">

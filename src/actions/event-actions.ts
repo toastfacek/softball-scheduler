@@ -29,14 +29,19 @@ const eventSchema = z.object({
   title: z.string().trim().min(1),
   description: z.string().trim().optional(),
   startsAt: z.string().trim().min(1),
-  endsAt: z.string().trim().optional(),
   venueName: z.string().trim().optional(),
   addressLine1: z.string().trim().optional(),
-  addressLine2: z.string().trim().optional(),
   city: z.string().trim().optional(),
   state: z.string().trim().optional(),
   postalCode: z.string().trim().optional(),
 });
+
+// Default durations — practice 90m, game 2h. Used to derive endsAt at save time
+// so the form only collects a single start datetime.
+const DEFAULT_DURATION_MIN = { PRACTICE: 90, GAME: 120 } as const;
+function defaultEndFor(startsAt: Date, type: "PRACTICE" | "GAME"): Date {
+  return new Date(startsAt.getTime() + DEFAULT_DURATION_MIN[type] * 60 * 1000);
+}
 
 const playerResponseSchema = z.object({
   eventId: z.string().uuid(),
@@ -84,14 +89,14 @@ export async function createEventAction(formData: FormData) {
     title: formData.get("title"),
     description: formData.get("description"),
     startsAt: formData.get("startsAt"),
-    endsAt: formData.get("endsAt"),
     venueName: formData.get("venueName"),
     addressLine1: formData.get("addressLine1"),
-    addressLine2: formData.get("addressLine2"),
     city: formData.get("city"),
     state: formData.get("state"),
     postalCode: formData.get("postalCode"),
   });
+
+  const startsAt = localInputToDate(parsed.startsAt);
 
   await db.insert(events).values({
     teamId: viewer.teamId,
@@ -100,11 +105,10 @@ export async function createEventAction(formData: FormData) {
     status: parsed.status,
     title: parsed.title,
     description: parsed.description || null,
-    startsAt: localInputToDate(parsed.startsAt),
-    endsAt: parsed.endsAt ? localInputToDate(parsed.endsAt) : null,
+    startsAt,
+    endsAt: defaultEndFor(startsAt, parsed.type),
     venueName: parsed.venueName || null,
     addressLine1: parsed.addressLine1 || null,
-    addressLine2: parsed.addressLine2 || null,
     city: parsed.city || null,
     state: parsed.state || null,
     postalCode: parsed.postalCode || null,
@@ -124,10 +128,8 @@ export async function updateEventAction(formData: FormData) {
     title: formData.get("title"),
     description: formData.get("description"),
     startsAt: formData.get("startsAt"),
-    endsAt: formData.get("endsAt"),
     venueName: formData.get("venueName"),
     addressLine1: formData.get("addressLine1"),
-    addressLine2: formData.get("addressLine2"),
     city: formData.get("city"),
     state: formData.get("state"),
     postalCode: formData.get("postalCode"),
@@ -137,7 +139,23 @@ export async function updateEventAction(formData: FormData) {
     throw new Error("Missing event id.");
   }
 
-  await ensureEventBelongsToTeam(parsed.eventId, viewer.teamId);
+  const existing = await ensureEventBelongsToTeam(
+    parsed.eventId,
+    viewer.teamId,
+  );
+
+  const startsAt = localInputToDate(parsed.startsAt);
+
+  // Preserve a custom endsAt if the user didn't touch the schedule shape.
+  // Only recompute from the default-duration rule when the type or start time
+  // actually changed — otherwise editing just the title/notes/location would
+  // silently flatten any non-standard duration a prior save had.
+  const startChanged = startsAt.getTime() !== existing.startsAt.getTime();
+  const typeChanged = parsed.type !== existing.type;
+  const endsAt =
+    startChanged || typeChanged
+      ? defaultEndFor(startsAt, parsed.type)
+      : existing.endsAt;
 
   await db
     .update(events)
@@ -146,11 +164,10 @@ export async function updateEventAction(formData: FormData) {
       status: parsed.status,
       title: parsed.title,
       description: parsed.description || null,
-      startsAt: localInputToDate(parsed.startsAt),
-      endsAt: parsed.endsAt ? localInputToDate(parsed.endsAt) : null,
+      startsAt,
+      endsAt,
       venueName: parsed.venueName || null,
       addressLine1: parsed.addressLine1 || null,
-      addressLine2: parsed.addressLine2 || null,
       city: parsed.city || null,
       state: parsed.state || null,
       postalCode: parsed.postalCode || null,

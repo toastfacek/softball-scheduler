@@ -49,3 +49,6 @@ next-env.d.ts
 # Roster data (contains personal info, never commit)
 /docs/*.xlsx
 /docs/*.csv
+
+# Superpowers brainstorm artifacts (mockups, state)
+.superpowers/

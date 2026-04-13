@@ -3,7 +3,11 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 
-import { saveLineupAction } from "@/actions/lineup-actions";
+import {
+  loadLineupPresetPayload,
+  saveLineupAction,
+  saveLineupPresetAction,
+} from "@/actions/lineup-actions";
 
 type Availability = "AVAILABLE" | "MAYBE" | "UNAVAILABLE" | null;
 
@@ -14,10 +18,19 @@ type PlayerSeed = {
 };
 
 type Position = { code: string; label: string };
+type PresetSummary = { id: string; name: string };
 
 type Props = {
-  eventId: string;
+  // Event-mode props (set together). When eventId is undefined, editor is in
+  // preset mode; when eventId is set, editor is editing a game lineup.
+  eventId?: string;
   eventTitle: string;
+  presets?: PresetSummary[];
+
+  // Preset-mode props.
+  presetId?: string;
+  initialPresetName?: string;
+
   initialInnings: number;
   initialBattingOrder: string[];
   initialAssignments: Record<string, string[]>;
@@ -40,12 +53,16 @@ const FIELD_COORDS: Record<string, { x: number; y: number }> = {
 export function LineupEditor({
   eventId,
   eventTitle,
+  presets,
+  presetId,
+  initialPresetName,
   initialInnings,
   initialBattingOrder,
   initialAssignments,
   players,
   positions,
 }: Props) {
+  const isPresetMode = !eventId;
   const [innings, setInnings] = useState(initialInnings);
   const [battingOrder, setBattingOrder] = useState(initialBattingOrder);
   const [assignments, setAssignments] = useState(initialAssignments);
@@ -53,6 +70,62 @@ export function LineupEditor({
   const [isPending, startTransition] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [presetName, setPresetName] = useState(initialPresetName ?? "");
+  const [loadingPresetId, setLoadingPresetId] = useState<string | null>(null);
+
+  async function applyPreset(pid: string) {
+    if (!pid) return;
+    setLoadingPresetId(pid);
+    try {
+      const payload = await loadLineupPresetPayload(pid);
+      if (!payload) return;
+
+      // The preset may be out of sync with the current roster: players on the
+      // team that weren't in the preset get appended at the end with default
+      // bench assignments, and players in the preset who are no longer on the
+      // team are dropped. This keeps the save action's "every batting slot
+      // must be filled" invariant true even when rosters have moved on.
+      const currentIds = new Set(players.map((p) => p.id));
+      const presetIds = new Set(payload.battingOrder);
+      const validPresetOrder = payload.battingOrder.filter((id) =>
+        currentIds.has(id),
+      );
+      const missing = players
+        .filter((p) => !presetIds.has(p.id))
+        .map((p) => p.id);
+      const mergedOrder = [...validPresetOrder, ...missing];
+
+      setInnings(payload.inningsCount);
+      setBattingOrder(mergedOrder);
+
+      const next: Record<string, string[]> = {};
+      for (const playerId of mergedOrder) {
+        next[playerId] = Array.from(
+          { length: payload.inningsCount },
+          () => "BN",
+        );
+      }
+      for (const a of payload.assignments) {
+        if (
+          a.inningNumber <= payload.inningsCount &&
+          next[a.playerId] != null
+        ) {
+          next[a.playerId][a.inningNumber - 1] = a.positionCode;
+        }
+      }
+      setAssignments(next);
+
+      if (missing.length > 0) {
+        setSaveError(
+          `Added ${missing.length} player${missing.length === 1 ? "" : "s"} who joined after this preset was saved. They're benched — assign them before saving.`,
+        );
+      } else {
+        setSaveError(null);
+      }
+    } finally {
+      setLoadingPresetId(null);
+    }
+  }
 
   const playerById = useMemo(
     () => new Map(players.map((p) => [p.id, p])),
@@ -126,10 +199,18 @@ export function LineupEditor({
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaveError(null);
+    if (isPresetMode && !presetName.trim()) {
+      setSaveError("Give the preset a name first.");
+      return;
+    }
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       try {
-        await saveLineupAction(formData);
+        if (isPresetMode) {
+          await saveLineupPresetAction(formData);
+        } else {
+          await saveLineupAction(formData);
+        }
         // On success the action redirects, so this path is only hit if Next's
         // thrown redirect propagates here (which it does in RSC client calls).
         setSaved(true);
@@ -145,7 +226,15 @@ export function LineupEditor({
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="page-lineup">
-      <input type="hidden" name="eventId" value={eventId} />
+      {eventId ? (
+        <input type="hidden" name="eventId" value={eventId} />
+      ) : null}
+      {presetId ? (
+        <input type="hidden" name="presetId" value={presetId} />
+      ) : null}
+      {isPresetMode ? (
+        <input type="hidden" name="name" value={presetName} />
+      ) : null}
       <input type="hidden" name="inningsCount" value={innings} />
       {battingOrder.map((pid, idx) => (
         <input
@@ -166,22 +255,43 @@ export function LineupEditor({
         )),
       )}
 
-      {/* Condensed event header */}
+      {/* Condensed event/preset header */}
       <section
         data-lineup="header"
         className="shell-panel rounded-[1.25rem] p-3"
+        style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
       >
         <div className="relative flex items-center justify-between gap-2">
-          <div
-            style={{
-              fontSize: "1rem",
-              fontWeight: 700,
-              color: "var(--navy-strong)",
-              fontFamily: "var(--font-barlow-condensed), sans-serif",
-            }}
-          >
-            {eventTitle}
-          </div>
+          {isPresetMode ? (
+            <input
+              aria-label="Preset name"
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+              placeholder="Preset name — e.g. Standard starting 9"
+              style={{
+                flex: "1 1 auto",
+                padding: "0.5rem 0.75rem",
+                fontSize: "0.95rem",
+                fontWeight: 700,
+                fontFamily: "var(--font-barlow-condensed), sans-serif",
+                color: "var(--navy-strong)",
+                background: "transparent",
+                border: "1px dashed color-mix(in srgb, var(--navy) 30%, white)",
+                borderRadius: "0.5rem",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                fontSize: "1rem",
+                fontWeight: 700,
+                color: "var(--navy-strong)",
+                fontFamily: "var(--font-barlow-condensed), sans-serif",
+              }}
+            >
+              {eventTitle}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <label htmlFor="innings" style={{ fontSize: "0.6rem" }}>
               Innings
@@ -197,6 +307,45 @@ export function LineupEditor({
             />
           </div>
         </div>
+
+        {!isPresetMode && presets && presets.length > 0 ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontSize: "0.8rem",
+            }}
+          >
+            <label htmlFor="preset-picker" style={{ fontSize: "0.7rem" }}>
+              Load from preset
+            </label>
+            <select
+              id="preset-picker"
+              defaultValue=""
+              onChange={(e) => {
+                const pid = e.target.value;
+                if (pid) void applyPreset(pid);
+                e.target.value = "";
+              }}
+              disabled={loadingPresetId !== null}
+              style={{
+                flex: "0 1 280px",
+                padding: "0.4rem 0.6rem",
+                fontSize: "0.85rem",
+              }}
+            >
+              <option value="">
+                {loadingPresetId ? "Loading…" : "Select a preset…"}
+              </option>
+              {presets.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </section>
 
       {/* Batting order */}
@@ -298,7 +447,13 @@ export function LineupEditor({
 
       <div className="flex items-center gap-2">
         <button type="submit" className="btn-primary btn-block" disabled={isPending}>
-          {isPending ? "Saving…" : "Save lineup"}
+          {isPending
+            ? "Saving…"
+            : isPresetMode
+              ? presetId
+                ? "Update preset"
+                : "Save preset"
+              : "Save lineup"}
         </button>
       </div>
       </div>

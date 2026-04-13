@@ -140,6 +140,7 @@ export const teams = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
+    brandSubtitle: text("brand_subtitle"),
     slug: text("slug").notNull(),
     city: text("city").default("Beverly").notNull(),
     state: text("state").default("MA").notNull(),
@@ -388,6 +389,73 @@ export const inningAssignments = pgTable(
   (table) => [
     uniqueIndex("inning_assignments_plan_inning_player_key").on(
       table.lineupPlanId,
+      table.inningNumber,
+      table.playerId,
+    ),
+  ],
+);
+
+export const lineupPresets = pgTable(
+  "lineup_presets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    inningsCount: integer("innings_count").default(6).notNull(),
+    createdByUserId: uuid("created_by_user_id").references(() => adultUsers.id, {
+      onDelete: "set null",
+    }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [uniqueIndex("lineup_presets_team_name_key").on(table.teamId, table.name)],
+);
+
+export const lineupPresetSlots = pgTable(
+  "lineup_preset_slots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    presetId: uuid("preset_id")
+      .notNull()
+      .references(() => lineupPresets.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => players.id, { onDelete: "cascade" }),
+    slotNumber: integer("slot_number").notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("lineup_preset_slots_preset_slot_key").on(table.presetId, table.slotNumber),
+    uniqueIndex("lineup_preset_slots_preset_player_key").on(table.presetId, table.playerId),
+  ],
+);
+
+export const lineupPresetAssignments = pgTable(
+  "lineup_preset_assignments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    presetId: uuid("preset_id")
+      .notNull()
+      .references(() => lineupPresets.id, { onDelete: "cascade" }),
+    inningNumber: integer("inning_number").notNull(),
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => players.id, { onDelete: "cascade" }),
+    positionTemplateId: uuid("position_template_id").references(
+      () => teamPositionTemplates.id,
+      { onDelete: "set null" },
+    ),
+    positionCode: text("position_code").notNull(),
+    positionLabel: text("position_label").notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("lineup_preset_assignments_preset_inning_player_key").on(
+      table.presetId,
       table.inningNumber,
       table.playerId,
     ),

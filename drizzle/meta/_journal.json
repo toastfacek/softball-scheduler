@@ -15,6 +15,20 @@
       "when": 1776022689535,
       "tag": "0001_quick_shinko_yamashiro",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776045807687,
+      "tag": "0002_known_alice",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776046212032,
+      "tag": "0003_chemical_tattoo",
+      "breakpoints": true
     }
   ]
 }
