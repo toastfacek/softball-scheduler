@@ -52,3 +52,6 @@ next-env.d.ts
 
 # Superpowers brainstorm artifacts (mockups, state)
 .superpowers/
+
+# Git worktrees
+.worktrees/
