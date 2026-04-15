@@ -102,26 +102,24 @@ export async function sendTeamText(input: SendTeamTextInput) {
     }),
   );
 
-  await db.insert(textRecipients).values(
-    sendResults.map((result) => ({
-      textMessageId: message.id,
-      userId: result.recipient.userId ?? null,
-      playerId: result.recipient.playerId ?? null,
-      phone: result.recipient.phone,
-      deliveryStatus: result.deliveryStatus,
-      providerMessageId: result.providerMessageId,
-      deliveredAt: result.deliveredAt,
-      errorMessage: result.errorMessage,
-    })),
-  );
-
-  const storedRecipients = await db
-    .select({ id: textRecipients.id, phone: textRecipients.phone })
-    .from(textRecipients)
-    .where(eq(textRecipients.textMessageId, message.id));
-  const recipientIdByPhone = new Map(
-    storedRecipients.map((row) => [row.phone, row.id]),
-  );
+  // .returning() preserves insertion order in Postgres, so we can pair 1:1
+  // with sendResults. A separate select keyed on phone would collide when
+  // two guardians share a number.
+  const inserted = await db
+    .insert(textRecipients)
+    .values(
+      sendResults.map((result) => ({
+        textMessageId: message.id,
+        userId: result.recipient.userId ?? null,
+        playerId: result.recipient.playerId ?? null,
+        phone: result.recipient.phone,
+        deliveryStatus: result.deliveryStatus,
+        providerMessageId: result.providerMessageId,
+        deliveredAt: result.deliveredAt,
+        errorMessage: result.errorMessage,
+      })),
+    )
+    .returning({ id: textRecipients.id });
 
   await db
     .update(textMessages)
@@ -130,9 +128,9 @@ export async function sendTeamText(input: SendTeamTextInput) {
 
   return {
     messageId: message.id,
-    sendResults: sendResults.map((result) => ({
+    sendResults: sendResults.map((result, idx) => ({
       ...result,
-      textRecipientId: recipientIdByPhone.get(result.recipient.phone) ?? null,
+      textRecipientId: inserted[idx]?.id ?? null,
     })),
   };
 }
