@@ -15,6 +15,7 @@ const profileSchema = z.object({
   name: z.string().trim().min(1),
   phone: z.string().trim().optional(),
   reminderOptIn: z.boolean().default(true),
+  textOptIn: z.boolean().default(true),
 });
 
 const teamSchema = z.object({
@@ -54,6 +55,7 @@ export async function updateProfileAction(formData: FormData) {
     name: formData.get("name"),
     phone: formData.get("phone"),
     reminderOptIn: formData.get("reminderOptIn") === "on",
+    textOptIn: formData.get("textOptIn") === "on",
   });
 
   await db
@@ -62,6 +64,7 @@ export async function updateProfileAction(formData: FormData) {
       name: parsed.name,
       phone: parsed.phone || null,
       reminderOptIn: parsed.reminderOptIn,
+      textOptIn: parsed.textOptIn,
       updatedAt: new Date(),
     })
     .where(eq(adultUsers.id, viewer.userId));

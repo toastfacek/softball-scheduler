@@ -46,7 +46,16 @@ export default async function ProfilePage() {
               defaultChecked={viewer.adult.reminderOptIn}
               className="h-4 w-4"
             />
-            Email me 24-hour reminder nudges if my player hasn&apos;t responded
+            Send 24-hour reminder nudges if my player hasn&apos;t responded
+          </label>
+          <label className="flex items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 text-sm font-medium">
+            <input
+              type="checkbox"
+              name="textOptIn"
+              defaultChecked={viewer.adult.textOptIn}
+              className="h-4 w-4"
+            />
+            Prefer iMessage over email when my phone is on file
           </label>
           <SubmitButton label="Save" />
         </div>

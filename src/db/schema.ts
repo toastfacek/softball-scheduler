@@ -52,11 +52,15 @@ export const deliveryStatusEnum = pgEnum("delivery_status", [
   "SENT",
   "FAILED",
 ]);
-export const reminderTypeEnum = pgEnum("reminder_type", ["NON_RESPONDER_24H"]);
+export const reminderTypeEnum = pgEnum("reminder_type", [
+  "NON_RESPONDER_24H",
+  "NON_RESPONDER_24H_SMS",
+]);
 export const responseSourceEnum = pgEnum("response_source", [
   "APP",
   "EMAIL_LINK",
   "COACH_MANUAL",
+  "IMESSAGE",
 ]);
 
 export const adultUsers = pgTable(
@@ -72,6 +76,7 @@ export const adultUsers = pgTable(
     image: text("image"),
     phone: text("phone"),
     reminderOptIn: boolean("reminder_opt_in").default(true).notNull(),
+    textOptIn: boolean("text_opt_in").default(false).notNull(),
     createdAt,
     updatedAt,
   },
@@ -506,6 +511,47 @@ export const emailRecipients = pgTable(
   (table) => [uniqueIndex("email_recipients_message_email_key").on(table.emailMessageId, table.email)],
 );
 
+export const textMessages = pgTable("text_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  teamId: uuid("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  eventId: uuid("event_id").references(() => events.id, { onDelete: "set null" }),
+  createdByUserId: uuid("created_by_user_id").references(() => adultUsers.id, {
+    onDelete: "set null",
+  }),
+  kind: emailKindEnum("kind").notNull(),
+  body: text("body").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, string | number | boolean | null>>(),
+  createdAt,
+  sentAt: timestamp("sent_at", { withTimezone: true, mode: "date" }),
+  updatedAt,
+});
+
+export const textRecipients = pgTable(
+  "text_recipients",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    textMessageId: uuid("text_message_id")
+      .notNull()
+      .references(() => textMessages.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => adultUsers.id, { onDelete: "set null" }),
+    playerId: uuid("player_id").references(() => players.id, { onDelete: "set null" }),
+    phone: text("phone").notNull(),
+    deliveryStatus: deliveryStatusEnum("delivery_status")
+      .default("PENDING")
+      .notNull(),
+    providerMessageId: text("provider_message_id"),
+    deliveredAt: timestamp("delivered_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    errorMessage: text("error_message"),
+    createdAt,
+    updatedAt,
+  },
+);
+
 export const reminderDeliveries = pgTable(
   "reminder_deliveries",
   {
@@ -517,6 +563,9 @@ export const reminderDeliveries = pgTable(
       .notNull()
       .references(() => adultUsers.id, { onDelete: "cascade" }),
     emailRecipientId: uuid("email_recipient_id").references(() => emailRecipients.id, {
+      onDelete: "set null",
+    }),
+    textRecipientId: uuid("text_recipient_id").references(() => textRecipients.id, {
       onDelete: "set null",
     }),
     reminderType: reminderTypeEnum("reminder_type").notNull(),
