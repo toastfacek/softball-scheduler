@@ -36,7 +36,7 @@ export default async function AttendancePage({
     status: StatusKey;
     note: string | null;
     role: string | null;
-    source: "APP" | "EMAIL_LINK" | "COACH_MANUAL" | null;
+    source: "APP" | "EMAIL_LINK" | "COACH_MANUAL" | "IMESSAGE" | null;
   };
 
   const playerRows: Row[] = data.playerCards.map((p) => ({
@@ -227,14 +227,16 @@ function StatTile({
 function SourceTag({
   source,
 }: {
-  source: "APP" | "EMAIL_LINK" | "COACH_MANUAL";
+  source: "APP" | "EMAIL_LINK" | "COACH_MANUAL" | "IMESSAGE";
 }) {
   const label =
     source === "EMAIL_LINK"
       ? "email"
       : source === "COACH_MANUAL"
         ? "coach logged"
-        : "app";
+        : source === "IMESSAGE"
+          ? "iMessage"
+          : "app";
   return (
     <span
       style={{
