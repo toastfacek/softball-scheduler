@@ -18,6 +18,7 @@ export function renderEventRsvpText(args: {
   const token = signRsvpToken({
     guardianId: args.guardianId,
     eventId: args.event.id,
+    source: "IMESSAGE",
   });
   const link = rsvpUrl(token);
   const unsubscribe = textsOffUrl(

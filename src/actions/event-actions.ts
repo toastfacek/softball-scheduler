@@ -309,7 +309,7 @@ export async function recordRsvpFromLinkAction(input: {
           note,
           respondedByUserId: claims.guardianId,
           respondedAt: now,
-          responseSource: "EMAIL_LINK",
+          responseSource: claims.source,
           updatedAt: now,
         })
         .where(eq(playerEventResponses.id, existing.id));
@@ -321,7 +321,7 @@ export async function recordRsvpFromLinkAction(input: {
         note,
         respondedByUserId: claims.guardianId,
         respondedAt: now,
-        responseSource: "EMAIL_LINK",
+        responseSource: claims.source,
       });
     }
   }

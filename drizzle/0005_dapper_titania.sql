@@ -27,7 +27,7 @@ CREATE TABLE "text_recipients" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "adult_users" ADD COLUMN "text_opt_in" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "adult_users" ADD COLUMN "text_opt_in" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "reminder_deliveries" ADD COLUMN "text_recipient_id" uuid;--> statement-breakpoint
 ALTER TABLE "text_messages" ADD CONSTRAINT "text_messages_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "text_messages" ADD CONSTRAINT "text_messages_event_id_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
@@ -35,5 +35,4 @@ ALTER TABLE "text_messages" ADD CONSTRAINT "text_messages_created_by_user_id_adu
 ALTER TABLE "text_recipients" ADD CONSTRAINT "text_recipients_text_message_id_text_messages_id_fk" FOREIGN KEY ("text_message_id") REFERENCES "public"."text_messages"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "text_recipients" ADD CONSTRAINT "text_recipients_user_id_adult_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."adult_users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "text_recipients" ADD CONSTRAINT "text_recipients_player_id_players_id_fk" FOREIGN KEY ("player_id") REFERENCES "public"."players"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-CREATE UNIQUE INDEX "text_recipients_message_phone_key" ON "text_recipients" USING btree ("text_message_id","phone");--> statement-breakpoint
 ALTER TABLE "reminder_deliveries" ADD CONSTRAINT "reminder_deliveries_text_recipient_id_text_recipients_id_fk" FOREIGN KEY ("text_recipient_id") REFERENCES "public"."text_recipients"("id") ON DELETE set null ON UPDATE no action;

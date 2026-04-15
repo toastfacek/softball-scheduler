@@ -76,7 +76,7 @@ export const adultUsers = pgTable(
     image: text("image"),
     phone: text("phone"),
     reminderOptIn: boolean("reminder_opt_in").default(true).notNull(),
-    textOptIn: boolean("text_opt_in").default(true).notNull(),
+    textOptIn: boolean("text_opt_in").default(false).notNull(),
     createdAt,
     updatedAt,
   },
@@ -550,7 +550,6 @@ export const textRecipients = pgTable(
     createdAt,
     updatedAt,
   },
-  (table) => [uniqueIndex("text_recipients_message_phone_key").on(table.textMessageId, table.phone)],
 );
 
 export const reminderDeliveries = pgTable(

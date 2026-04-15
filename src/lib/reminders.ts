@@ -63,8 +63,14 @@ export async function runReminderSweep(now = new Date()) {
         },
       });
 
+      // PENDING = Poke accepted the instruction (delivery unknown until we
+      // get a receipt); SENT = console-stub mode. Both count as "attempted"
+      // for idempotency — we record reminder_deliveries once so the next
+      // cron tick doesn't re-queue.
       const sentTexts =
-        message?.sendResults.filter((r) => r.deliveryStatus === "SENT") ?? [];
+        message?.sendResults.filter(
+          (r) => r.deliveryStatus === "SENT" || r.deliveryStatus === "PENDING",
+        ) ?? [];
 
       if (sentTexts.length > 0) {
         await db.insert(reminderDeliveries).values(

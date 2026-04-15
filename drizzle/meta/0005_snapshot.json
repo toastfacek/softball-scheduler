@@ -180,7 +180,7 @@
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": true
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -2696,29 +2696,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "text_recipients_message_phone_key": {
-          "name": "text_recipients_message_phone_key",
-          "columns": [
-            {
-              "expression": "text_message_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "phone",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "text_recipients_text_message_id_text_messages_id_fk": {
           "name": "text_recipients_text_message_id_text_messages_id_fk",

@@ -79,11 +79,15 @@ export async function sendTeamText(input: SendTeamTextInput) {
           body,
         });
 
+        // Poke returns 2xx when it accepts the instruction, not when the
+        // iMessage is delivered. Record PENDING so the UI/audit trail doesn't
+        // falsely report delivery. The reminder_deliveries row is still
+        // written by the caller to enforce one-attempt-per-user.
         return {
           recipient,
-          deliveryStatus: "SENT" as const,
+          deliveryStatus: "PENDING" as const,
           providerMessageId,
-          deliveredAt: new Date(),
+          deliveredAt: null,
           errorMessage: null,
         };
       } catch (error) {
@@ -170,8 +174,14 @@ async function resolveRecipients(
     })
     .filter((r): r is ResolvedRecipient => r !== null);
 
+  // Dedupe per-guardian (userId), falling back to phone for recipients
+  // without a userId. Two guardians sharing a phone get two messages, but
+  // each keeps its own signed RSVP + unsubscribe tokens — correctness
+  // over device-level coalescing.
   return Array.from(
-    new Map(hydrated.map((r) => [r.phone, r])).values(),
+    new Map(
+      hydrated.map((r) => [r.userId ?? `phone:${r.phone}`, r] as const),
+    ).values(),
   );
 }
 
