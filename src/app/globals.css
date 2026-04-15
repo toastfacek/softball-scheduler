@@ -1080,11 +1080,37 @@ select {
 }
 .team-checkbox input { width: auto; accent-color: var(--orange-strong); }
 
+.contact-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--navy) 14%, white);
+  background: color-mix(in srgb, var(--paper) 92%, white);
+  color: var(--navy-strong);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.contact-icon-btn:hover {
+  background: color-mix(in srgb, var(--orange) 14%, var(--paper));
+  border-color: color-mix(in srgb, var(--orange) 40%, var(--navy));
+  color: var(--orange-strong);
+}
+.contact-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--orange) 28%, transparent);
+}
+
 .event-form-grid > * {
   min-width: 0;
 }
 
 .event-form-datetime {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
