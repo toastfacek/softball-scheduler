@@ -48,6 +48,7 @@ export type AppViewer = ViewerContext & {
     email: string;
     phone: string | null;
     reminderOptIn: boolean;
+    textOptIn: boolean;
   };
   team: {
     name: string;
@@ -139,6 +140,7 @@ export const getViewerContext = cache(async (): Promise<AppViewer | null> => {
       email: adult.email,
       phone: adult.phone,
       reminderOptIn: adult.reminderOptIn,
+      textOptIn: adult.textOptIn,
     },
     team: {
       name: teamRows[0].teamName,
@@ -759,6 +761,8 @@ export async function listTeamRecipients(
       .select({
         userId: adultUsers.id,
         email: adultUsers.email,
+        phone: adultUsers.phone,
+        textOptIn: adultUsers.textOptIn,
       })
       .from(teamMemberships)
       .innerJoin(adultUsers, eq(teamMemberships.userId, adultUsers.id))
@@ -777,6 +781,8 @@ export async function listTeamRecipients(
       .select({
         userId: adultUsers.id,
         email: adultUsers.email,
+        phone: adultUsers.phone,
+        textOptIn: adultUsers.textOptIn,
       })
       .from(playerGuardians)
       .innerJoin(adultUsers, eq(playerGuardians.userId, adultUsers.id))
@@ -790,6 +796,8 @@ export async function listTeamRecipients(
     .select({
       userId: adultUsers.id,
       email: adultUsers.email,
+      phone: adultUsers.phone,
+      textOptIn: adultUsers.textOptIn,
     })
     .from(teamMemberships)
     .innerJoin(adultUsers, eq(teamMemberships.userId, adultUsers.id))
@@ -798,12 +806,14 @@ export async function listTeamRecipients(
   return dedupeRecipients(allRows);
 }
 
-function dedupeRecipients(
-  rows: {
-    userId: string;
-    email: string;
-  }[],
-) {
+export type TeamRecipient = {
+  userId: string;
+  email: string;
+  phone: string | null;
+  textOptIn: boolean;
+};
+
+function dedupeRecipients(rows: TeamRecipient[]) {
   return Array.from(
     new Map(rows.map((row) => [row.email, row])).values(),
   );
@@ -833,6 +843,8 @@ export async function listEventUpdateRecipients(
     .select({
       userId: adultUsers.id,
       email: adultUsers.email,
+      phone: adultUsers.phone,
+      textOptIn: adultUsers.textOptIn,
       playerId: playerGuardians.playerId,
     })
     .from(playerGuardians)
@@ -906,6 +918,8 @@ export async function getNonResponderGuardiansForEvent(eventId: string, teamId: 
           email: adultUsers.email,
           name: adultUsers.name,
           reminderOptIn: adultUsers.reminderOptIn,
+          phone: adultUsers.phone,
+          textOptIn: adultUsers.textOptIn,
           playerId: playerGuardians.playerId,
           playerFirstName: players.firstName,
           playerLastName: players.lastName,
@@ -932,6 +946,8 @@ export async function getNonResponderGuardiansForEvent(eventId: string, teamId: 
       userId: string;
       email: string;
       name: string | null;
+      phone: string | null;
+      textOptIn: boolean;
       players: string[];
     }
   >();
@@ -958,6 +974,8 @@ export async function getNonResponderGuardiansForEvent(eventId: string, teamId: 
       userId: row.userId,
       email: row.email,
       name: row.name,
+      phone: row.phone,
+      textOptIn: row.textOptIn,
       players: [playerName],
     });
   }

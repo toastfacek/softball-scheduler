@@ -20,6 +20,8 @@ import { listEventUpdateRecipients } from "@/lib/data";
 import { renderEventRsvpEmail } from "@/lib/email-templates";
 import { sendTeamEmail } from "@/lib/notifications";
 import { verifyRsvpToken } from "@/lib/rsvp-tokens";
+import { sendTeamText } from "@/lib/text-notifications";
+import { renderEventUpdateText } from "@/lib/text-templates";
 import { localInputToDate } from "@/lib/time";
 
 const eventSchema = z.object({
@@ -482,6 +484,12 @@ export async function sendEventUpdateAction(formData: FormData) {
     recipients.map((r) => r.userId).filter(Boolean) as string[],
   );
 
+  const textRecipients = recipients.filter(
+    (r) => r.textOptIn && r.phone,
+  );
+  const textUserIds = new Set(textRecipients.map((r) => r.userId));
+  const emailRecipients = recipients.filter((r) => !textUserIds.has(r.userId));
+
   await sendTeamEmail({
     teamId: viewer.teamId,
     createdByUserId: viewer.userId,
@@ -489,7 +497,7 @@ export async function sendEventUpdateAction(formData: FormData) {
     kind: "BROADCAST",
     subject: parsed.subject,
     body: `${event.title}\n${parsed.body}`,
-    recipients,
+    recipients: emailRecipients,
     metadata: {
       audience: parsed.audience,
     },
@@ -509,6 +517,31 @@ export async function sendEventUpdateAction(formData: FormData) {
       });
     },
   });
+
+  if (textRecipients.length > 0) {
+    await sendTeamText({
+      teamId: viewer.teamId,
+      createdByUserId: viewer.userId,
+      eventId: parsed.eventId,
+      kind: "BROADCAST",
+      body: `${event.title}: ${parsed.body}`,
+      recipients: textRecipients.map((r) => ({
+        userId: r.userId,
+        phone: r.phone,
+      })),
+      metadata: { audience: parsed.audience },
+      renderBody: ({ userId }) => {
+        if (!userId) return {};
+        return {
+          body: renderEventUpdateText({
+            event,
+            guardianId: userId,
+            body: parsed.body,
+          }),
+        };
+      },
+    });
+  }
 
   revalidatePath(`/events/${parsed.eventId}`);
   redirect(`/events/${parsed.eventId}?saved=email`);

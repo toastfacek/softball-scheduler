@@ -11,8 +11,15 @@ export const env = {
   AUTH_RESEND_FROM_NAME:
     process.env.AUTH_RESEND_FROM_NAME ?? "Beverly Softball",
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
+  POKE_API_KEY: process.env.POKE_API_KEY ?? "",
+  POKE_API_URL:
+    process.env.POKE_API_URL ?? "https://poke.com/api/v1/inbound/api-message",
 };
 
 export function isResendConfigured() {
   return Boolean(env.RESEND_API_KEY && env.AUTH_RESEND_FROM);
+}
+
+export function isPokeConfigured() {
+  return Boolean(env.POKE_API_KEY);
 }
