@@ -57,6 +57,7 @@ export const responseSourceEnum = pgEnum("response_source", [
   "APP",
   "EMAIL_LINK",
   "COACH_MANUAL",
+  "IMESSAGE",
 ]);
 
 export const adultUsers = pgTable(

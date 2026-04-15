@@ -2,7 +2,6 @@ import { inArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import { adultUsers, type EmailKind } from "@/db/schema";
-import { normalizePhoneNumber } from "@/lib/utils";
 
 type RecipientInput = {
   email?: string | null;
@@ -107,7 +106,7 @@ function dedupeByPhone<T extends { phone: string }>(recipients: T[]) {
   return Array.from(
     new Map(
       recipients.map((recipient) => [
-        normalizePhoneNumber(recipient.phone),
+        recipient.phone.replace(/\D/g, "") || recipient.phone.trim(),
         recipient,
       ]),
     ).values(),
