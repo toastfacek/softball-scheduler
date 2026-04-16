@@ -43,6 +43,13 @@
       "when": 1776285837603,
       "tag": "0005_dapper_titania",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776297579086,
+      "tag": "0006_conscious_romulus",
+      "breakpoints": true
     }
   ]
 }

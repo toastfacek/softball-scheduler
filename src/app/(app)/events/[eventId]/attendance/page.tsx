@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
+import { EventTypeChip } from "@/components/status-chip";
 import { canManageTeam } from "@/lib/authz";
 import { getEventPageData, getViewerContext } from "@/lib/data";
 import { formatEventDay, formatEventTime } from "@/lib/time";
@@ -70,13 +71,7 @@ export default async function AttendancePage({
       <section className="shell-panel rounded-tile p-4">
         <div className="orange-bar-top" />
         <div className="relative flex items-center gap-2 mb-1">
-          <span
-            className={`chip ${
-              data.event.type === "GAME" ? "chip--game" : "chip--practice"
-            }`}
-          >
-            {data.event.type}
-          </span>
+          <EventTypeChip type={data.event.type} />
           <span
             style={{
               fontSize: "0.95rem",

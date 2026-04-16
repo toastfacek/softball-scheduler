@@ -792,6 +792,10 @@ export async function listTeamRecipients(
     return dedupeRecipients(guardianRows);
   }
 
+  // Every adult with team access (parents, coaches, admins) has a
+  // team_memberships row — the invite flow in team-actions.ts inserts
+  // a PARENT membership for every guardian. So a plain teamMemberships
+  // query covers the full "everyone" set; no playerGuardians union needed.
   const allRows = await db
     .select({
       userId: adultUsers.id,
@@ -822,12 +826,28 @@ function dedupeRecipients(rows: TeamRecipient[]) {
 export async function listEventUpdateRecipients(
   teamId: string,
   eventId: string,
-  mode: "ALL_GUARDIANS" | "RESPONDED_PLAYERS",
+  mode:
+    | "ALL_GUARDIANS"
+    | "RESPONDED_PLAYERS"
+    | "NON_RESPONDERS"
+    | "STAFF"
+    | "EVERYONE",
 ) {
   if (mode === "ALL_GUARDIANS") {
     return listTeamRecipients(teamId, "GUARDIANS");
   }
 
+  if (mode === "STAFF") {
+    return listTeamRecipients(teamId, "STAFF");
+  }
+
+  if (mode === "EVERYONE") {
+    return listTeamRecipients(teamId, "ALL");
+  }
+
+  // RESPONDED_PLAYERS and NON_RESPONDERS both need the set of players
+  // who have an RSVP for this event. RESPONDED_PLAYERS filters the
+  // roster to that set; NON_RESPONDERS filters to its complement.
   const respondedPlayerRows = await db
     .select({
       playerId: playerEventResponses.playerId,
@@ -835,11 +855,35 @@ export async function listEventUpdateRecipients(
     .from(playerEventResponses)
     .where(eq(playerEventResponses.eventId, eventId));
 
-  if (respondedPlayerRows.length === 0) {
-    return [];
+  const respondedIds = new Set(respondedPlayerRows.map((row) => row.playerId));
+
+  if (mode === "RESPONDED_PLAYERS") {
+    if (respondedIds.size === 0) return [];
+    const guardianRows = await db
+      .select({
+        userId: adultUsers.id,
+        email: adultUsers.email,
+        phone: adultUsers.phone,
+        textOptIn: adultUsers.textOptIn,
+        playerId: playerGuardians.playerId,
+      })
+      .from(playerGuardians)
+      .innerJoin(adultUsers, eq(playerGuardians.userId, adultUsers.id))
+      .innerJoin(players, eq(playerGuardians.playerId, players.id))
+      .where(
+        and(
+          eq(players.teamId, teamId),
+          inArray(playerGuardians.playerId, Array.from(respondedIds)),
+        ),
+      );
+
+    return Array.from(
+      new Map(guardianRows.map((row) => [row.email, row])).values(),
+    );
   }
 
-  const guardianRows = await db
+  // mode === "NON_RESPONDERS"
+  const nonResponderGuardianRows = await db
     .select({
       userId: adultUsers.id,
       email: adultUsers.email,
@@ -850,18 +894,14 @@ export async function listEventUpdateRecipients(
     .from(playerGuardians)
     .innerJoin(adultUsers, eq(playerGuardians.userId, adultUsers.id))
     .innerJoin(players, eq(playerGuardians.playerId, players.id))
-    .where(
-      and(
-        eq(players.teamId, teamId),
-        inArray(
-          playerGuardians.playerId,
-          respondedPlayerRows.map((row) => row.playerId),
-        ),
-      ),
-    );
+    .where(eq(players.teamId, teamId));
+
+  const filtered = nonResponderGuardianRows.filter(
+    (row) => !respondedIds.has(row.playerId),
+  );
 
   return Array.from(
-    new Map(guardianRows.map((row) => [row.email, row])).values(),
+    new Map(filtered.map((row) => [row.email, row])).values(),
   );
 }
 

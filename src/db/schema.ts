@@ -26,7 +26,7 @@ const updatedAt = timestamp("updated_at", {
   .notNull();
 
 export const teamRoleEnum = pgEnum("team_role", ["PARENT", "COACH", "ADMIN"]);
-export const eventTypeEnum = pgEnum("event_type", ["GAME", "PRACTICE"]);
+export const eventTypeEnum = pgEnum("event_type", ["GAME", "PRACTICE", "TEAM_EVENT"]);
 export const eventStatusEnum = pgEnum("event_status", [
   "SCHEDULED",
   "CANCELED",

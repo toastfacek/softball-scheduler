@@ -9,6 +9,7 @@ import {
   playerGuardians,
   players,
 } from "@/db/schema";
+import { eventTypeLabel } from "@/lib/event-display";
 import { verifyRsvpToken } from "@/lib/rsvp-tokens";
 import { formatEventDateTimeRange } from "@/lib/time";
 
@@ -92,7 +93,7 @@ export default async function RsvpLandingPage({ params, searchParams }: PageProp
         <div className="rsvp-eyebrow">Beverly Girls Softball League</div>
         <h1 className="rsvp-greeting">Hi {guardianFirstName} —</h1>
         <div className="rsvp-event-card">
-          <div className="rsvp-event-chip">{event.type}</div>
+          <div className="rsvp-event-chip">{eventTypeLabel(event.type)}</div>
           <h2 className="rsvp-event-title">{event.title}</h2>
           <div className="rsvp-event-meta">
             {formatEventDateTimeRange(event.startsAt, event.endsAt)}

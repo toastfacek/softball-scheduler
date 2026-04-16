@@ -31,6 +31,7 @@ export function EventFormFields({ event }: { event?: EventSeed }) {
         <select id="type" name="type" defaultValue={event?.type ?? "PRACTICE"}>
           <option value="PRACTICE">Practice</option>
           <option value="GAME">Game</option>
+          <option value="TEAM_EVENT">Team event</option>
         </select>
       </div>
 

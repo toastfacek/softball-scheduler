@@ -4,13 +4,13 @@ import { ArrowRight, Clock4, MapPin, UserCheck } from "lucide-react";
 import { EventStatusChip, EventTypeChip, ResponseChip } from "@/components/status-chip";
 import { formatEventDateTimeRange } from "@/lib/time";
 import { formatAddress } from "@/lib/utils";
-import type { AttendanceStatus } from "@/db/schema";
+import type { AttendanceStatus, EventType } from "@/db/schema";
 
 type EventCardProps = {
   event: {
     id: string;
     title: string;
-    type: "GAME" | "PRACTICE";
+    type: EventType;
     status: "SCHEDULED" | "CANCELED" | "COMPLETED";
     startsAt: Date;
     endsAt: Date | null;
