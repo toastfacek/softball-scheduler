@@ -19,6 +19,11 @@ const resendFromAddress = buildEmailFromAddress(
 );
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Vercel (prod + previews) terminates TLS at the edge and rewrites the
+  // Host header, so the incoming Host is trustworthy. Without this, NextAuth
+  // v5 rejects requests from the dynamic preview subdomains and sign-in
+  // silently fails on every PR preview.
+  trustHost: true,
   adapter: DrizzleAdapter(db, {
     usersTable: adultUsers,
     accountsTable: authAccounts,
