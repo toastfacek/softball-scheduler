@@ -71,7 +71,13 @@ const actualAttendanceSchema = z.object({
 
 const eventUpdateSchema = z.object({
   eventId: z.string().uuid(),
-  audience: z.enum(["ALL_GUARDIANS", "RESPONDED_PLAYERS"]),
+  audience: z.enum([
+    "ALL_GUARDIANS",
+    "RESPONDED_PLAYERS",
+    "NON_RESPONDERS",
+    "STAFF",
+    "EVERYONE",
+  ]),
   subject: z.string().trim().min(3),
   body: z.string().trim().min(3),
 });
@@ -484,6 +490,11 @@ export async function sendEventUpdateAction(formData: FormData) {
     parsed.eventId,
     parsed.audience,
   );
+
+  if (recipients.length === 0) {
+    revalidatePath(`/events/${parsed.eventId}`);
+    redirect(`/events/${parsed.eventId}?saved=email-empty`);
+  }
 
   const guardianNames = await guardianFirstNamesById(
     recipients.map((r) => r.userId).filter(Boolean) as string[],

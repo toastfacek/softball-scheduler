@@ -37,6 +37,11 @@ export default async function EventEmailPage({
               <option value="RESPONDED_PLAYERS">
                 Guardians of players who responded
               </option>
+              <option value="NON_RESPONDERS">
+                Guardians of players who haven&apos;t responded
+              </option>
+              <option value="STAFF">Coaches &amp; admins</option>
+              <option value="EVERYONE">Everyone (guardians + staff)</option>
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
