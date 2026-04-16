@@ -55,7 +55,7 @@ export default async function ProfilePage() {
               defaultChecked={viewer.adult.textOptIn}
               className="h-4 w-4"
             />
-            Prefer iMessage over email when my phone is on file
+            Prefer text messages over email when my phone is on file
           </label>
           <SubmitButton label="Save" />
         </div>
