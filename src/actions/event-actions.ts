@@ -15,6 +15,7 @@ import {
   playerGuardians,
   players,
 } from "@/db/schema";
+import type { EventType } from "@/db/schema";
 import { inArray } from "drizzle-orm";
 import { listEventUpdateRecipients } from "@/lib/data";
 import { renderEventRsvpEmail } from "@/lib/email-templates";
@@ -26,7 +27,7 @@ import { localInputToDate } from "@/lib/time";
 
 const eventSchema = z.object({
   eventId: z.string().uuid().optional(),
-  type: z.enum(["GAME", "PRACTICE"]),
+  type: z.enum(["GAME", "PRACTICE", "TEAM_EVENT"]),
   status: z.enum(["SCHEDULED", "CANCELED", "COMPLETED"]),
   title: z.string().trim().min(1),
   description: z.string().trim().optional(),
@@ -38,10 +39,14 @@ const eventSchema = z.object({
   postalCode: z.string().trim().optional(),
 });
 
-// Default durations — practice 90m, game 2h. Used to derive endsAt at save time
-// so the form only collects a single start datetime.
-const DEFAULT_DURATION_MIN = { PRACTICE: 90, GAME: 120 } as const;
-function defaultEndFor(startsAt: Date, type: "PRACTICE" | "GAME"): Date {
+// Default durations — practice 90m, game 2h, team event 2h. Used to derive endsAt
+// at save time so the form only collects a single start datetime.
+const DEFAULT_DURATION_MIN = {
+  PRACTICE: 90,
+  GAME: 120,
+  TEAM_EVENT: 120,
+} as const;
+function defaultEndFor(startsAt: Date, type: EventType): Date {
   return new Date(startsAt.getTime() + DEFAULT_DURATION_MIN[type] * 60 * 1000);
 }
 
