@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { env } from "@/lib/env";
 
-export type RsvpTokenSource = "EMAIL_LINK" | "IMESSAGE";
+export type RsvpTokenSource = "EMAIL_LINK" | "SMS";
 
 type RsvpTokenPayload = {
   gid: string;
@@ -64,7 +64,7 @@ export function verifyRsvpToken(token: string): RsvpTokenClaims | null {
   if (expiresAt.getTime() <= Date.now()) return null;
 
   const source: RsvpTokenSource =
-    payload.src === "IMESSAGE" ? "IMESSAGE" : "EMAIL_LINK";
+    payload.src === "SMS" ? "SMS" : "EMAIL_LINK";
 
   return {
     guardianId: payload.gid,
