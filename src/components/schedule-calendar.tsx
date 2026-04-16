@@ -18,6 +18,7 @@ import {
 import { formatInTimeZone } from "date-fns-tz";
 
 import type { EventType } from "@/db/schema";
+import { eventTypeCalendarClass } from "@/lib/event-display";
 import { cn } from "@/lib/utils";
 
 type CalendarEvent = {
@@ -180,12 +181,7 @@ export function ScheduleCalendar({ events, canAddEvents, timezone }: Props) {
                       key={event.id}
                       href={`/events/${event.id}`}
                       onClick={(e) => e.stopPropagation()}
-                      className={cn(
-                        "cal-event",
-                        event.type === "GAME"
-                          ? "cal-event--game"
-                          : "cal-event--practice",
-                      )}
+                      className={cn("cal-event", eventTypeCalendarClass(event.type))}
                     >
                       <span className="cal-event-time">
                         {formatInTimeZone(event.startsAt, timezone, "h:mm a")}

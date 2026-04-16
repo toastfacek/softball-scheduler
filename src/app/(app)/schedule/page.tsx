@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { ScheduleCalendar } from "@/components/schedule-calendar";
 import { canManageTeam } from "@/lib/authz";
 import { getSchedulePageData, getViewerContext } from "@/lib/data";
+import { eventTypeLabel } from "@/lib/event-display";
 import { formatEventDay, formatEventTime } from "@/lib/time";
 
 type StatusBit =
@@ -92,7 +93,7 @@ export default async function SchedulePage() {
                       <div className="row-title">{event.title}</div>
                       <div className="row-sub">
                         {formatEventTime(event.startsAt)} ·{" "}
-                        {event.type === "GAME" ? "Game" : "Practice"}
+                        {eventTypeLabel(event.type)}
                       </div>
                     </div>
                     {statusBit ? (
