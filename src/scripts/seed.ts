@@ -207,6 +207,10 @@ async function main() {
     gameStart.setDate(gameStart.getDate() + 5);
     gameStart.setHours(9, 0, 0, 0);
 
+    const pictureDayStart = new Date();
+    pictureDayStart.setDate(pictureDayStart.getDate() + 10);
+    pictureDayStart.setHours(10, 0, 0, 0);
+
     const [practice, game] = await db
       .insert(events)
       .values([
@@ -237,6 +241,20 @@ async function main() {
           state: "MA",
           postalCode: "01915",
           description: "Arrive 30 minutes early for warmups.",
+        },
+        {
+          teamId: team.id,
+          seasonId: season.id,
+          type: "TEAM_EVENT",
+          title: "Picture Day",
+          startsAt: pictureDayStart,
+          endsAt: new Date(pictureDayStart.getTime() + 2 * 60 * 60 * 1000),
+          venueName: "Harry Ball Field",
+          addressLine1: "120 Cabot St",
+          city: "Beverly",
+          state: "MA",
+          postalCode: "01915",
+          description: "Wear full uniform. Individual and team photos.",
         },
       ])
       .returning();
