@@ -792,6 +792,10 @@ export async function listTeamRecipients(
     return dedupeRecipients(guardianRows);
   }
 
+  // Every adult with team access (parents, coaches, admins) has a
+  // team_memberships row — the invite flow in team-actions.ts inserts
+  // a PARENT membership for every guardian. So a plain teamMemberships
+  // query covers the full "everyone" set; no playerGuardians union needed.
   const allRows = await db
     .select({
       userId: adultUsers.id,
