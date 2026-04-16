@@ -500,6 +500,18 @@ export async function sendEventUpdateAction(formData: FormData) {
     recipients.map((r) => r.userId).filter(Boolean) as string[],
   );
 
+  // STAFF / EVERYONE audiences include coaches and admins who may not be
+  // guardians. RSVP-link templates are scoped to a guardianId and render a
+  // broken CTA for non-guardians ("No players linked" on the RSVP page), so
+  // only render the RSVP variant for recipients that actually have a
+  // guardian link. Others fall back to the canonical plain-text body.
+  const guardianUserIdRows = await db
+    .selectDistinct({ userId: playerGuardians.userId })
+    .from(playerGuardians)
+    .innerJoin(players, eq(playerGuardians.playerId, players.id))
+    .where(eq(players.teamId, viewer.teamId));
+  const guardianUserIds = new Set(guardianUserIdRows.map((r) => r.userId));
+
   const textRecipients = recipients.filter(
     (r) => r.textOptIn && r.phone,
   );
@@ -518,9 +530,9 @@ export async function sendEventUpdateAction(formData: FormData) {
       audience: parsed.audience,
     },
     renderBody: (recipient) => {
-      if (!recipient.userId) {
-        // Fall back to the canonical body for unlinked recipients (no RSVP link
-        // without a guardian id to scope it to).
+      if (!recipient.userId || !guardianUserIds.has(recipient.userId)) {
+        // Non-guardian (coach/admin with no linked players) — fall back to
+        // the canonical body so they don't receive a broken RSVP CTA.
         return {};
       }
       const firstName = guardianNames.get(recipient.userId) ?? "there";
