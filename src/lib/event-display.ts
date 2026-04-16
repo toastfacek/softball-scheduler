@@ -11,6 +11,7 @@ export function eventTypeLabel(type: EventType): string {
   }
 }
 
+// Consumed by src/components/schedule-calendar.tsx (wired up in Phase C).
 export function eventTypeCalendarClass(type: EventType): string {
   switch (type) {
     case "GAME":
