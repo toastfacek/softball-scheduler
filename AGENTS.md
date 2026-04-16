@@ -66,6 +66,12 @@ All server-side role gating flows through one function:
 
 [src/lib/notifications.ts](src/lib/notifications.ts) `sendTeamEmail()` writes an `email_messages` + `email_recipients` row per send, then calls Resend. Always go through it — don't call Resend directly — so delivery status is recorded and recipients are deduped.
 
+### SMS
+
+[src/lib/text-notifications.ts](src/lib/text-notifications.ts) `sendTeamText()` writes `text_messages` + `text_recipients` rows, then calls [src/lib/sms-provider.ts](src/lib/sms-provider.ts) `sendSms()` which sends via Twilio. Delivery starts as `PENDING`; Twilio's status callback at [src/app/api/sms/status/route.ts](src/app/api/sms/status/route.ts) flips it to `SENT` or `FAILED`. Inbound STOP messages at [src/app/api/sms/inbound/route.ts](src/app/api/sms/inbound/route.ts) flip `adult_users.text_opt_in` so the admin UI stays in sync with Twilio's carrier-level opt-out.
+
+Channel selection is per-recipient: if `adult_users.text_opt_in = true` AND `adult_users.phone` is set, the recipient gets SMS; otherwise email. The broadcast action in [src/actions/event-actions.ts](src/actions/event-actions.ts) splits recipients into two disjoint sets and sends through both channels — each person receives exactly one message.
+
 ### UI
 
 - Tailwind v4 with custom CSS variables (navy/orange palette). Global styles + design tokens in [src/app/globals.css](src/app/globals.css).
@@ -75,4 +81,4 @@ All server-side role gating flows through one function:
 
 ## Environment
 
-`src/lib/env.ts` reads env vars with dev fallbacks. Required for real runs: `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`, `AUTH_RESEND_FROM`, `RESEND_API_KEY`.
+`src/lib/env.ts` reads env vars with dev fallbacks. Required for real runs: `DATABASE_URL`, `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`, `AUTH_RESEND_FROM`, `RESEND_API_KEY`. For SMS: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (E.164). Optional: `TWILIO_STATUS_CALLBACK_URL` (set to `https://<app>/api/sms/status` in prod so delivery status updates the `text_recipients` row; leave empty in dev). Twilio inbound webhook (configured in Twilio Console on the phone number, not via env) points to `https://<app>/api/sms/inbound`.
