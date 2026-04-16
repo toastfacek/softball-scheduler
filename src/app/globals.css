@@ -517,6 +517,11 @@ select {
   background: color-mix(in srgb, var(--navy) 8%, white);
   color: var(--navy);
 }
+.chip--team-event {
+  border-color: color-mix(in srgb, var(--warning) 36%, white);
+  background: color-mix(in srgb, var(--warning) 22%, white);
+  color: color-mix(in srgb, var(--warning) 78%, black);
+}
 .chip--scheduled {
   border-color: color-mix(in srgb, var(--navy) 16%, white);
   background: color-mix(in srgb, var(--navy) 10%, white);
@@ -1673,6 +1678,11 @@ select {
   background: color-mix(in srgb, var(--navy) 10%, var(--paper));
   border-left-color: var(--navy-strong);
   color: color-mix(in srgb, var(--navy-strong) 90%, black);
+}
+.cal-event--team-event {
+  background: color-mix(in srgb, var(--warning) 14%, var(--paper));
+  border-left-color: color-mix(in srgb, var(--warning) 72%, black);
+  color: color-mix(in srgb, var(--warning) 80%, black);
 }
 .cal-event:hover {
   filter: brightness(0.96);

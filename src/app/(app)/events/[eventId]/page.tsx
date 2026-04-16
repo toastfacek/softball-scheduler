@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
+import { EventTypeChip } from "@/components/status-chip";
 import { canManageTeam } from "@/lib/authz";
 import { getEventPageData, getViewerContext } from "@/lib/data";
 import { formatEventDateTimeRange } from "@/lib/time";
@@ -59,13 +60,7 @@ export default async function EventDetailPage({
       <section className="shell-panel rounded-tile p-4">
         <div className="orange-bar-top" />
         <div className="relative flex flex-wrap items-center gap-2 mb-2">
-          <span
-            className={`chip ${
-              data.event.type === "GAME" ? "chip--game" : "chip--practice"
-            }`}
-          >
-            {data.event.type}
-          </span>
+          <EventTypeChip type={data.event.type} />
           <span className="chip chip--scheduled">
             {data.event.status.toLowerCase()}
           </span>

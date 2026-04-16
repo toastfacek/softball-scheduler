@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { AttendanceStatus, EventStatus, EventType } from "@/db/schema";
+import { eventTypeLabel } from "@/lib/event-display";
 
 const responseStyles: Record<AttendanceStatus, string> = {
   AVAILABLE:
@@ -15,6 +16,8 @@ const eventStyles: Record<EventType, string> = {
     "border-[color-mix(in_srgb,var(--orange)_36%,white)] bg-[color-mix(in_srgb,var(--orange)_18%,white)] text-navy-strong",
   PRACTICE:
     "border-[color-mix(in_srgb,var(--navy)_16%,white)] bg-[color-mix(in_srgb,var(--navy)_8%,white)] text-navy",
+  TEAM_EVENT:
+    "border-[color-mix(in_srgb,var(--warning)_36%,white)] bg-[color-mix(in_srgb,var(--warning)_18%,white)] text-[color-mix(in_srgb,var(--warning)_74%,black)]",
 };
 
 const eventStatusStyles: Record<EventStatus, string> = {
@@ -67,7 +70,7 @@ export function EventTypeChip({ type }: { type: EventType }) {
         eventStyles[type],
       )}
     >
-      {type}
+      {eventTypeLabel(type)}
     </span>
   );
 }
