@@ -23,6 +23,18 @@ const OPT_OUT_KEYWORDS = new Set([
   "QUIT",
 ]);
 
+const OPT_IN_KEYWORDS = new Set(["START", "UNSTOP", "YES"]);
+
+// Twilio sends From in E.164 ("+17183162321") but we store phones in local
+// formatted form ("718-316-2321"). Strip to digits, then drop leading "1"
+// for US numbers so both sides compare as 10-digit local.
+function toLocalDigits(e164: string): string {
+  const digits = e164.replace(/\D/g, "");
+  return digits.length === 11 && digits.startsWith("1")
+    ? digits.slice(1)
+    : digits;
+}
+
 export async function POST(request: NextRequest) {
   if (!env.TWILIO_AUTH_TOKEN) {
     return NextResponse.json({ ok: false }, { status: 503 });
@@ -45,21 +57,27 @@ export async function POST(request: NextRequest) {
 
   const from = params.From ?? "";
   const bodyText = (params.Body ?? "").trim().toUpperCase();
+  const localDigits = toLocalDigits(from);
 
   if (from && OPT_OUT_KEYWORDS.has(bodyText)) {
-    // Phones are stored in the original formatted form (e.g. "718-316-2321");
-    // Twilio sends E.164 ("+17183162321"). Normalize both sides to digits.
-    const digits = from.replace(/\D/g, "");
     await db
       .update(adultUsers)
       .set({ textOptIn: false, updatedAt: new Date() })
       .where(
-        sql`regexp_replace(${adultUsers.phone}, '\D', '', 'g') = ${digits}`,
+        sql`regexp_replace(${adultUsers.phone}, '\D', '', 'g') = ${localDigits}`,
+      );
+  } else if (from && OPT_IN_KEYWORDS.has(bodyText)) {
+    await db
+      .update(adultUsers)
+      .set({ textOptIn: true, updatedAt: new Date() })
+      .where(
+        sql`regexp_replace(${adultUsers.phone}, '\D', '', 'g') = ${localDigits}`,
       );
   }
 
-  // Empty TwiML — Twilio's own STOP auto-reply is enough; we don't want a
-  // double-message. For non-STOP inbound we intentionally don't reply.
+  // Empty TwiML — Twilio's own STOP/START auto-replies are enough; we
+  // don't want a double-message. For other inbound we intentionally
+  // don't reply.
   return new NextResponse(
     '<?xml version="1.0" encoding="UTF-8"?><Response/>',
     { status: 200, headers: { "Content-Type": "text/xml" } },
