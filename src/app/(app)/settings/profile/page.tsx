@@ -68,9 +68,9 @@ export default async function ProfilePage() {
               }}
             >
               By opting in you agree to receive automated texts from BGSL
-              (reminders, schedule updates). Msg frequency varies, typically a
-              few/week during the season. Msg &amp; data rates may apply. Reply
-              STOP to cancel anytime.{" "}
+              (reminders, schedule updates). Message frequency varies, typically
+              a few per week during the season. Message and data rates may
+              apply. Reply STOP to cancel anytime.{" "}
               <a href="/privacy-policy" style={{ color: "var(--orange)" }}>
                 Privacy Policy
               </a>

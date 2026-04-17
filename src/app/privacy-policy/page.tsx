@@ -83,9 +83,11 @@ export default function PrivacyPolicyPage() {
               third parties for promotional or marketing purposes.
             </strong>{" "}
             Your phone number is used solely to deliver BGSL team notifications
-            that you have opted in to receive. Third-party service providers
-            (Twilio) process your number only to transmit messages on our behalf
-            and are contractually prohibited from using it for any other purpose.
+            that you have opted in to receive. Your opt-in consent and SMS
+            consent data will not be shared with any third party. Third-party
+            service providers (Twilio) process your number only to transmit
+            messages on our behalf and are contractually prohibited from using
+            it for any other purpose.
           </p>
           <p>
             You can opt out at any time by replying <strong>STOP</strong> to any
