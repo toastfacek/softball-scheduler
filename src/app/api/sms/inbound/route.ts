@@ -64,14 +64,14 @@ export async function POST(request: NextRequest) {
       .update(adultUsers)
       .set({ textOptIn: false, updatedAt: new Date() })
       .where(
-        sql`regexp_replace(${adultUsers.phone}, '\D', '', 'g') = ${localDigits}`,
+        sql`regexp_replace(regexp_replace(${adultUsers.phone}, '\D', '', 'g'), '^1(\d{10})$', '\1') = ${localDigits}`,
       );
   } else if (from && OPT_IN_KEYWORDS.has(bodyText)) {
     await db
       .update(adultUsers)
       .set({ textOptIn: true, updatedAt: new Date() })
       .where(
-        sql`regexp_replace(${adultUsers.phone}, '\D', '', 'g') = ${localDigits}`,
+        sql`regexp_replace(regexp_replace(${adultUsers.phone}, '\D', '', 'g'), '^1(\d{10})$', '\1') = ${localDigits}`,
       );
   }
 

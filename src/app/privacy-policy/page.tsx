@@ -78,9 +78,21 @@ export default function PrivacyPolicyPage() {
             Message and data rates may apply.
           </p>
           <p>
+            <strong>
+              We will never sell, share, or rent your mobile phone number to
+              third parties for promotional or marketing purposes.
+            </strong>{" "}
+            Your phone number is used solely to deliver BGSL team notifications
+            that you have opted in to receive. Third-party service providers
+            (Twilio) process your number only to transmit messages on our behalf
+            and are contractually prohibited from using it for any other purpose.
+          </p>
+          <p>
             You can opt out at any time by replying <strong>STOP</strong> to any
             message, using the &quot;Stop texts&quot; link in each message, or
-            toggling the preference off in your profile settings.
+            toggling the preference off in your profile settings. Reply{" "}
+            <strong>HELP</strong> for assistance or contact us at the email
+            below.
           </p>
         </Section>
 
