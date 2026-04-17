@@ -48,15 +48,38 @@ export default async function ProfilePage() {
             />
             Send 24-hour reminder nudges if my player hasn&apos;t responded
           </label>
-          <label className="flex items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 text-sm font-medium">
-            <input
-              type="checkbox"
-              name="textOptIn"
-              defaultChecked={viewer.adult.textOptIn}
-              className="h-4 w-4"
-            />
-            Prefer iMessage over email when my phone is on file
-          </label>
+          <div className="rounded-2xl border border-line bg-white px-4 py-3">
+            <label className="flex items-center gap-3 text-sm font-medium">
+              <input
+                type="checkbox"
+                name="textOptIn"
+                defaultChecked={viewer.adult.textOptIn}
+                className="h-4 w-4"
+              />
+              Prefer text messages over email when my phone is on file
+            </label>
+            <p
+              className="text-xs"
+              style={{
+                marginTop: "0.5rem",
+                paddingLeft: "1.75rem",
+                color: "color-mix(in srgb, var(--navy) 55%, white)",
+                lineHeight: 1.5,
+              }}
+            >
+              By opting in you agree to receive automated texts from BGSL
+              (reminders, schedule updates). Message frequency varies, typically
+              a few per week during the season. Message and data rates may
+              apply. Reply STOP to cancel anytime.{" "}
+              <a href="/privacy-policy" style={{ color: "var(--orange)" }}>
+                Privacy Policy
+              </a>
+              {" · "}
+              <a href="/terms-and-conditions" style={{ color: "var(--orange)" }}>
+                Terms
+              </a>
+            </p>
+          </div>
           <SubmitButton label="Save" />
         </div>
       </form>

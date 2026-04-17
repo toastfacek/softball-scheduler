@@ -11,15 +11,20 @@ export const env = {
   AUTH_RESEND_FROM_NAME:
     process.env.AUTH_RESEND_FROM_NAME ?? "Beverly Softball",
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
-  POKE_API_KEY: process.env.POKE_API_KEY ?? "",
-  POKE_API_URL:
-    process.env.POKE_API_URL ?? "https://poke.com/api/v1/inbound/api-message",
+  TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID ?? "",
+  TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN ?? "",
+  TWILIO_FROM_NUMBER: process.env.TWILIO_FROM_NUMBER ?? "",
+  TWILIO_STATUS_CALLBACK_URL: process.env.TWILIO_STATUS_CALLBACK_URL ?? "",
 };
 
 export function isResendConfigured() {
   return Boolean(env.RESEND_API_KEY && env.AUTH_RESEND_FROM);
 }
 
-export function isPokeConfigured() {
-  return Boolean(env.POKE_API_KEY);
+export function isTwilioConfigured() {
+  return Boolean(
+    env.TWILIO_ACCOUNT_SID &&
+      env.TWILIO_AUTH_TOKEN &&
+      env.TWILIO_FROM_NUMBER,
+  );
 }

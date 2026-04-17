@@ -18,14 +18,14 @@ export function renderEventRsvpText(args: {
   const token = signRsvpToken({
     guardianId: args.guardianId,
     eventId: args.event.id,
-    source: "IMESSAGE",
+    source: "SMS",
   });
   const link = rsvpUrl(token);
   const unsubscribe = textsOffUrl(
     signUnsubscribeToken({ userId: args.guardianId }),
   );
 
-  // TODO (you): write the iMessage body copy.
+  // TODO (you): write the SMS body copy.
   //
   // Keep it short (ideally under 320 chars). Variables available:
   //   args.event.title           e.g. "Game vs. Manchester"

@@ -7,7 +7,7 @@ import {
   textRecipients,
   type EmailKind,
 } from "@/db/schema";
-import { env, isPokeConfigured } from "@/lib/env";
+import { sendSms } from "@/lib/sms-provider";
 
 type RecipientInput = {
   phone?: string | null;
@@ -61,32 +61,25 @@ export async function sendTeamText(input: SendTeamTextInput) {
           : undefined;
         const body = override?.body ?? input.body;
 
-        if (!isPokeConfigured()) {
-          console.info(
-            `[imessage:console] ${recipient.phone}\n${body}`,
-          );
+        const result = await sendSms({ to: recipient.phone, body });
+
+        if (result.status === "FAILED") {
           return {
             recipient,
-            deliveryStatus: "SENT" as const,
-            providerMessageId: `console-${message.id}-${recipient.phone}`,
-            deliveredAt: new Date(),
-            errorMessage: null,
+            deliveryStatus: "FAILED" as const,
+            providerMessageId: null,
+            deliveredAt: null,
+            errorMessage: result.errorMessage,
           };
         }
 
-        const providerMessageId = await postToPoke({
-          phone: recipient.phone,
-          body,
-        });
-
-        // Poke returns 2xx when it accepts the instruction, not when the
-        // iMessage is delivered. Record PENDING so the UI/audit trail doesn't
-        // falsely report delivery. The reminder_deliveries row is still
-        // written by the caller to enforce one-attempt-per-user.
+        // SENT or CONSOLE_FALLBACK: Twilio accepted the message. Real delivery
+        // status arrives via the /api/sms/status webhook, which upgrades this
+        // row to SENT (with deliveredAt) or FAILED on terminal status.
         return {
           recipient,
           deliveryStatus: "PENDING" as const,
-          providerMessageId,
+          providerMessageId: result.providerMessageId,
           deliveredAt: null,
           errorMessage: null,
         };
@@ -96,7 +89,8 @@ export async function sendTeamText(input: SendTeamTextInput) {
           deliveryStatus: "FAILED" as const,
           providerMessageId: null,
           deliveredAt: null,
-          errorMessage: error instanceof Error ? error.message : "Text send failed.",
+          errorMessage:
+            error instanceof Error ? error.message : "SMS send failed.",
         };
       }
     }),
@@ -190,37 +184,4 @@ function normalizePhone(raw: string | null | undefined): string | null {
   // Assume US if 10 digits; otherwise trust the provided country code.
   const e164 = digits.length === 10 ? `+1${digits}` : `+${digits}`;
   return e164;
-}
-
-async function postToPoke({
-  phone,
-  body,
-}: {
-  phone: string;
-  body: string;
-}): Promise<string | null> {
-  // Poke's API is a natural-language instruction bus to the assistant tied to
-  // the API key owner. We ask it to send an iMessage on our behalf; the assistant
-  // relays the message via its iMessage integration. Response acceptance does
-  // not guarantee delivery — we record the accepted instruction id (if any).
-  const response = await fetch(env.POKE_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.POKE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      message: `Send an iMessage to ${phone} with exactly this text (do not add anything):\n\n${body}`,
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`Poke API ${response.status}: ${text || response.statusText}`);
-  }
-
-  const json = (await response.json().catch(() => null)) as
-    | { id?: string; messageId?: string }
-    | null;
-  return json?.id ?? json?.messageId ?? null;
 }
