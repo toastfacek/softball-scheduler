@@ -15,6 +15,7 @@ import {
   lineupPresetAssignments,
   lineupPresetSlots,
   lineupPresets,
+  playerEventResponses,
   players,
   teamPositionTemplates,
 } from "@/db/schema";
@@ -51,75 +52,44 @@ export async function saveLineupAction(formData: FormData) {
     throw new Error("Only game events can have lineups.");
   }
 
-  const [teamPlayers, positionRows, existingPlan] = await Promise.all([
-    db.query.players.findMany({
-      where: eq(players.teamId, viewer.teamId),
-      orderBy: [players.lastName, players.firstName],
-    }),
-    db.query.teamPositionTemplates.findMany({
-      where: and(
-        eq(teamPositionTemplates.teamId, viewer.teamId),
-        eq(teamPositionTemplates.isActive, true),
-      ),
-    }),
-    db.query.lineupPlans.findFirst({
-      where: eq(lineupPlans.eventId, parsed.eventId),
-    }),
-  ]);
+  const [teamPlayers, positionRows, existingPlan, responseRows] =
+    await Promise.all([
+      db.query.players.findMany({
+        where: eq(players.teamId, viewer.teamId),
+        orderBy: [players.lastName, players.firstName],
+      }),
+      db.query.teamPositionTemplates.findMany({
+        where: and(
+          eq(teamPositionTemplates.teamId, viewer.teamId),
+          eq(teamPositionTemplates.isActive, true),
+        ),
+      }),
+      db.query.lineupPlans.findFirst({
+        where: eq(lineupPlans.eventId, parsed.eventId),
+      }),
+      db.query.playerEventResponses.findMany({
+        where: eq(playerEventResponses.eventId, parsed.eventId),
+      }),
+    ]);
 
-  const slotEntries = Array.from(formData.entries()).filter(([key]) =>
-    key.startsWith("slot:"),
+  const unavailablePlayerIds = new Set(
+    responseRows
+      .filter((response) => response.status === "UNAVAILABLE")
+      .map((response) => response.playerId),
   );
-  const assignmentEntries = Array.from(formData.entries()).filter(([key]) =>
-    key.startsWith("inning:"),
+  const eligiblePlayerIds = new Set(
+    teamPlayers
+      .filter((player) => !unavailablePlayerIds.has(player.id))
+      .map((player) => player.id),
   );
-
-  const selectedPlayerIds = slotEntries
-    .map(([, value]) => String(value))
-    .filter(Boolean);
-
-  if (selectedPlayerIds.length !== teamPlayers.length) {
-    throw new Error("Every batting slot must be filled.");
-  }
-
-  if (new Set(selectedPlayerIds).size !== selectedPlayerIds.length) {
-    throw new Error("Each player can only appear once in the batting order.");
-  }
-
-  const validPlayerIds = new Set(teamPlayers.map((player) => player.id));
-  for (const playerId of selectedPlayerIds) {
-    if (!validPlayerIds.has(playerId)) {
-      throw new Error("The batting order includes an invalid player.");
-    }
-  }
 
   const positionsByCode = new Map(positionRows.map((row) => [row.code, row]));
 
-  const assignmentValues = assignmentEntries
-    .map<AssignmentValue | null>(([key, value]) => {
-      const [, inningNumber, playerId] = key.split(":");
-      const inningValue = Number(inningNumber);
-
-      if (inningValue > parsed.inningsCount) {
-        return null;
-      }
-
-      const code = String(value);
-      const position = positionsByCode.get(code);
-
-      if (!position) {
-        throw new Error("Every inning assignment must use an active position.");
-      }
-
-      return {
-        inningNumber: inningValue,
-        playerId,
-        positionTemplateId: position.id,
-        positionCode: position.code,
-        positionLabel: position.label,
-      };
-    })
-    .filter((assignment): assignment is AssignmentValue => assignment !== null);
+  const { slotRows, assignmentRows } = parseSlotAndAssignmentEntries(formData, {
+    inningsCount: parsed.inningsCount,
+    validPlayerIds: eligiblePlayerIds,
+    positionsByCode,
+  });
 
   await db.transaction(async (tx) => {
     const lineup =
@@ -150,20 +120,24 @@ export async function saveLineupAction(formData: FormData) {
       .delete(inningAssignments)
       .where(eq(inningAssignments.lineupPlanId, lineup.id));
 
-    await tx.insert(battingSlots).values(
-      slotEntries.map(([key, value]) => ({
-        lineupPlanId: lineup.id,
-        slotNumber: Number(key.split(":")[1]),
-        playerId: String(value),
-      })),
-    );
+    if (slotRows.length > 0) {
+      await tx.insert(battingSlots).values(
+        slotRows.map((slot) => ({
+          lineupPlanId: lineup.id,
+          slotNumber: slot.slotNumber,
+          playerId: slot.playerId,
+        })),
+      );
+    }
 
-    await tx.insert(inningAssignments).values(
-      assignmentValues.map((assignment) => ({
-        lineupPlanId: lineup.id,
-        ...assignment,
-      })),
-    );
+    if (assignmentRows.length > 0) {
+      await tx.insert(inningAssignments).values(
+        assignmentRows.map((assignment) => ({
+          lineupPlanId: lineup.id,
+          ...assignment,
+        })),
+      );
+    }
   });
 
   revalidatePath("/lineups");
@@ -224,6 +198,9 @@ function parseSlotAndAssignmentEntries(
       const [, inningNumber, playerId] = key.split(":");
       const inningValue = Number(inningNumber);
       if (inningValue > opts.inningsCount) return null;
+      if (!opts.validPlayerIds.has(playerId)) {
+        throw new Error("The lineup includes an invalid player assignment.");
+      }
       const code = String(value);
       const position = opts.positionsByCode.get(code);
       if (!position) {

@@ -27,15 +27,19 @@ export default async function LineupEditorPage({
   ]);
   if (!data) notFound();
 
-  // Seed the editor with the persisted batting order; any players not yet in
-  // the plan fall in at the end.
+  // Seed the editor with the persisted batting order for players who are
+  // expected to attend; unavailable players remain visible below the order.
   const slots = Array.from(data.battingBySlot.entries()).sort(
     ([a], [b]) => a - b,
   );
-  const persistedIds = new Set(slots.map(([, pid]) => pid));
+  const eligibleIds = new Set(data.eligiblePlayers.map((p) => p.id));
+  const eligibleSlots = slots.filter(([, pid]) => eligibleIds.has(pid));
+  const persistedIds = new Set(eligibleSlots.map(([, pid]) => pid));
   const initialBattingOrder = [
-    ...slots.map(([, pid]) => pid),
-    ...data.allPlayers.filter((p) => !persistedIds.has(p.id)).map((p) => p.id),
+    ...eligibleSlots.map(([, pid]) => pid),
+    ...data.eligiblePlayers
+      .filter((p) => !persistedIds.has(p.id))
+      .map((p) => p.id),
   ];
 
   // Seed assignments: use persisted values when present, else fall back to

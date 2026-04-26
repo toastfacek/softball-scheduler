@@ -72,6 +72,20 @@ export function LineupEditor({
   const [saved, setSaved] = useState(false);
   const [presetName, setPresetName] = useState(initialPresetName ?? "");
   const [loadingPresetId, setLoadingPresetId] = useState<string | null>(null);
+  const lineupPlayers = useMemo(
+    () =>
+      isPresetMode
+        ? players
+        : players.filter((player) => player.availability !== "UNAVAILABLE"),
+    [isPresetMode, players],
+  );
+  const unavailablePlayers = useMemo(
+    () =>
+      isPresetMode
+        ? []
+        : players.filter((player) => player.availability === "UNAVAILABLE"),
+    [isPresetMode, players],
+  );
 
   async function applyPreset(pid: string) {
     if (!pid) return;
@@ -85,12 +99,12 @@ export function LineupEditor({
       // bench assignments, and players in the preset who are no longer on the
       // team are dropped. This keeps the save action's "every batting slot
       // must be filled" invariant true even when rosters have moved on.
-      const currentIds = new Set(players.map((p) => p.id));
+      const currentIds = new Set(lineupPlayers.map((p) => p.id));
       const presetIds = new Set(payload.battingOrder);
       const validPresetOrder = payload.battingOrder.filter((id) =>
         currentIds.has(id),
       );
-      const missing = players
+      const missing = lineupPlayers
         .filter((p) => !presetIds.has(p.id))
         .map((p) => p.id);
       const mergedOrder = [...validPresetOrder, ...missing];
@@ -359,6 +373,7 @@ export function LineupEditor({
         <OrderList
           battingOrder={battingOrder}
           playerById={playerById}
+          unavailablePlayers={unavailablePlayers}
           onReorder={reorder}
         />
       </section>
@@ -464,10 +479,12 @@ export function LineupEditor({
 function OrderList({
   battingOrder,
   playerById,
+  unavailablePlayers,
   onReorder,
 }: {
   battingOrder: string[];
   playerById: Map<string, PlayerSeed>;
+  unavailablePlayers: PlayerSeed[];
   onReorder: (fromIdx: number, toIdx: number) => void;
 }) {
   const [dragPid, setDragPid] = useState<string | null>(null);
@@ -578,6 +595,42 @@ function OrderList({
           </div>
         );
       })}
+      {unavailablePlayers.length > 0 ? (
+        <div
+          style={{
+            marginTop: "0.35rem",
+            paddingTop: "0.6rem",
+            borderTop:
+              "1px solid color-mix(in srgb, var(--navy) 12%, transparent)",
+          }}
+        >
+          <div
+            style={{
+              marginBottom: "0.45rem",
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "color-mix(in srgb, var(--navy) 58%, white)",
+            }}
+          >
+            Not attending
+          </div>
+          <div className="flex flex-col gap-2">
+            {unavailablePlayers.map((player) => (
+              <div key={player.id} className="order-slot">
+                <div className="o-slot">—</div>
+                <div className="order-row order-row-unavail">
+                  <div className="o-name">{player.name}</div>
+                  <span className="chip chip--unavailable" style={{ marginRight: 6 }}>
+                    out
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
