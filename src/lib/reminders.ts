@@ -5,7 +5,10 @@ import {
   getPendingReminderEvents,
 } from "@/lib/data";
 import { formatEventDateTimeRange } from "@/lib/time";
-import { renderEventRsvpEmail } from "@/lib/email-templates";
+import {
+  renderEventDetailsText,
+  renderEventRsvpEmail,
+} from "@/lib/email-templates";
 import { sendTeamEmail } from "@/lib/notifications";
 import { sendTeamText } from "@/lib/text-notifications";
 import { renderEventRsvpText } from "@/lib/text-templates";
@@ -95,7 +98,13 @@ export async function runReminderSweep(now = new Date()) {
         eventId: event.id,
         kind: "REMINDER",
         subject: `Please RSVP for ${event.title}`,
-        body: `A quick heads-up from BGSL.\n\n${dateLine}\n${event.title}\n\nPlease RSVP so coaches can plan lineups and attendance.`,
+        body: [
+          "A quick heads-up from BGSL.",
+          "",
+          renderEventDetailsText(event),
+          "",
+          "Please RSVP so coaches can plan lineups and attendance.",
+        ].join("\n"),
         recipients: emailGuardians.map((g) => ({
           email: g.email,
           userId: g.userId,
@@ -112,8 +121,6 @@ export async function runReminderSweep(now = new Date()) {
               : "We haven't heard back about your player yet.";
           const intro = [
             playerLine,
-            "",
-            `**${event.title}** — ${dateLine}`,
             "",
             "Tap below to RSVP:",
           ].join("\n");

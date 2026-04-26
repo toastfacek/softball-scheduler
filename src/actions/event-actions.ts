@@ -18,7 +18,10 @@ import {
 import type { EventType } from "@/db/schema";
 import { inArray } from "drizzle-orm";
 import { listEventUpdateRecipients } from "@/lib/data";
-import { renderEventRsvpEmail } from "@/lib/email-templates";
+import {
+  renderEventDetailsText,
+  renderEventRsvpEmail,
+} from "@/lib/email-templates";
 import { sendTeamEmail } from "@/lib/notifications";
 import { verifyRsvpToken } from "@/lib/rsvp-tokens";
 import { sendTeamText } from "@/lib/text-notifications";
@@ -587,7 +590,7 @@ export async function sendEventUpdateAction(formData: FormData) {
     eventId: parsed.eventId,
     kind: "BROADCAST",
     subject: parsed.subject,
-    body: `${event.title}\n${parsed.body}`,
+    body: [parsed.body, "", renderEventDetailsText(event)].join("\n"),
     recipients: emailRecipients,
     metadata: {
       audience: parsed.audience,
