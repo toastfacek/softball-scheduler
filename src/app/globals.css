@@ -1328,6 +1328,26 @@ select {
   font-size: 0.85rem; font-family: inherit; color: var(--foreground);
   resize: vertical;
 }
+.rsvp-submit {
+  border: 1px solid color-mix(in srgb, var(--orange-strong) 72%, black);
+  border-radius: 0.875rem;
+  background: var(--orange);
+  color: #1f160e;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.875rem 1rem;
+  text-transform: uppercase;
+}
+.rsvp-submit:hover:not(:disabled) {
+  background: var(--orange-strong);
+  transform: translateY(-1px);
+}
+.rsvp-submit:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
 
 .rsvp-error {
   padding: 0.625rem 0.75rem; border-radius: 0.625rem;

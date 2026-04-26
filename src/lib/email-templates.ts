@@ -17,6 +17,7 @@ type EventLike = {
 export function rsvpButtonsHtml(args: {
   guardianId: string;
   eventId: string;
+  messageId?: string;
 }): string {
   const yesToken = signRsvpToken(args);
   const yesUrl = rsvpUrl(yesToken, "AVAILABLE");
@@ -40,6 +41,7 @@ export function rsvpButtonsHtml(args: {
 export function rsvpButtonsText(args: {
   guardianId: string;
   eventId: string;
+  messageId?: string;
 }): string {
   const token = signRsvpToken(args);
   const yesUrl = rsvpUrl(token, "AVAILABLE");
@@ -63,26 +65,28 @@ export function renderEventRsvpEmail(args: {
   event: EventLike;
   guardianId: string;
   guardianFirstName: string;
+  subject?: string;
   subjectPrefix?: string;
   bodyIntro: string;
+  messageId?: string;
 }): { subject: string; body: string; html: string } {
-  const { event, guardianId, guardianFirstName, bodyIntro } = args;
+  const { event, guardianId, guardianFirstName, bodyIntro, messageId } = args;
   const prefix = args.subjectPrefix ? `${args.subjectPrefix}: ` : "";
-  const subject = `${prefix}${event.title}`;
+  const subject = args.subject ?? `${prefix}${event.title}`;
 
   const textBody = [
     `Hi ${guardianFirstName},`,
     "",
     bodyIntro,
     "",
-    rsvpButtonsText({ guardianId, eventId: event.id }),
+    rsvpButtonsText({ guardianId, eventId: event.id, messageId }),
   ].join("\n");
 
   const html = `
 <div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:520px;margin:0 auto;padding:20px;color:#2a2a2a;">
   <p style="font-size:15px;">Hi ${escape(guardianFirstName)},</p>
   <div style="font-size:15px;line-height:1.55;">${markdownishToHtml(bodyIntro)}</div>
-  ${rsvpButtonsHtml({ guardianId, eventId: event.id })}
+  ${rsvpButtonsHtml({ guardianId, eventId: event.id, messageId })}
   <hr style="border:none;border-top:1px solid #e5e5e5;margin:24px 0;" />
   <p style="font-size:12px;color:#8a8a8a;">You're receiving this from Beverly Girls Softball League. Links expire in 72 hours.</p>
 </div>

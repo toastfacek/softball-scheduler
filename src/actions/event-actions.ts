@@ -512,7 +512,10 @@ export async function sendEventUpdateAction(formData: FormData) {
     .where(eq(players.teamId, viewer.teamId));
   const guardianUserIds = new Set(guardianUserIdRows.map((r) => r.userId));
 
-  const renderEmailBody = (recipient: { userId?: string | null }) => {
+  const renderEmailBody = (
+    recipient: { userId?: string | null },
+    context: { messageId: string },
+  ) => {
     if (!recipient.userId || !guardianUserIds.has(recipient.userId)) {
       // Non-guardian (coach/admin with no linked players) — fall back to
       // the canonical body so they don't receive a broken RSVP CTA.
@@ -523,8 +526,9 @@ export async function sendEventUpdateAction(formData: FormData) {
       event,
       guardianId: recipient.userId,
       guardianFirstName: firstName,
-      subjectPrefix: "Update",
+      subject: parsed.subject,
       bodyIntro: parsed.body,
+      messageId: context.messageId,
     });
   };
 
