@@ -57,6 +57,13 @@
       "when": 1776350772182,
       "tag": "0007_slippery_mister_sinister",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777241862346,
+      "tag": "0008_warm_magik",
+      "breakpoints": true
     }
   ]
 }

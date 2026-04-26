@@ -25,6 +25,15 @@ export default async function SettingsPage() {
           </div>
           <ChevronRightIcon />
         </Link>
+        <Link href="/settings/calendar" className="row">
+          <div className="row-grow">
+            <div className="row-title">Calendar sync</div>
+            <div className="row-sub">
+              Subscribe in Outlook, Google, or Apple Calendar
+            </div>
+          </div>
+          <ChevronRightIcon />
+        </Link>
         {canManage ? (
           <>
             <Link href="/settings/team" className="row">
