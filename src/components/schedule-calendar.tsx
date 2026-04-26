@@ -176,19 +176,26 @@ export function ScheduleCalendar({ events, canAddEvents, timezone }: Props) {
               <div className="cal-day-num">{format(day, "d")}</div>
               {dayEvents.length > 0 ? (
                 <div className="cal-events">
-                  {dayEvents.slice(0, 3).map((event) => (
-                    <Link
-                      key={event.id}
-                      href={`/events/${event.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className={cn("cal-event", eventTypeCalendarClass(event.type))}
-                    >
-                      <span className="cal-event-time">
-                        {formatInTimeZone(event.startsAt, timezone, "h:mm a")}
-                      </span>
-                      <span className="cal-event-title">{event.title}</span>
-                    </Link>
-                  ))}
+                  {dayEvents.slice(0, 3).map((event) => {
+                    const eventTime = formatInTimeZone(
+                      event.startsAt,
+                      timezone,
+                      "h:mm a",
+                    );
+
+                    return (
+                      <Link
+                        key={event.id}
+                        href={`/events/${event.id}`}
+                        title={`${eventTime} ${event.title}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className={cn("cal-event", eventTypeCalendarClass(event.type))}
+                      >
+                        <span className="cal-event-time">{eventTime}</span>
+                        <span className="cal-event-title">{event.title}</span>
+                      </Link>
+                    );
+                  })}
                   {dayEvents.length > 3 ? (
                     <div className="cal-event-more">
                       +{dayEvents.length - 3} more
@@ -254,4 +261,3 @@ function ChevronRight() {
     </svg>
   );
 }
-
