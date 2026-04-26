@@ -22,7 +22,7 @@ export default async function EventEmailPage({
 
   return (
     <>
-      <PageHeader title="Email families" back={`/events/${eventId}`} />
+      <PageHeader title="Message families" back={`/events/${eventId}`} />
       <form
         action={sendEventUpdateAction}
         className="shell-panel rounded-tile p-5"

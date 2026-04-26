@@ -163,7 +163,7 @@ export default async function EventDetailPage({
               <MailIcon />
             </div>
             <div className="row-grow">
-              <div className="row-title">Email families</div>
+              <div className="row-title">Message families</div>
               <div className="row-sub">Send an update to guardians</div>
             </div>
             <ChevronRightIcon />
