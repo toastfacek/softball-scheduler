@@ -26,6 +26,10 @@ type PerRecipientContent = {
   html?: string;
 };
 
+type RenderBodyContext = {
+  messageId: string;
+};
+
 type SendTeamEmailInput = {
   teamId: string;
   createdByUserId?: string | null;
@@ -44,6 +48,7 @@ type SendTeamEmailInput = {
    */
   renderBody?: (
     recipient: RecipientInput,
+    context: RenderBodyContext,
   ) => PerRecipientContent | Promise<PerRecipientContent>;
 };
 
@@ -84,7 +89,7 @@ export async function sendTeamEmail(input: SendTeamEmailInput) {
     uniqueRecipients.map(async (recipient) => {
       try {
         const override = input.renderBody
-          ? await input.renderBody(recipient)
+          ? await input.renderBody(recipient, { messageId: message.id })
           : undefined;
         const subject = override?.subject ?? input.subject;
         const body = override?.body ?? input.body;

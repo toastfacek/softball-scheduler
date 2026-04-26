@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 import { db } from "@/db";
 import {
   adultUsers,
+  emailMessages,
   events,
   playerEventResponses,
   playerGuardians,
@@ -86,6 +87,13 @@ export default async function RsvpLandingPage({ params, searchParams }: PageProp
     s === "AVAILABLE" || s === "UNAVAILABLE" || s === "MAYBE" ? s : null;
 
   const guardianFirstName = guardian.name?.split(" ")[0] ?? "there";
+  const coachNote = claims.messageId
+    ? await getBroadcastNote({
+        messageId: claims.messageId,
+        eventId: event.id,
+        eventTitle: event.title,
+      })
+    : null;
 
   return (
     <div className="rsvp-shell">
@@ -108,6 +116,20 @@ export default async function RsvpLandingPage({ params, searchParams }: PageProp
         </div>
       </header>
 
+      {coachNote ? (
+        <section className="rsvp-card">
+          <p className="rsvp-prompt" style={{ marginBottom: "0.75rem" }}>
+            Note from your coach
+          </p>
+          <p
+            className="rsvp-event-meta"
+            style={{ color: "var(--navy)", whiteSpace: "pre-line" }}
+          >
+            {coachNote}
+          </p>
+        </section>
+      ) : null}
+
       <RsvpForm
         token={token}
         players={linkedPlayers.map((p) => {
@@ -128,6 +150,34 @@ export default async function RsvpLandingPage({ params, searchParams }: PageProp
       </footer>
     </div>
   );
+}
+
+async function getBroadcastNote({
+  messageId,
+  eventId,
+  eventTitle,
+}: {
+  messageId: string;
+  eventId: string;
+  eventTitle: string;
+}) {
+  const message = await db.query.emailMessages.findFirst({
+    where: and(
+      eq(emailMessages.id, messageId),
+      eq(emailMessages.eventId, eventId),
+      eq(emailMessages.kind, "BROADCAST"),
+    ),
+  });
+
+  if (!message) return null;
+
+  const lines = message.body.split(/\r?\n/);
+  const body =
+    lines[0]?.trim() === eventTitle.trim()
+      ? lines.slice(1).join("\n").trim()
+      : message.body.trim();
+
+  return body || null;
 }
 
 function ExpiredLinkScreen() {

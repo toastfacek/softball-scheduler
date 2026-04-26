@@ -16,6 +16,11 @@ type PlayerInput = {
   currentNote: string | null;
 };
 
+type PendingSubmission = {
+  status: Status;
+  targetPlayerIds?: string[];
+};
+
 const STATUS_LABELS: Record<Status, string> = {
   AVAILABLE: "Yes, they're in",
   MAYBE: "Maybe",
@@ -42,6 +47,8 @@ export function RsvpForm({
   const [note, setNote] = useState<string>(players[0]?.currentNote ?? "");
   const [applyToAll, setApplyToAll] = useState<boolean>(true);
   const [result, setResult] = useState<RsvpFromLinkResult | null>(null);
+  const [pendingSubmission, setPendingSubmission] =
+    useState<PendingSubmission | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -50,9 +57,24 @@ export function RsvpForm({
   useEffect(() => {
     if (autoSubmitted || !preselectStatus) return;
     setAutoSubmitted(true);
-    submit(preselectStatus);
+    if (preselectStatus === "AVAILABLE") {
+      submit(preselectStatus);
+    } else {
+      setPendingSubmission({ status: preselectStatus });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function selectStatus(status: Status, targetPlayerIds?: string[]) {
+    if (status === "AVAILABLE") {
+      submit(status, targetPlayerIds);
+      return;
+    }
+
+    setResult(null);
+    setError(null);
+    setPendingSubmission({ status, targetPlayerIds });
+  }
 
   function submit(status: Status, targetPlayerIds?: string[]) {
     setError(null);
@@ -65,6 +87,7 @@ export function RsvpForm({
           playerIds: targetPlayerIds,
         });
         setResult(res);
+        setPendingSubmission(null);
         const next: Record<string, Status | null> = { ...perPlayer };
         for (const id of res.updated.map((u) => u.playerId)) next[id] = status;
         setPerPlayer(next);
@@ -74,6 +97,14 @@ export function RsvpForm({
         );
       }
     });
+  }
+
+  function pendingStatusFor(playerId: string) {
+    if (!pendingSubmission) return null;
+    if (!pendingSubmission.targetPlayerIds) return pendingSubmission.status;
+    return pendingSubmission.targetPlayerIds.includes(playerId)
+      ? pendingSubmission.status
+      : null;
   }
 
   if (result && !error) {
@@ -120,11 +151,13 @@ export function RsvpForm({
         <StatusButtons
           disabled={isPending}
           activeStatus={result.status}
-          onSelect={(s) => submit(s)}
+          onSelect={(s) => selectStatus(s)}
         />
       </section>
     );
   }
+
+  const pendingStatus = pendingSubmission?.status ?? null;
 
   return (
     <section className="rsvp-card">
@@ -135,8 +168,12 @@ export function RsvpForm({
           </p>
           <StatusButtons
             disabled={isPending}
-            activeStatus={perPlayer[players[0].id] ?? null}
-            onSelect={(s) => submit(s, [players[0].id])}
+            activeStatus={
+              pendingStatusFor(players[0].id) ??
+              perPlayer[players[0].id] ??
+              null
+            }
+            onSelect={(s) => selectStatus(s, [players[0].id])}
           />
         </>
       ) : (
@@ -158,8 +195,12 @@ export function RsvpForm({
           {applyToAll ? (
             <StatusButtons
               disabled={isPending}
-              activeStatus={null}
-              onSelect={(s) => submit(s)}
+              activeStatus={
+                pendingSubmission && !pendingSubmission.targetPlayerIds
+                  ? pendingSubmission.status
+                  : null
+              }
+              onSelect={(s) => selectStatus(s)}
             />
           ) : (
             <div className="rsvp-player-grid">
@@ -168,8 +209,10 @@ export function RsvpForm({
                   <div className="rsvp-player-name">{p.name}</div>
                   <StatusButtons
                     disabled={isPending}
-                    activeStatus={perPlayer[p.id] ?? null}
-                    onSelect={(s) => submit(s, [p.id])}
+                    activeStatus={
+                      pendingStatusFor(p.id) ?? perPlayer[p.id] ?? null
+                    }
+                    onSelect={(s) => selectStatus(s, [p.id])}
                     compact
                   />
                 </div>
@@ -180,7 +223,13 @@ export function RsvpForm({
       )}
 
       <div className="rsvp-note-field">
-        <label htmlFor="rsvp-note">Add a note (optional)</label>
+        <label htmlFor="rsvp-note">
+          {pendingStatus === "UNAVAILABLE"
+            ? "Why can't they make it? (optional)"
+            : pendingStatus === "MAYBE"
+              ? "What should coaches know? (optional)"
+              : "Add a note (optional)"}
+        </label>
         <textarea
           id="rsvp-note"
           rows={2}
@@ -189,6 +238,19 @@ export function RsvpForm({
           placeholder="Running late, leaving early…"
         />
       </div>
+
+      {pendingSubmission ? (
+        <button
+          type="button"
+          className="rsvp-submit"
+          disabled={isPending}
+          onClick={() =>
+            submit(pendingSubmission.status, pendingSubmission.targetPlayerIds)
+          }
+        >
+          Save RSVP
+        </button>
+      ) : null}
 
       {error ? <p className="rsvp-error">{error}</p> : null}
       {isPending ? <p className="rsvp-status">Saving…</p> : null}

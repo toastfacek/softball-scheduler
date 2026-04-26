@@ -9,6 +9,7 @@ type RsvpTokenPayload = {
   eid: string;
   exp: number;
   src?: RsvpTokenSource;
+  mid?: string;
 };
 
 export type RsvpTokenClaims = {
@@ -16,6 +17,7 @@ export type RsvpTokenClaims = {
   eventId: string;
   expiresAt: Date;
   source: RsvpTokenSource;
+  messageId: string | null;
 };
 
 const DEFAULT_TTL_SECONDS = 72 * 60 * 60;
@@ -25,6 +27,7 @@ export function signRsvpToken(args: {
   eventId: string;
   ttlSeconds?: number;
   source?: RsvpTokenSource;
+  messageId?: string;
 }) {
   const ttl = args.ttlSeconds ?? DEFAULT_TTL_SECONDS;
   const payload: RsvpTokenPayload = {
@@ -32,6 +35,7 @@ export function signRsvpToken(args: {
     eid: args.eventId,
     exp: Math.floor(Date.now() / 1000) + ttl,
     src: args.source,
+    mid: args.messageId,
   };
   const encoded = base64UrlEncode(JSON.stringify(payload));
   const signature = sign(encoded);
@@ -71,6 +75,7 @@ export function verifyRsvpToken(token: string): RsvpTokenClaims | null {
     eventId: payload.eid,
     expiresAt,
     source,
+    messageId: typeof payload.mid === "string" ? payload.mid : null,
   };
 }
 
