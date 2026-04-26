@@ -46,7 +46,7 @@ export function renderEventRsvpText(args: {
     `BGSL: ${args.event.title} — ${args.dateLine}.`,
     playerLine,
     `RSVP: ${link}`,
-    `Stop texts: ${unsubscribe}`,
+    `Reply STOP or stop texts: ${unsubscribe}`,
   ].join("\n");
 }
 
@@ -64,6 +64,6 @@ export function renderEventUpdateText(args: {
   return [
     `BGSL — ${args.event.title}:`,
     args.body,
-    `Stop texts: ${unsubscribe}`,
+    `Reply STOP or stop texts: ${unsubscribe}`,
   ].join("\n");
 }

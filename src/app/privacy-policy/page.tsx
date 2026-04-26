@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
           Privacy Policy
         </h1>
         <p style={{ fontSize: "0.85rem", color: "#666", marginBottom: "2rem" }}>
-          Last updated: April 17, 2026
+          Last updated: April 26, 2026
         </p>
 
         <Section title="What we collect">
@@ -65,7 +65,8 @@ export default function PrivacyPolicyPage() {
           </ul>
           <p>
             These services process your data only to deliver their respective
-            functions. We do not share your data with any other third parties.
+            functions. We do not sell, rent, or share your personal information
+            with third parties for their marketing purposes.
           </p>
         </Section>
 
@@ -79,15 +80,15 @@ export default function PrivacyPolicyPage() {
           </p>
           <p>
             <strong>
-              We will never sell, share, or rent your mobile phone number to
-              third parties for promotional or marketing purposes.
+              We will not share your mobile information, text messaging opt-in
+              data, or text messaging consent with third parties or affiliates
+              for marketing or promotional purposes.
             </strong>{" "}
             Your phone number is used solely to deliver BGSL team notifications
-            that you have opted in to receive. Your opt-in consent and SMS
-            consent data will not be shared with any third party. Third-party
-            service providers (Twilio) process your number only to transmit
-            messages on our behalf and are contractually prohibited from using
-            it for any other purpose.
+            that you have opted in to receive. Service providers such as Twilio
+            may process your number and consent records only to transmit messages
+            on our behalf and are not permitted to use that information for
+            their own marketing.
           </p>
           <p>
             You can opt out at any time by replying <strong>STOP</strong> to any

@@ -24,6 +24,7 @@ const OPT_OUT_KEYWORDS = new Set([
 ]);
 
 const OPT_IN_KEYWORDS = new Set(["START", "UNSTOP", "YES"]);
+const HELP_KEYWORDS = new Set(["HELP", "INFO"]);
 
 // Twilio sends From in E.164 ("+17183162321") but we store phones in local
 // formatted form ("718-316-2321"). Strip to digits, then drop leading "1"
@@ -73,6 +74,16 @@ export async function POST(request: NextRequest) {
       .where(
         sql`regexp_replace(regexp_replace(${adultUsers.phone}, '\D', '', 'g'), '^1(\d{10})$', '\1') = ${localDigits}`,
       );
+  } else if (HELP_KEYWORDS.has(bodyText)) {
+    return new NextResponse(
+      [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        "<Response>",
+        "<Message>BGSL text alerts help: reply STOP to unsubscribe. Email jelee85@gmail.com for support. Message and data rates may apply.</Message>",
+        "</Response>",
+      ].join(""),
+      { status: 200, headers: { "Content-Type": "text/xml" } },
+    );
   }
 
   // Empty TwiML — Twilio's own STOP/START auto-replies are enough; we

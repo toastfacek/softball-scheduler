@@ -15,7 +15,7 @@ export default function TermsAndConditionsPage() {
           Terms &amp; Conditions
         </h1>
         <p style={{ fontSize: "0.85rem", color: "#666", marginBottom: "2rem" }}>
-          Last updated: April 17, 2026
+          Last updated: April 26, 2026
         </p>
 
         <Section title="Acceptance of terms">
@@ -71,7 +71,8 @@ export default function TermsAndConditionsPage() {
           </ul>
           <p>
             SMS is provided via Twilio. Carriers are not liable for delayed or
-            undelivered messages.
+            undelivered messages. Text messaging opt-in is voluntary and is not
+            required to use the BGSL app.
           </p>
         </Section>
 
