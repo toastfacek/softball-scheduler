@@ -66,6 +66,7 @@ export async function sendTeamText(input: SendTeamTextInput) {
         if (result.status === "FAILED") {
           return {
             recipient,
+            smsStatus: result.status,
             deliveryStatus: "FAILED" as const,
             providerMessageId: null,
             deliveredAt: null,
@@ -73,11 +74,23 @@ export async function sendTeamText(input: SendTeamTextInput) {
           };
         }
 
-        // SENT or CONSOLE_FALLBACK: Twilio accepted the message. Real delivery
-        // status arrives via the /api/sms/status webhook, which upgrades this
-        // row to SENT (with deliveredAt) or FAILED on terminal status.
+        if (result.status === "CONSOLE_FALLBACK") {
+          return {
+            recipient,
+            smsStatus: result.status,
+            deliveryStatus: "FAILED" as const,
+            providerMessageId: result.providerMessageId,
+            deliveredAt: null,
+            errorMessage: "Twilio is not configured; SMS was not sent.",
+          };
+        }
+
+        // Twilio accepted the message. Real delivery status arrives via the
+        // /api/sms/status webhook, which upgrades this row to SENT (with
+        // deliveredAt) or FAILED on terminal status.
         return {
           recipient,
+          smsStatus: result.status,
           deliveryStatus: "PENDING" as const,
           providerMessageId: result.providerMessageId,
           deliveredAt: null,
@@ -86,6 +99,7 @@ export async function sendTeamText(input: SendTeamTextInput) {
       } catch (error) {
         return {
           recipient,
+          smsStatus: "FAILED" as const,
           deliveryStatus: "FAILED" as const,
           providerMessageId: null,
           deliveredAt: null,

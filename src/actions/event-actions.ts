@@ -512,42 +512,30 @@ export async function sendEventUpdateAction(formData: FormData) {
     .where(eq(players.teamId, viewer.teamId));
   const guardianUserIds = new Set(guardianUserIdRows.map((r) => r.userId));
 
+  const renderEmailBody = (recipient: { userId?: string | null }) => {
+    if (!recipient.userId || !guardianUserIds.has(recipient.userId)) {
+      // Non-guardian (coach/admin with no linked players) — fall back to
+      // the canonical body so they don't receive a broken RSVP CTA.
+      return {};
+    }
+    const firstName = guardianNames.get(recipient.userId) ?? "there";
+    return renderEventRsvpEmail({
+      event,
+      guardianId: recipient.userId,
+      guardianFirstName: firstName,
+      subjectPrefix: "Update",
+      bodyIntro: parsed.body,
+    });
+  };
+
   const textRecipients = recipients.filter(
     (r) => r.textOptIn && r.phone,
   );
-  const textUserIds = new Set(textRecipients.map((r) => r.userId));
-  const emailRecipients = recipients.filter((r) => !textUserIds.has(r.userId));
 
-  await sendTeamEmail({
-    teamId: viewer.teamId,
-    createdByUserId: viewer.userId,
-    eventId: parsed.eventId,
-    kind: "BROADCAST",
-    subject: parsed.subject,
-    body: `${event.title}\n${parsed.body}`,
-    recipients: emailRecipients,
-    metadata: {
-      audience: parsed.audience,
-    },
-    renderBody: (recipient) => {
-      if (!recipient.userId || !guardianUserIds.has(recipient.userId)) {
-        // Non-guardian (coach/admin with no linked players) — fall back to
-        // the canonical body so they don't receive a broken RSVP CTA.
-        return {};
-      }
-      const firstName = guardianNames.get(recipient.userId) ?? "there";
-      return renderEventRsvpEmail({
-        event,
-        guardianId: recipient.userId,
-        guardianFirstName: firstName,
-        subjectPrefix: "Update",
-        bodyIntro: parsed.body,
-      });
-    },
-  });
+  const failedTextUserIds = new Set<string>();
 
   if (textRecipients.length > 0) {
-    await sendTeamText({
+    const textMessage = await sendTeamText({
       teamId: viewer.teamId,
       createdByUserId: viewer.userId,
       eventId: parsed.eventId,
@@ -569,7 +557,40 @@ export async function sendEventUpdateAction(formData: FormData) {
         };
       },
     });
+
+    const textResultByUserId = new Map(
+      textMessage?.sendResults
+        .filter((result) => result.recipient.userId)
+        .map((result) => [result.recipient.userId!, result]) ?? [],
+    );
+
+    for (const recipient of textRecipients) {
+      const result = textResultByUserId.get(recipient.userId);
+      if (!result || result.deliveryStatus === "FAILED") {
+        failedTextUserIds.add(recipient.userId);
+      }
+    }
   }
+
+  const textUserIds = new Set(textRecipients.map((r) => r.userId));
+  const emailRecipients = recipients.filter(
+    (r) => !textUserIds.has(r.userId) || failedTextUserIds.has(r.userId),
+  );
+
+  await sendTeamEmail({
+    teamId: viewer.teamId,
+    createdByUserId: viewer.userId,
+    eventId: parsed.eventId,
+    kind: "BROADCAST",
+    subject: parsed.subject,
+    body: `${event.title}\n${parsed.body}`,
+    recipients: emailRecipients,
+    metadata: {
+      audience: parsed.audience,
+      smsFallbackCount: failedTextUserIds.size,
+    },
+    renderBody: renderEmailBody,
+  });
 
   revalidatePath(`/events/${parsed.eventId}`);
   redirect(`/events/${parsed.eventId}?saved=email`);
@@ -585,4 +606,3 @@ async function guardianFirstNamesById(userIds: string[]) {
     rows.map((row) => [row.id, (row.name ?? "").split(" ")[0] || "there"]),
   );
 }
-
