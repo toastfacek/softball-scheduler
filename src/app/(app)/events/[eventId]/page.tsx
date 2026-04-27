@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { CalendarSubscribeLink } from "@/components/calendar-subscribe-link";
 import { PageHeader } from "@/components/page-header";
 import { EventTypeChip } from "@/components/status-chip";
 import { canManageTeam } from "@/lib/authz";
@@ -118,58 +119,62 @@ export default async function EventDetailPage({
         ) : null}
       </section>
 
-      {canManage ? (
-        <div className="flex flex-col gap-2">
-          <Link
-            href={`/events/${data.event.id}/attendance`}
-            className="action-row"
-          >
-            <div className="action-icon">
-              <UsersIcon />
-            </div>
-            <div className="row-grow">
-              <div className="row-title">Attendance</div>
-              <div className="row-sub">
-                {data.playerSummary.AVAILABLE} in ·{" "}
-                {data.playerSummary.MAYBE} maybe ·{" "}
-                {data.playerSummary.UNAVAILABLE} out ·{" "}
-                {data.playerSummary.pending} waiting
-              </div>
-            </div>
-            <ChevronRightIcon />
-          </Link>
+      <div className="flex flex-col gap-2">
+        <CalendarSubscribeLink />
 
-          {isGame ? (
+        {canManage ? (
+          <>
             <Link
-              href={`/lineups/${data.event.id}`}
+              href={`/events/${data.event.id}/attendance`}
               className="action-row"
             >
               <div className="action-icon">
-                <GridIcon />
+                <UsersIcon />
               </div>
               <div className="row-grow">
-                <div className="row-title">Lineup</div>
-                <div className="row-sub">Batting order and positions</div>
+                <div className="row-title">Attendance</div>
+                <div className="row-sub">
+                  {data.playerSummary.AVAILABLE} in ·{" "}
+                  {data.playerSummary.MAYBE} maybe ·{" "}
+                  {data.playerSummary.UNAVAILABLE} out ·{" "}
+                  {data.playerSummary.pending} waiting
+                </div>
               </div>
               <ChevronRightIcon />
             </Link>
-          ) : null}
 
-          <Link
-            href={`/events/${data.event.id}/email`}
-            className="action-row"
-          >
-            <div className="action-icon">
-              <MailIcon />
-            </div>
-            <div className="row-grow">
-              <div className="row-title">Message families</div>
-              <div className="row-sub">Send an update to guardians</div>
-            </div>
-            <ChevronRightIcon />
-          </Link>
-        </div>
-      ) : null}
+            {isGame ? (
+              <Link
+                href={`/lineups/${data.event.id}`}
+                className="action-row"
+              >
+                <div className="action-icon">
+                  <GridIcon />
+                </div>
+                <div className="row-grow">
+                  <div className="row-title">Lineup</div>
+                  <div className="row-sub">Batting order and positions</div>
+                </div>
+                <ChevronRightIcon />
+              </Link>
+            ) : null}
+
+            <Link
+              href={`/events/${data.event.id}/email`}
+              className="action-row"
+            >
+              <div className="action-icon">
+                <MailIcon />
+              </div>
+              <div className="row-grow">
+                <div className="row-title">Message families</div>
+                <div className="row-sub">Send an update to guardians</div>
+              </div>
+              <ChevronRightIcon />
+            </Link>
+          </>
+        ) : null}
+      </div>
       </div>
     </>
   );

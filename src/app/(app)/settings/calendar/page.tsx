@@ -35,7 +35,7 @@ export default async function CalendarSyncPage() {
 
   return (
     <>
-      <PageHeader title="Calendar sync" back="/settings" />
+      <PageHeader title="Subscribe to calendar" back="/settings" />
       <div className="shell-panel rounded-tile p-5">
         <div className="orange-bar-top" />
         <div className="relative flex flex-col gap-4">

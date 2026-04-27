@@ -713,6 +713,18 @@ select {
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
+.calendar-subscribe-link {
+  background: color-mix(in srgb, var(--orange) 8%, white);
+  border-color: color-mix(in srgb, var(--orange) 34%, white);
+}
+.calendar-subscribe-link:hover {
+  background: color-mix(in srgb, var(--orange) 12%, white);
+  border-color: color-mix(in srgb, var(--orange) 46%, white);
+}
+.calendar-subscribe-link .action-icon {
+  background: color-mix(in srgb, var(--orange) 22%, white);
+  color: var(--navy-strong);
+}
 
 /* ──── Linked list (settings) ──── */
 .linked-list {
@@ -1399,8 +1411,14 @@ select {
   flex-direction: column;
   gap: 0.75rem;
 }
+.schedule-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
 @media (min-width: 1024px) {
   .schedule-main-col { gap: 1rem; }
+  .schedule-aside { gap: 1rem; }
 }
 
 .schedule-empty {
