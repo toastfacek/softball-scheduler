@@ -121,8 +121,7 @@ function escapeText(value: string): string {
     .replace(/\\/g, "\\\\")
     .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
-    .replace(/\r\n/g, "\\n")
-    .replace(/\n/g, "\\n");
+    .replace(/\r\n|\n|\r/g, "\\n");
 }
 
 function foldLine(line: string): string {
