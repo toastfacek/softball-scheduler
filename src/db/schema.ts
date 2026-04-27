@@ -77,10 +77,16 @@ export const adultUsers = pgTable(
     phone: text("phone"),
     reminderOptIn: boolean("reminder_opt_in").default(true).notNull(),
     textOptIn: boolean("text_opt_in").default(false).notNull(),
+    calendarSyncToken: text("calendar_sync_token"),
     createdAt,
     updatedAt,
   },
-  (table) => [uniqueIndex("adult_users_email_key").on(table.email)],
+  (table) => [
+    uniqueIndex("adult_users_email_key").on(table.email),
+    uniqueIndex("adult_users_calendar_sync_token_key").on(
+      table.calendarSyncToken,
+    ),
+  ],
 );
 
 export const authAccounts = pgTable(
