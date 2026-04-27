@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CalendarSubscribeLink } from "@/components/calendar-subscribe-link";
 import { PageHeader } from "@/components/page-header";
 import { ScheduleCalendar } from "@/components/schedule-calendar";
 import { canManageTeam } from "@/lib/authz";
@@ -67,6 +68,8 @@ export default async function SchedulePage() {
       </div>
 
       <aside className="schedule-aside">
+        <CalendarSubscribeLink className="schedule-subscribe-link" />
+
         {data.events.length > 0 ? (
           <div
             className="shell-panel"
@@ -149,4 +152,3 @@ function PlusIcon() {
     </svg>
   );
 }
-
