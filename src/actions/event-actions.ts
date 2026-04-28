@@ -15,7 +15,7 @@ import {
   playerGuardians,
   players,
 } from "@/db/schema";
-import type { AttendanceStatus, EventType } from "@/db/schema";
+import type { EventType } from "@/db/schema";
 import { inArray } from "drizzle-orm";
 import { listEventUpdateRecipients } from "@/lib/data";
 import {
@@ -284,37 +284,28 @@ export async function updatePlayerAvailabilityByCoachAction(
     throw new Error("That player is not part of this team.");
   }
 
-  const existing = await db.query.playerEventResponses.findFirst({
-    where: and(
-      eq(playerEventResponses.eventId, parsed.eventId),
-      eq(playerEventResponses.playerId, parsed.playerId),
-    ),
-  });
-
   const now = new Date();
-  const status: AttendanceStatus = parsed.status;
 
-  if (existing) {
-    await db
-      .update(playerEventResponses)
-      .set({
-        status,
+  await db
+    .insert(playerEventResponses)
+    .values({
+      eventId: parsed.eventId,
+      playerId: parsed.playerId,
+      status: parsed.status,
+      respondedByUserId: viewer.userId,
+      respondedAt: now,
+      responseSource: "COACH_MANUAL",
+    })
+    .onConflictDoUpdate({
+      target: [playerEventResponses.eventId, playerEventResponses.playerId],
+      set: {
+        status: parsed.status,
         respondedByUserId: viewer.userId,
         respondedAt: now,
         responseSource: "COACH_MANUAL",
         updatedAt: now,
-      })
-      .where(eq(playerEventResponses.id, existing.id));
-  } else {
-    await db.insert(playerEventResponses).values({
-      eventId: parsed.eventId,
-      playerId: parsed.playerId,
-      status,
-      respondedByUserId: viewer.userId,
-      respondedAt: now,
-      responseSource: "COACH_MANUAL",
+      },
     });
-  }
 
   revalidateEventResponseViews(parsed.eventId);
 }
