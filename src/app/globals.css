@@ -617,6 +617,68 @@ select {
   flex-shrink: 0;
 }
 
+.attendance-row {
+  align-items: flex-start;
+}
+.attendance-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+.coach-rsvp-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(3rem, 1fr));
+  gap: 2px;
+  padding: 3px;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--navy) 8%, white);
+}
+.coach-rsvp-button {
+  width: 100%;
+  min-height: 2rem;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: color-mix(in srgb, var(--navy) 70%, white);
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.coach-rsvp-button:hover {
+  background: color-mix(in srgb, white 70%, var(--navy) 6%);
+  color: var(--navy-strong);
+}
+.coach-rsvp-button--active {
+  background: white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.coach-rsvp-button--available.coach-rsvp-button--active {
+  border-color: color-mix(in srgb, var(--success) 34%, white);
+  color: color-mix(in srgb, var(--success) 72%, black);
+}
+.coach-rsvp-button--maybe.coach-rsvp-button--active {
+  border-color: color-mix(in srgb, var(--warning) 36%, white);
+  color: color-mix(in srgb, var(--warning) 78%, black);
+}
+.coach-rsvp-button--unavailable.coach-rsvp-button--active {
+  border-color: color-mix(in srgb, var(--danger) 30%, white);
+  color: color-mix(in srgb, var(--danger) 78%, black);
+}
+@media (max-width: 430px) {
+  .attendance-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .attendance-row-actions,
+  .coach-rsvp-controls {
+    width: 100%;
+  }
+}
+
 .section-head {
   font-family: var(--font-barlow-condensed), sans-serif;
   font-weight: 700; font-size: 1.25rem;
