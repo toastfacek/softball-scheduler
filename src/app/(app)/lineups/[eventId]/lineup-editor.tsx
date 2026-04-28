@@ -220,10 +220,12 @@ export function LineupEditor({
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       try {
-        if (isPresetMode) {
-          await saveLineupPresetAction(formData);
-        } else {
-          await saveLineupAction(formData);
+        const result = isPresetMode
+          ? await saveLineupPresetAction(formData)
+          : await saveLineupAction(formData);
+        if (result?.error) {
+          setSaveError(result.error);
+          return;
         }
         // On success the action redirects, so this path is only hit if Next's
         // thrown redirect propagates here (which it does in RSC client calls).

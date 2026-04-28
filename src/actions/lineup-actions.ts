@@ -33,7 +33,11 @@ type AssignmentValue = {
   positionLabel: string;
 };
 
-export async function saveLineupAction(formData: FormData) {
+export type LineupActionResult = { error: string } | undefined;
+
+export async function saveLineupAction(
+  formData: FormData,
+): Promise<LineupActionResult> {
   const viewer = await requireLineupManager();
   const parsed = saveLineupSchema.parse({
     eventId: formData.get("eventId"),
@@ -49,7 +53,7 @@ export async function saveLineupAction(formData: FormData) {
   });
 
   if (!event) {
-    throw new Error("Only game events can have lineups.");
+    return { error: "Only game events can have lineups." };
   }
 
   const [teamPlayers, positionRows, existingPlan, responseRows] =
@@ -85,11 +89,13 @@ export async function saveLineupAction(formData: FormData) {
 
   const positionsByCode = new Map(positionRows.map((row) => [row.code, row]));
 
-  const { slotRows, assignmentRows } = parseSlotAndAssignmentEntries(formData, {
+  const parsedEntries = parseSlotAndAssignmentEntries(formData, {
     inningsCount: parsed.inningsCount,
     validPlayerIds: eligiblePlayerIds,
     positionsByCode,
   });
+  if ("error" in parsedEntries) return parsedEntries;
+  const { slotRows, assignmentRows } = parsedEntries;
 
   await db.transaction(async (tx) => {
     const lineup =
@@ -157,9 +163,18 @@ const presetDeleteSchema = z.object({
   presetId: z.string().uuid(),
 });
 
+type ParsedEntries =
+  | {
+      slotRows: { slotNumber: number; playerId: string }[];
+      assignmentRows: AssignmentValue[];
+    }
+  | { error: string };
+
 /** Shared parser: extract batting slots + inning assignments from form entries
  *  and validate against the team's active position templates. Used by both the
- *  game-event save and the preset save actions. */
+ *  game-event save and the preset save actions. Returns `{ error }` for
+ *  expected validation failures so callers can surface them in production —
+ *  thrown errors get sanitized to a generic message by React's RSC client. */
 function parseSlotAndAssignmentEntries(
   formData: FormData,
   opts: {
@@ -167,10 +182,7 @@ function parseSlotAndAssignmentEntries(
     validPlayerIds: Set<string>;
     positionsByCode: Map<string, { id: string; code: string; label: string }>;
   },
-): {
-  slotRows: { slotNumber: number; playerId: string }[];
-  assignmentRows: AssignmentValue[];
-} {
+): ParsedEntries {
   const slotEntries = Array.from(formData.entries()).filter(([key]) =>
     key.startsWith("slot:"),
   );
@@ -182,39 +194,43 @@ function parseSlotAndAssignmentEntries(
     .map(([, value]) => String(value))
     .filter(Boolean);
   if (selectedPlayerIds.length !== opts.validPlayerIds.size) {
-    throw new Error("Every batting slot must be filled.");
+    return {
+      error:
+        "The roster or RSVPs changed since you opened this page. Reload to see the latest, then re-save.",
+    };
   }
   if (new Set(selectedPlayerIds).size !== selectedPlayerIds.length) {
-    throw new Error("Each player can only appear once in the batting order.");
+    return {
+      error: "Each player can only appear once in the batting order.",
+    };
   }
   for (const playerId of selectedPlayerIds) {
     if (!opts.validPlayerIds.has(playerId)) {
-      throw new Error("The batting order includes an invalid player.");
+      return { error: "The batting order includes an invalid player." };
     }
   }
 
-  const assignmentRows = assignmentEntries
-    .map<AssignmentValue | null>(([key, value]) => {
-      const [, inningNumber, playerId] = key.split(":");
-      const inningValue = Number(inningNumber);
-      if (inningValue > opts.inningsCount) return null;
-      if (!opts.validPlayerIds.has(playerId)) {
-        throw new Error("The lineup includes an invalid player assignment.");
-      }
-      const code = String(value);
-      const position = opts.positionsByCode.get(code);
-      if (!position) {
-        throw new Error("Every inning assignment must use an active position.");
-      }
-      return {
-        inningNumber: inningValue,
-        playerId,
-        positionTemplateId: position.id,
-        positionCode: position.code,
-        positionLabel: position.label,
-      };
-    })
-    .filter((row): row is AssignmentValue => row !== null);
+  const assignmentRows: AssignmentValue[] = [];
+  for (const [key, value] of assignmentEntries) {
+    const [, inningNumber, playerId] = key.split(":");
+    const inningValue = Number(inningNumber);
+    if (inningValue > opts.inningsCount) continue;
+    if (!opts.validPlayerIds.has(playerId)) {
+      return { error: "The lineup includes an invalid player assignment." };
+    }
+    const code = String(value);
+    const position = opts.positionsByCode.get(code);
+    if (!position) {
+      return { error: "Every inning assignment must use an active position." };
+    }
+    assignmentRows.push({
+      inningNumber: inningValue,
+      playerId,
+      positionTemplateId: position.id,
+      positionCode: position.code,
+      positionLabel: position.label,
+    });
+  }
 
   return {
     slotRows: slotEntries.map(([key, value]) => ({
@@ -225,7 +241,9 @@ function parseSlotAndAssignmentEntries(
   };
 }
 
-export async function saveLineupPresetAction(formData: FormData) {
+export async function saveLineupPresetAction(
+  formData: FormData,
+): Promise<LineupActionResult> {
   const viewer = await requireLineupManager();
   const parsed = presetSaveSchema.parse({
     presetId: formData.get("presetId") || undefined,
@@ -249,13 +267,16 @@ export async function saveLineupPresetAction(formData: FormData) {
   const positionsByCode = new Map(positionRows.map((row) => [row.code, row]));
   const validPlayerIds = new Set(teamPlayers.map((p) => p.id));
 
-  const { slotRows, assignmentRows } = parseSlotAndAssignmentEntries(formData, {
+  const parsedEntries = parseSlotAndAssignmentEntries(formData, {
     inningsCount: parsed.inningsCount,
     validPlayerIds,
     positionsByCode,
   });
+  if ("error" in parsedEntries) return parsedEntries;
+  const { slotRows, assignmentRows } = parsedEntries;
 
   let finalPresetId = parsed.presetId;
+  let presetMissing = false;
 
   await db.transaction(async (tx) => {
     if (finalPresetId) {
@@ -265,7 +286,10 @@ export async function saveLineupPresetAction(formData: FormData) {
           eq(lineupPresets.teamId, viewer.teamId),
         ),
       });
-      if (!existing) throw new Error("Preset not found for this team.");
+      if (!existing) {
+        presetMissing = true;
+        return;
+      }
       await tx
         .update(lineupPresets)
         .set({
@@ -314,6 +338,10 @@ export async function saveLineupPresetAction(formData: FormData) {
       );
     }
   });
+
+  if (presetMissing) {
+    return { error: "Preset not found for this team." };
+  }
 
   revalidatePath("/lineups");
   revalidatePath(`/lineups/presets/${finalPresetId}`);
