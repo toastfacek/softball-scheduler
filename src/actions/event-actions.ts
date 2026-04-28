@@ -15,7 +15,7 @@ import {
   playerGuardians,
   players,
 } from "@/db/schema";
-import type { EventType } from "@/db/schema";
+import type { AttendanceStatus, EventType } from "@/db/schema";
 import { inArray } from "drizzle-orm";
 import { listEventUpdateRecipients } from "@/lib/data";
 import {
@@ -60,6 +60,12 @@ const playerResponseSchema = z.object({
   note: z.string().trim().optional(),
 });
 
+const coachPlayerResponseSchema = z.object({
+  eventId: z.string().uuid(),
+  playerId: z.string().uuid(),
+  status: z.enum(["AVAILABLE", "UNAVAILABLE", "MAYBE"]),
+});
+
 const adultResponseSchema = z.object({
   eventId: z.string().uuid(),
   status: z.enum(["AVAILABLE", "UNAVAILABLE", "MAYBE"]),
@@ -95,6 +101,13 @@ async function ensureEventBelongsToTeam(eventId: string, teamId: string) {
   }
 
   return event;
+}
+
+function revalidateEventResponseViews(eventId: string) {
+  revalidatePath("/schedule");
+  revalidatePath(`/events/${eventId}`);
+  revalidatePath(`/events/${eventId}/attendance`);
+  revalidatePath(`/lineups/${eventId}`);
 }
 
 export async function createEventAction(formData: FormData) {
@@ -245,8 +258,65 @@ export async function updatePlayerAvailabilityAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/schedule");
-  revalidatePath(`/events/${parsed.eventId}`);
+  revalidateEventResponseViews(parsed.eventId);
+}
+
+export async function updatePlayerAvailabilityByCoachAction(
+  formData: FormData,
+) {
+  const viewer = await requireTeamManager();
+  const parsed = coachPlayerResponseSchema.parse({
+    eventId: formData.get("eventId"),
+    playerId: formData.get("playerId"),
+    status: formData.get("status"),
+  });
+
+  await ensureEventBelongsToTeam(parsed.eventId, viewer.teamId);
+
+  const player = await db.query.players.findFirst({
+    where: and(
+      eq(players.id, parsed.playerId),
+      eq(players.teamId, viewer.teamId),
+    ),
+  });
+
+  if (!player) {
+    throw new Error("That player is not part of this team.");
+  }
+
+  const existing = await db.query.playerEventResponses.findFirst({
+    where: and(
+      eq(playerEventResponses.eventId, parsed.eventId),
+      eq(playerEventResponses.playerId, parsed.playerId),
+    ),
+  });
+
+  const now = new Date();
+  const status: AttendanceStatus = parsed.status;
+
+  if (existing) {
+    await db
+      .update(playerEventResponses)
+      .set({
+        status,
+        respondedByUserId: viewer.userId,
+        respondedAt: now,
+        responseSource: "COACH_MANUAL",
+        updatedAt: now,
+      })
+      .where(eq(playerEventResponses.id, existing.id));
+  } else {
+    await db.insert(playerEventResponses).values({
+      eventId: parsed.eventId,
+      playerId: parsed.playerId,
+      status,
+      respondedByUserId: viewer.userId,
+      respondedAt: now,
+      responseSource: "COACH_MANUAL",
+    });
+  }
+
+  revalidateEventResponseViews(parsed.eventId);
 }
 
 const rsvpLinkSchema = z.object({

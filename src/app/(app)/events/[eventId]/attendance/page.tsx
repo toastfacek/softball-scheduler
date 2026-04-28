@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { updatePlayerAvailabilityByCoachAction } from "@/actions/event-actions";
 import { PageHeader } from "@/components/page-header";
 import { EventTypeChip } from "@/components/status-chip";
 import { canManageTeam } from "@/lib/authz";
@@ -33,6 +34,8 @@ export default async function AttendancePage({
 
   type Row = {
     key: string;
+    kind: "player" | "staff";
+    subjectId: string;
     name: string;
     status: StatusKey;
     note: string | null;
@@ -42,6 +45,8 @@ export default async function AttendancePage({
 
   const playerRows: Row[] = data.playerCards.map((p) => ({
     key: `p-${p.id}`,
+    kind: "player",
+    subjectId: p.id,
     name: p.name,
     status: (p.response?.status ?? "WAITING") as StatusKey,
     note: p.response?.note ?? null,
@@ -51,6 +56,8 @@ export default async function AttendancePage({
 
   const staffRows: Row[] = data.staff.map((s) => ({
     key: `s-${s.userId}`,
+    kind: "staff",
+    subjectId: s.userId,
     name: s.name,
     status: (s.response?.status ?? "WAITING") as StatusKey,
     note: s.response?.note ?? null,
@@ -115,7 +122,11 @@ export default async function AttendancePage({
       >
         <div className="row-list">
           {rows.map((row) => (
-            <div key={row.key} className="row" style={{ cursor: "default" }}>
+            <div
+              key={row.key}
+              className="row attendance-row"
+              style={{ cursor: "default" }}
+            >
               <div className="row-grow">
                 <div className="row-title">{row.name}</div>
                 {row.note || row.source ? (
@@ -125,11 +136,19 @@ export default async function AttendancePage({
                   </div>
                 ) : null}
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="attendance-row-actions">
                 {row.role ? (
                   <span className="chip chip--role">{row.role}</span>
                 ) : null}
-                <StatusChip status={row.status} />
+                {row.kind === "player" ? (
+                  <CoachRsvpControls
+                    eventId={eventId}
+                    playerId={row.subjectId}
+                    status={row.status}
+                  />
+                ) : (
+                  <StatusChip status={row.status} />
+                )}
               </div>
             </div>
           ))}
@@ -148,6 +167,73 @@ export default async function AttendancePage({
         </div>
       </section>
     </>
+  );
+}
+
+function CoachRsvpControls({
+  eventId,
+  playerId,
+  status,
+}: {
+  eventId: string;
+  playerId: string;
+  status: StatusKey;
+}) {
+  return (
+    <div className="coach-rsvp-controls" aria-label="Player RSVP status">
+      <RsvpStatusButton
+        eventId={eventId}
+        playerId={playerId}
+        value="AVAILABLE"
+        label="In"
+        active={status === "AVAILABLE"}
+      />
+      <RsvpStatusButton
+        eventId={eventId}
+        playerId={playerId}
+        value="MAYBE"
+        label="Maybe"
+        active={status === "MAYBE"}
+      />
+      <RsvpStatusButton
+        eventId={eventId}
+        playerId={playerId}
+        value="UNAVAILABLE"
+        label="Out"
+        active={status === "UNAVAILABLE"}
+      />
+    </div>
+  );
+}
+
+function RsvpStatusButton({
+  eventId,
+  playerId,
+  value,
+  label,
+  active,
+}: {
+  eventId: string;
+  playerId: string;
+  value: "AVAILABLE" | "MAYBE" | "UNAVAILABLE";
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <form action={updatePlayerAvailabilityByCoachAction}>
+      <input type="hidden" name="eventId" value={eventId} />
+      <input type="hidden" name="playerId" value={playerId} />
+      <input type="hidden" name="status" value={value} />
+      <button
+        type="submit"
+        className={`coach-rsvp-button coach-rsvp-button--${value.toLowerCase()} ${
+          active ? "coach-rsvp-button--active" : ""
+        }`}
+        aria-pressed={active}
+      >
+        {label}
+      </button>
+    </form>
   );
 }
 
