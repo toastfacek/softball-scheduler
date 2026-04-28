@@ -27,7 +27,7 @@ export default async function EditPresetPage({
     ...data.allPlayers.filter((p) => !persistedIds.has(p.id)).map((p) => p.id),
   ];
 
-  const fieldCodes = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"];
+  const fieldCodes = ["P", "C", "1B", "2B", "3B", "SS", "LF", "LCF", "RCF", "RF"];
   const defaultCode = (idx: number) => (idx < fieldCodes.length ? fieldCodes[idx] : "BN");
   const initialAssignments: Record<string, string[]> = {};
   for (const [idx, pid] of initialBattingOrder.entries()) {

@@ -30,7 +30,7 @@ export default async function NewPresetPage() {
 
   // Default seed: every player in roster order, everyone on BN.
   const inningsCount = 6;
-  const fieldCodes = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"];
+  const fieldCodes = ["P", "C", "1B", "2B", "3B", "SS", "LF", "LCF", "RCF", "RF"];
   const initialBattingOrder = playerRows.map((p) => p.id);
   const initialAssignments: Record<string, string[]> = {};
   for (const [idx, pid] of initialBattingOrder.entries()) {

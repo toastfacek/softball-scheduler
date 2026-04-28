@@ -45,9 +45,10 @@ const FIELD_COORDS: Record<string, { x: number; y: number }> = {
   "2B": { x: 160, y: 70 },
   "3B": { x: 65, y: 100 },
   SS: { x: 100, y: 70 },
-  LF: { x: 55, y: 45 },
-  CF: { x: 130, y: 28 },
-  RF: { x: 205, y: 45 },
+  LF: { x: 50, y: 48 },
+  LCF: { x: 100, y: 28 },
+  RCF: { x: 160, y: 28 },
+  RF: { x: 210, y: 48 },
 };
 
 export function LineupEditor({
