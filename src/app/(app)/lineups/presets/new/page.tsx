@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { players, teamPositionTemplates } from "@/db/schema";
 import { canManageLineups } from "@/lib/authz";
 import { getViewerContext } from "@/lib/data";
+import { defaultFieldCodes } from "@/lib/lineup-defaults";
 import { fullName } from "@/lib/utils";
 
 export default async function NewPresetPage() {
@@ -30,7 +31,7 @@ export default async function NewPresetPage() {
 
   // Default seed: every player in roster order, everyone on BN.
   const inningsCount = 6;
-  const fieldCodes = ["P", "C", "1B", "2B", "3B", "SS", "LF", "LCF", "RCF", "RF"];
+  const fieldCodes = defaultFieldCodes(positionRows);
   const initialBattingOrder = playerRows.map((p) => p.id);
   const initialAssignments: Record<string, string[]> = {};
   for (const [idx, pid] of initialBattingOrder.entries()) {

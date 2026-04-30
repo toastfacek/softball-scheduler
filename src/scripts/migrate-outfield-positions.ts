@@ -3,28 +3,15 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { teamPositionTemplates } from "../db/schema";
 
-// One-off: switch every team from a single CF to LCF + RCF (4 OF setup).
-// Existing inning_assignments rows preserve `position_code = 'CF'` even if
-// the template is deactivated — the FK is ON DELETE SET NULL by default and
-// we only flip is_active here, so historical lineups stay readable.
+// One-off: add LCF + RCF to every team so the 4 OF setup is available.
+// CF stays active intentionally — existing inning_assignments rows still
+// reference position_code = 'CF', and lineup save validates submitted
+// codes against the active-template set, so deactivating CF would block
+// re-saving any historical lineup until every CF cell is reassigned.
 async function main() {
   const allTeams = await db.query.teams.findMany();
 
   for (const team of allTeams) {
-    const cf = await db.query.teamPositionTemplates.findFirst({
-      where: and(
-        eq(teamPositionTemplates.teamId, team.id),
-        eq(teamPositionTemplates.code, "CF"),
-      ),
-    });
-    if (cf?.isActive) {
-      await db
-        .update(teamPositionTemplates)
-        .set({ isActive: false, updatedAt: new Date() })
-        .where(eq(teamPositionTemplates.id, cf.id));
-      console.log(`[${team.slug}] deactivated CF`);
-    }
-
     for (const { code, label, sortOrder } of [
       { code: "LCF", label: "Left Center Field", sortOrder: 75 },
       { code: "RCF", label: "Right Center Field", sortOrder: 85 },
