@@ -7,6 +7,7 @@ import {
   getViewerContext,
   listLineupPresets,
 } from "@/lib/data";
+import { defaultFieldCodes } from "@/lib/lineup-defaults";
 
 import { LineupEditor } from "./lineup-editor";
 
@@ -44,7 +45,7 @@ export default async function LineupEditorPage({
 
   // Seed assignments: use persisted values when present, else fall back to
   // BN / field position default based on batting slot index.
-  const fieldCodes = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"];
+  const fieldCodes = defaultFieldCodes(data.positions);
   const defaultCode = (idx: number) => (idx < fieldCodes.length ? fieldCodes[idx] : "BN");
   const initialAssignments: Record<string, string[]> = {};
   for (const [idx, pid] of initialBattingOrder.entries()) {

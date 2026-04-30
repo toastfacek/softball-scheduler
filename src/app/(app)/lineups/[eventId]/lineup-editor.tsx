@@ -45,9 +45,10 @@ const FIELD_COORDS: Record<string, { x: number; y: number }> = {
   "2B": { x: 160, y: 70 },
   "3B": { x: 65, y: 100 },
   SS: { x: 100, y: 70 },
-  LF: { x: 55, y: 45 },
-  CF: { x: 130, y: 28 },
-  RF: { x: 205, y: 45 },
+  LF: { x: 50, y: 48 },
+  LCF: { x: 100, y: 28 },
+  RCF: { x: 160, y: 28 },
+  RF: { x: 210, y: 48 },
 };
 
 export function LineupEditor({
@@ -220,10 +221,12 @@ export function LineupEditor({
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       try {
-        if (isPresetMode) {
-          await saveLineupPresetAction(formData);
-        } else {
-          await saveLineupAction(formData);
+        const result = isPresetMode
+          ? await saveLineupPresetAction(formData)
+          : await saveLineupAction(formData);
+        if (result?.error) {
+          setSaveError(result.error);
+          return;
         }
         // On success the action redirects, so this path is only hit if Next's
         // thrown redirect propagates here (which it does in RSC client calls).

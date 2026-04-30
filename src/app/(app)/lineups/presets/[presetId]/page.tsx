@@ -4,6 +4,7 @@ import { LineupEditor } from "@/app/(app)/lineups/[eventId]/lineup-editor";
 import { PageHeader } from "@/components/page-header";
 import { canManageLineups } from "@/lib/authz";
 import { getLineupPresetEditorData, getViewerContext } from "@/lib/data";
+import { defaultFieldCodes } from "@/lib/lineup-defaults";
 
 export default async function EditPresetPage({
   params,
@@ -27,7 +28,7 @@ export default async function EditPresetPage({
     ...data.allPlayers.filter((p) => !persistedIds.has(p.id)).map((p) => p.id),
   ];
 
-  const fieldCodes = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"];
+  const fieldCodes = defaultFieldCodes(data.positions);
   const defaultCode = (idx: number) => (idx < fieldCodes.length ? fieldCodes[idx] : "BN");
   const initialAssignments: Record<string, string[]> = {};
   for (const [idx, pid] of initialBattingOrder.entries()) {
