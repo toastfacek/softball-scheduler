@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { updatePlayerAvailabilityAction } from "@/actions/event-actions";
 import { CalendarSubscribeLink } from "@/components/calendar-subscribe-link";
 import { PageHeader } from "@/components/page-header";
-import { EventTypeChip } from "@/components/status-chip";
+import { EventTypeChip, ResponseChip } from "@/components/status-chip";
 import { canManageTeam } from "@/lib/authz";
 import { getEventPageData, getViewerContext } from "@/lib/data";
 import { formatEventDateTimeRange } from "@/lib/time";
@@ -38,6 +39,7 @@ export default async function EventDetailPage({
     : null;
 
   const isGame = data.event.type === "GAME";
+  const canRsvp = data.event.status === "SCHEDULED";
 
   return (
     <>
@@ -121,6 +123,90 @@ export default async function EventDetailPage({
 
       <div className="flex flex-col gap-2">
         <CalendarSubscribeLink />
+
+        {data.viewerPlayers.length > 0 ? (
+          <section className="shell-panel rounded-tile p-4">
+            <div className="section-head">Your RSVP</div>
+            <div className="rsvp-player-grid">
+              {data.viewerPlayers.map((player) => {
+                const status = player.response?.status ?? null;
+                return (
+                  <form
+                    key={player.id}
+                    action={updatePlayerAvailabilityAction}
+                    className="rsvp-player-row"
+                  >
+                    <input type="hidden" name="eventId" value={data.event.id} />
+                    <input type="hidden" name="playerId" value={player.id} />
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="rsvp-player-name">{player.name}</div>
+                      <ResponseChip status={status} />
+                    </div>
+                    <div className="rsvp-buttons rsvp-buttons--compact">
+                      <button
+                        type="submit"
+                        name="status"
+                        value="AVAILABLE"
+                        disabled={!canRsvp}
+                        className={`rsvp-btn rsvp-btn--available${
+                          status === "AVAILABLE" ? " rsvp-btn--active" : ""
+                        }`}
+                      >
+                        In
+                      </button>
+                      <button
+                        type="submit"
+                        name="status"
+                        value="MAYBE"
+                        disabled={!canRsvp}
+                        className={`rsvp-btn rsvp-btn--maybe${
+                          status === "MAYBE" ? " rsvp-btn--active" : ""
+                        }`}
+                      >
+                        Maybe
+                      </button>
+                      <button
+                        type="submit"
+                        name="status"
+                        value="UNAVAILABLE"
+                        disabled={!canRsvp}
+                        className={`rsvp-btn rsvp-btn--unavailable${
+                          status === "UNAVAILABLE" ? " rsvp-btn--active" : ""
+                        }`}
+                      >
+                        Out
+                      </button>
+                    </div>
+                    <div className="rsvp-note-field">
+                      <label htmlFor={`note-${player.id}`}>Note</label>
+                      <textarea
+                        id={`note-${player.id}`}
+                        name="note"
+                        defaultValue={player.response?.note ?? ""}
+                        placeholder="Optional note for coaches"
+                        disabled={!canRsvp}
+                      />
+                    </div>
+                    {!canRsvp ? (
+                      <p className="rsvp-status">
+                        This event is {data.event.status.toLowerCase()}, so RSVP
+                        changes are closed.
+                      </p>
+                    ) : null}
+                  </form>
+                );
+              })}
+            </div>
+          </section>
+        ) : !canManage ? (
+          <section className="shell-panel rounded-tile p-4">
+            <div className="section-head">Your RSVP</div>
+            <p className="rsvp-status">
+              No player is linked to your account yet. Ask a coach or admin to
+              connect your family so you can RSVP here.
+            </p>
+          </section>
+        ) : null}
 
         {canManage ? (
           <>
