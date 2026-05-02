@@ -46,7 +46,7 @@ export default async function ProfilePage() {
               defaultChecked={viewer.adult.reminderOptIn}
               className="h-4 w-4"
             />
-            Send 24-hour reminder nudges if my player hasn&apos;t responded
+            Send reminder nudges two days before events if my player hasn&apos;t responded
           </label>
           <div className="rounded-2xl border border-line bg-white px-4 py-3">
             <label className="flex items-center gap-3 text-sm font-medium">

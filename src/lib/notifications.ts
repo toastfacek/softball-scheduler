@@ -57,6 +57,7 @@ const resendFromAddress = buildEmailFromAddress(
   env.AUTH_RESEND_FROM,
   env.AUTH_RESEND_FROM_NAME,
 );
+const RESEND_SEND_INTERVAL_MS = 250;
 
 export async function sendTeamEmail(input: SendTeamEmailInput) {
   const uniqueRecipients = Array.from(
@@ -85,57 +86,84 @@ export async function sendTeamEmail(input: SendTeamEmailInput) {
     })
     .returning();
 
-  const sendResults = await Promise.all(
-    uniqueRecipients.map(async (recipient) => {
-      try {
-        const override = input.renderBody
-          ? await input.renderBody(recipient, { messageId: message.id })
-          : undefined;
-        const subject = override?.subject ?? input.subject;
-        const body = override?.body ?? input.body;
-        const html = override?.html ?? markdownishToHtml(body);
+  const sendResults = [];
 
-        if (!isResendConfigured()) {
-          console.info(
-            `[email:console] ${subject} -> ${recipient.email}\n${body}`,
-          );
+  for (const [index, recipient] of uniqueRecipients.entries()) {
+    if (index > 0 && isResendConfigured()) {
+      await sleep(RESEND_SEND_INTERVAL_MS);
+    }
 
-          return {
-            recipient,
-            deliveryStatus: "SENT" as const,
-            providerMessageId: `console-${message.id}-${recipient.email}`,
-            deliveredAt: new Date(),
-            errorMessage: null,
-          };
-        }
+    try {
+      const override = input.renderBody
+        ? await input.renderBody(recipient, { messageId: message.id })
+        : undefined;
+      const subject = override?.subject ?? input.subject;
+      const body = override?.body ?? input.body;
+      const html = override?.html ?? markdownishToHtml(body);
 
-        const response = await resend.emails.send({
-          from: resendFromAddress,
-          to: recipient.email,
-          subject,
-          text: body,
-          html,
-        });
+      if (!isResendConfigured()) {
+        console.info(
+          `[email:console] ${subject} -> ${recipient.email}\n${body}`,
+        );
 
-        return {
+        sendResults.push({
           recipient,
           deliveryStatus: "SENT" as const,
-          providerMessageId: response.data?.id ?? null,
+          providerMessageId: `console-${message.id}-${recipient.email}`,
           deliveredAt: new Date(),
           errorMessage: null,
-        };
-      } catch (error) {
-        return {
+        });
+        continue;
+      }
+
+      const response = await resend.emails.send({
+        from: resendFromAddress,
+        to: recipient.email,
+        subject,
+        text: body,
+        html,
+      });
+
+      if (response.error) {
+        sendResults.push({
           recipient,
           deliveryStatus: "FAILED" as const,
           providerMessageId: null,
           deliveredAt: null,
-          errorMessage:
-            error instanceof Error ? error.message : "Email send failed.",
-        };
+          errorMessage: formatResendError(response.error),
+        });
+        continue;
       }
-    }),
-  );
+
+      if (!response.data?.id) {
+        sendResults.push({
+          recipient,
+          deliveryStatus: "FAILED" as const,
+          providerMessageId: null,
+          deliveredAt: null,
+          errorMessage: "Resend did not return a message id.",
+        });
+        continue;
+      }
+
+      sendResults.push({
+        recipient,
+        deliveryStatus: "SENT" as const,
+        providerMessageId: response.data.id,
+        deliveredAt: new Date(),
+        errorMessage: null,
+      });
+    } catch (error) {
+      sendResults.push({
+        recipient,
+        deliveryStatus: "FAILED" as const,
+        providerMessageId: null,
+        deliveredAt: null,
+        errorMessage:
+          error instanceof Error ? error.message : "Email send failed.",
+      });
+    }
+  }
 
   await db.insert(emailRecipients).values(
     sendResults.map((result) => ({
@@ -159,4 +187,18 @@ export async function sendTeamEmail(input: SendTeamEmailInput) {
     messageId: message.id,
     sendResults,
   };
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function formatResendError(error: {
+  message?: string | null;
+  name?: string | null;
+  statusCode?: number | null;
+}) {
+  const status = error.statusCode ? `${error.statusCode} ` : "";
+  const name = error.name ? `${error.name}: ` : "";
+  return `${status}${name}${error.message ?? "Resend email send failed."}`;
 }

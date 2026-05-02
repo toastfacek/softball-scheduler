@@ -9,6 +9,7 @@ import {
   renderEventDetailsText,
   renderEventRsvpEmail,
 } from "@/lib/email-templates";
+import { isTwilioConfigured } from "@/lib/env";
 import { sendTeamEmail } from "@/lib/notifications";
 import { sendTeamText } from "@/lib/text-notifications";
 import { renderEventRsvpText } from "@/lib/text-templates";
@@ -35,8 +36,13 @@ export async function runReminderSweep(now = new Date()) {
     }
 
     const dateLine = formatEventDateTimeRange(event.startsAt, event.endsAt);
-    const textGuardians = guardians.filter(prefersText);
-    const emailGuardians = guardians.filter((g) => !prefersText(g));
+    const textRemindersEnabled = isTwilioConfigured();
+    const textGuardians = textRemindersEnabled
+      ? guardians.filter(prefersText)
+      : [];
+    const emailGuardians = textRemindersEnabled
+      ? guardians.filter((g) => !prefersText(g))
+      : guardians;
 
     let sent = 0;
 

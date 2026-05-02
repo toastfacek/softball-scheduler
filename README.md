@@ -10,7 +10,7 @@ A private, mobile-first softball team management app for one current-season team
 - Parent RSVP flow with `Available / Unavailable / Maybe`
 - Coach/admin actual attendance tracking
 - Coach-only inning-by-inning lineup planner
-- Manual team/event emails plus automatic 24-hour non-responder reminders
+- Manual team/event emails plus automatic two-day non-responder reminders
 - PWA manifest so families can install the app to their home screen
 
 ## Stack
@@ -95,7 +95,7 @@ Create a small Railway service from this same repo that runs:
 pnpm cron:reminders
 ```
 
-Schedule it every 15 minutes. The reminder runner is idempotent at the database level, so duplicate runs should not send duplicate reminder emails.
+Schedule it every 15 minutes. The reminder runner sends reminders once an event is inside the next 48 hours and is idempotent at the database level, so duplicate runs should not send duplicate reminder emails.
 
 ## Demo seed accounts
 

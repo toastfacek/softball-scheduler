@@ -60,7 +60,7 @@ All server-side role gating flows through one function:
 
 ### Reminder cron
 
-[src/scripts/send-reminders.ts](src/scripts/send-reminders.ts) + [src/lib/reminders.ts](src/lib/reminders.ts) is run as a **separate Railway service** (`Dockerfile.railway`, `railway.json` with `cronSchedule: "*/15 * * * *"`) — not via a Next.js route. It sends a 24h non-responder nudge per guardian per event, guarded by the `reminder_deliveries` unique index. The `metadata` field on `email_messages` carries `reminderType: "NON_RESPONDER_24H"` for audit.
+[src/scripts/send-reminders.ts](src/scripts/send-reminders.ts) + [src/lib/reminders.ts](src/lib/reminders.ts) is run as a **separate Railway service** (`Dockerfile.railway`, `railway.json` with `cronSchedule: "*/15 * * * *"`) - not via a Next.js route. It sends a non-responder nudge once an event is inside the next 48 hours, guarded by the `reminder_deliveries` unique index. The `metadata` field on `email_messages` carries the legacy `reminderType: "NON_RESPONDER_24H"` label for audit.
 
 ### Email
 

@@ -8,6 +8,6 @@
     "startCommand": "pnpm cron:reminders",
     "restartPolicyType": "NEVER",
     "numReplicas": 1,
-    "cronSchedule": "0 14 * * *"
+    "cronSchedule": "*/15 * * * *"
   }
 }
