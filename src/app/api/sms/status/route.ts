@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
   const messageSid = params.MessageSid;
   const status = params.MessageStatus;
   const errorMessage = params.ErrorMessage ?? null;
+  const textRecipientId = request.nextUrl.searchParams.get("textRecipientId");
 
   if (!messageSid || !status) {
     return NextResponse.json(
@@ -48,10 +49,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Intermediate states (queued, sending, sent) leave the row as PENDING.
-  // Only terminal statuses update to SENT or FAILED.
+  // Twilio may not always emit a later "delivered" status for every carrier.
+  // Once Twilio reports "sent", the message has left Twilio for the carrier,
+  // so treat both sent and delivered as successful from the app's perspective.
   const deliveryStatus =
-    status === "delivered"
+    status === "sent" || status === "delivered"
       ? ("SENT" as const)
       : status === "failed" || status === "undelivered"
         ? ("FAILED" as const)
@@ -67,11 +69,16 @@ export async function POST(request: NextRequest) {
     .update(textRecipients)
     .set({
       deliveryStatus,
+      providerMessageId: messageSid,
       deliveredAt: deliveryStatus === "SENT" ? now : null,
       errorMessage: deliveryStatus === "FAILED" ? errorMessage : null,
       updatedAt: now,
     })
-    .where(eq(textRecipients.providerMessageId, messageSid));
+    .where(
+      textRecipientId
+        ? eq(textRecipients.id, textRecipientId)
+        : eq(textRecipients.providerMessageId, messageSid),
+    );
 
   return NextResponse.json({ ok: true });
 }

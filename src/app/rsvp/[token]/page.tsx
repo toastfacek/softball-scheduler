@@ -57,7 +57,12 @@ export default async function RsvpLandingPage({ params, searchParams }: PageProp
     })
     .from(playerGuardians)
     .innerJoin(players, eq(players.id, playerGuardians.playerId))
-    .where(eq(playerGuardians.userId, claims.guardianId))
+    .where(
+      and(
+        eq(playerGuardians.userId, claims.guardianId),
+        eq(players.teamId, event.teamId),
+      ),
+    )
     .then((rows) =>
       rows.map((r) => ({
         playerId: r.playerId,
