@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -65,33 +65,24 @@ async function upsertAdultWithEmail(input: {
   phone?: string;
 }) {
   const normalizedEmail = normalizeEmail(input.email);
-  const existing = await db.query.adultUsers.findFirst({
-    where: eq(adultUsers.email, normalizedEmail),
-  });
-
-  if (existing) {
-    await db
-      .update(adultUsers)
-      .set({
-        name: existing.name || input.name,
-        phone: input.phone || existing.phone,
-        updatedAt: new Date(),
-      })
-      .where(eq(adultUsers.id, existing.id));
-
-    return existing.id;
-  }
-
-  const [created] = await db
+  const [adult] = await db
     .insert(adultUsers)
     .values({
       name: input.name,
       email: normalizedEmail,
       phone: input.phone || null,
     })
+    .onConflictDoUpdate({
+      target: adultUsers.email,
+      set: {
+        name: sql`coalesce(${adultUsers.name}, ${input.name})`,
+        phone: sql`coalesce(${input.phone || null}, ${adultUsers.phone})`,
+        updatedAt: new Date(),
+      },
+    })
     .returning();
 
-  return created.id;
+  return adult.id;
 }
 
 const updatePlayerSchema = z.object({
@@ -323,32 +314,25 @@ export async function savePositionTemplateAction(formData: FormData) {
   });
 
   const normalizedCode = slugify(parsed.code).toUpperCase().replaceAll("-", "");
-  const existing = await db.query.teamPositionTemplates.findFirst({
-    where: and(
-      eq(teamPositionTemplates.teamId, viewer.teamId),
-      eq(teamPositionTemplates.code, normalizedCode),
-    ),
-  });
 
-  if (!existing || existing.teamId !== viewer.teamId) {
-    await db.insert(teamPositionTemplates).values({
+  await db
+    .insert(teamPositionTemplates)
+    .values({
       teamId: viewer.teamId,
       code: normalizedCode,
       label: parsed.label,
       sortOrder: parsed.sortOrder,
       isActive: parsed.isActive,
-    });
-  } else {
-    await db
-      .update(teamPositionTemplates)
-      .set({
+    })
+    .onConflictDoUpdate({
+      target: [teamPositionTemplates.teamId, teamPositionTemplates.code],
+      set: {
         label: parsed.label,
         sortOrder: parsed.sortOrder,
         isActive: parsed.isActive,
         updatedAt: new Date(),
-      })
-      .where(eq(teamPositionTemplates.id, existing.id));
-  }
+      },
+    });
 
   revalidatePath("/team");
   revalidatePath("/lineups");

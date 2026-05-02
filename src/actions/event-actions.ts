@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -14,9 +14,9 @@ import {
   playerEventResponses,
   playerGuardians,
   players,
+  teamMemberships,
 } from "@/db/schema";
 import type { EventType } from "@/db/schema";
-import { inArray } from "drizzle-orm";
 import { listEventUpdateRecipients } from "@/lib/data";
 import {
   renderEventDetailsText,
@@ -224,39 +224,33 @@ export async function updatePlayerAvailabilityAction(formData: FormData) {
 
   await ensureEventBelongsToTeam(parsed.eventId, viewer.teamId);
 
-  const existing = await db.query.playerEventResponses.findFirst({
-    where: and(
-      eq(playerEventResponses.eventId, parsed.eventId),
-      eq(playerEventResponses.playerId, parsed.playerId),
-    ),
-  });
-
   const source = viewer.roles.some((r) => r === "COACH" || r === "ADMIN")
     ? ("COACH_MANUAL" as const)
     : ("APP" as const);
+  const now = new Date();
 
-  if (existing) {
-    await db
-      .update(playerEventResponses)
-      .set({
-        status: parsed.status,
-        note: parsed.note || null,
-        respondedByUserId: viewer.userId,
-        respondedAt: new Date(),
-        responseSource: source,
-        updatedAt: new Date(),
-      })
-      .where(eq(playerEventResponses.id, existing.id));
-  } else {
-    await db.insert(playerEventResponses).values({
+  await db
+    .insert(playerEventResponses)
+    .values({
       eventId: parsed.eventId,
       playerId: parsed.playerId,
       status: parsed.status,
       note: parsed.note || null,
       respondedByUserId: viewer.userId,
+      respondedAt: now,
       responseSource: source,
+    })
+    .onConflictDoUpdate({
+      target: [playerEventResponses.eventId, playerEventResponses.playerId],
+      set: {
+        status: parsed.status,
+        note: parsed.note || null,
+        respondedByUserId: viewer.userId,
+        respondedAt: now,
+        responseSource: source,
+        updatedAt: now,
+      },
     });
-  }
 
   revalidateEventResponseViews(parsed.eventId);
 }
@@ -335,6 +329,14 @@ export async function recordRsvpFromLinkAction(input: {
     throw new Error("This RSVP link is invalid or has expired.");
   }
 
+  const event = await db.query.events.findFirst({
+    where: eq(events.id, claims.eventId),
+  });
+
+  if (!event) {
+    throw new Error("This RSVP link points to an event that no longer exists.");
+  }
+
   const linked = await db
     .select({
       playerId: playerGuardians.playerId,
@@ -344,7 +346,12 @@ export async function recordRsvpFromLinkAction(input: {
     })
     .from(playerGuardians)
     .innerJoin(players, eq(players.id, playerGuardians.playerId))
-    .where(eq(playerGuardians.userId, claims.guardianId))
+    .where(
+      and(
+        eq(playerGuardians.userId, claims.guardianId),
+        eq(players.teamId, event.teamId),
+      ),
+    )
     .then((rows) =>
       rows.map((r) => ({
         playerId: r.playerId,
@@ -358,7 +365,7 @@ export async function recordRsvpFromLinkAction(input: {
 
   const eligibleIds = new Set(linked.map((l) => l.playerId));
   const targetPlayerIds = parsed.playerIds
-    ? parsed.playerIds.filter((id) => eligibleIds.has(id))
+    ? Array.from(new Set(parsed.playerIds)).filter((id) => eligibleIds.has(id))
     : linked.map((l) => l.playerId);
 
   if (targetPlayerIds.length === 0) {
@@ -369,27 +376,9 @@ export async function recordRsvpFromLinkAction(input: {
   const note = parsed.note?.trim() || null;
 
   for (const playerId of targetPlayerIds) {
-    const existing = await db.query.playerEventResponses.findFirst({
-      where: and(
-        eq(playerEventResponses.eventId, claims.eventId),
-        eq(playerEventResponses.playerId, playerId),
-      ),
-    });
-
-    if (existing) {
-      await db
-        .update(playerEventResponses)
-        .set({
-          status: parsed.status,
-          note,
-          respondedByUserId: claims.guardianId,
-          respondedAt: now,
-          responseSource: claims.source,
-          updatedAt: now,
-        })
-        .where(eq(playerEventResponses.id, existing.id));
-    } else {
-      await db.insert(playerEventResponses).values({
+    await db
+      .insert(playerEventResponses)
+      .values({
         eventId: claims.eventId,
         playerId,
         status: parsed.status,
@@ -397,8 +386,18 @@ export async function recordRsvpFromLinkAction(input: {
         respondedByUserId: claims.guardianId,
         respondedAt: now,
         responseSource: claims.source,
+      })
+      .onConflictDoUpdate({
+        target: [playerEventResponses.eventId, playerEventResponses.playerId],
+        set: {
+          status: parsed.status,
+          note,
+          respondedByUserId: claims.guardianId,
+          respondedAt: now,
+          responseSource: claims.source,
+          updatedAt: now,
+        },
       });
-    }
   }
 
   revalidatePath(`/events/${claims.eventId}`);
@@ -422,31 +421,26 @@ export async function updateAdultAvailabilityAction(formData: FormData) {
 
   await ensureEventBelongsToTeam(parsed.eventId, viewer.teamId);
 
-  const existing = await db.query.adultEventResponses.findFirst({
-    where: and(
-      eq(adultEventResponses.eventId, parsed.eventId),
-      eq(adultEventResponses.userId, viewer.userId),
-    ),
-  });
+  const now = new Date();
 
-  if (existing) {
-    await db
-      .update(adultEventResponses)
-      .set({
-        status: parsed.status,
-        note: parsed.note || null,
-        respondedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(adultEventResponses.id, existing.id));
-  } else {
-    await db.insert(adultEventResponses).values({
+  await db
+    .insert(adultEventResponses)
+    .values({
       eventId: parsed.eventId,
       userId: viewer.userId,
       status: parsed.status,
       note: parsed.note || null,
+      respondedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [adultEventResponses.eventId, adultEventResponses.userId],
+      set: {
+        status: parsed.status,
+        note: parsed.note || null,
+        respondedAt: now,
+        updatedAt: now,
+      },
     });
-  }
 
   revalidatePath("/schedule");
   revalidatePath(`/events/${parsed.eventId}`);
@@ -470,23 +464,11 @@ export async function markPlayerActualAttendanceAction(formData: FormData) {
     throw new Error("That player is not part of this team.");
   }
 
-  const existing = await db.query.playerEventResponses.findFirst({
-    where: and(
-      eq(playerEventResponses.eventId, parsed.eventId),
-      eq(playerEventResponses.playerId, parsed.subjectId),
-    ),
-  });
+  const now = new Date();
 
-  if (existing) {
-    await db
-      .update(playerEventResponses)
-      .set({
-        actualAttendance: parsed.actualAttendance,
-        updatedAt: new Date(),
-      })
-      .where(eq(playerEventResponses.id, existing.id));
-  } else {
-    await db.insert(playerEventResponses).values({
+  await db
+    .insert(playerEventResponses)
+    .values({
       eventId: parsed.eventId,
       playerId: parsed.subjectId,
       status:
@@ -494,8 +476,15 @@ export async function markPlayerActualAttendanceAction(formData: FormData) {
       actualAttendance: parsed.actualAttendance,
       respondedByUserId: viewer.userId,
       note: "Recorded by coach on event day.",
+      respondedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [playerEventResponses.eventId, playerEventResponses.playerId],
+      set: {
+        actualAttendance: parsed.actualAttendance,
+        updatedAt: now,
+      },
     });
-  }
 
   revalidatePath(`/events/${parsed.eventId}`);
 }
@@ -510,31 +499,37 @@ export async function markAdultActualAttendanceAction(formData: FormData) {
 
   await ensureEventBelongsToTeam(parsed.eventId, viewer.teamId);
 
-  const existing = await db.query.adultEventResponses.findFirst({
+  const teamMember = await db.query.teamMemberships.findFirst({
     where: and(
-      eq(adultEventResponses.eventId, parsed.eventId),
-      eq(adultEventResponses.userId, parsed.subjectId),
+      eq(teamMemberships.teamId, viewer.teamId),
+      eq(teamMemberships.userId, parsed.subjectId),
     ),
   });
 
-  if (existing) {
-    await db
-      .update(adultEventResponses)
-      .set({
-        actualAttendance: parsed.actualAttendance,
-        updatedAt: new Date(),
-      })
-      .where(eq(adultEventResponses.id, existing.id));
-  } else {
-    await db.insert(adultEventResponses).values({
+  if (!teamMember) {
+    throw new Error("That adult is not part of this team.");
+  }
+
+  const now = new Date();
+
+  await db
+    .insert(adultEventResponses)
+    .values({
       eventId: parsed.eventId,
       userId: parsed.subjectId,
       status:
         parsed.actualAttendance === "PRESENT" ? "AVAILABLE" : "UNAVAILABLE",
       actualAttendance: parsed.actualAttendance,
       note: "Recorded by coach on event day.",
+      respondedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [adultEventResponses.eventId, adultEventResponses.userId],
+      set: {
+        actualAttendance: parsed.actualAttendance,
+        updatedAt: now,
+      },
     });
-  }
 
   revalidatePath(`/events/${parsed.eventId}`);
 }

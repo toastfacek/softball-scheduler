@@ -7,6 +7,7 @@ import {
   textRecipients,
   type EmailKind,
 } from "@/db/schema";
+import { env } from "@/lib/env";
 import { sendSms } from "@/lib/sms-provider";
 
 type RecipientInput = {
@@ -50,8 +51,26 @@ export async function sendTeamText(input: SendTeamTextInput) {
     })
     .returning();
 
+  const inserted = await db
+    .insert(textRecipients)
+    .values(
+      resolved.map((recipient) => ({
+        textMessageId: message.id,
+        userId: recipient.userId ?? null,
+        playerId: recipient.playerId ?? null,
+        phone: recipient.phone,
+        deliveryStatus: "PENDING" as const,
+      })),
+    )
+    .returning({ id: textRecipients.id });
+
   const sendResults = await Promise.all(
-    resolved.map(async (recipient) => {
+    resolved.map(async (recipient, index) => {
+      const textRecipientId = inserted[index]?.id;
+      if (!textRecipientId) {
+        throw new Error("Failed to create SMS recipient audit row.");
+      }
+
       try {
         const override = input.renderBody
           ? await input.renderBody({
@@ -61,44 +80,58 @@ export async function sendTeamText(input: SendTeamTextInput) {
           : undefined;
         const body = override?.body ?? input.body;
 
-        const result = await sendSms({ to: recipient.phone, body });
+        const result = await sendSms({
+          to: recipient.phone,
+          body,
+          statusCallbackUrl: statusCallbackUrlFor(textRecipientId),
+        });
 
         if (result.status === "FAILED") {
-          return {
+          const sendResult = {
             recipient,
+            textRecipientId,
             smsStatus: result.status,
             deliveryStatus: "FAILED" as const,
             providerMessageId: null,
             deliveredAt: null,
             errorMessage: result.errorMessage,
           };
+          await updateTextRecipientSendResult(sendResult);
+          return sendResult;
         }
 
         if (result.status === "CONSOLE_FALLBACK") {
-          return {
+          const sendResult = {
             recipient,
+            textRecipientId,
             smsStatus: result.status,
             deliveryStatus: "FAILED" as const,
             providerMessageId: result.providerMessageId,
             deliveredAt: null,
             errorMessage: "Twilio is not configured; SMS was not sent.",
           };
+          await updateTextRecipientSendResult(sendResult);
+          return sendResult;
         }
 
         // Twilio accepted the message. Real delivery status arrives via the
         // /api/sms/status webhook, which upgrades this row to SENT (with
         // deliveredAt) or FAILED on terminal status.
-        return {
+        const sendResult = {
           recipient,
+          textRecipientId,
           smsStatus: result.status,
           deliveryStatus: "PENDING" as const,
           providerMessageId: result.providerMessageId,
           deliveredAt: null,
           errorMessage: null,
         };
+        await updateTextRecipientSendResult(sendResult);
+        return sendResult;
       } catch (error) {
-        return {
+        const sendResult = {
           recipient,
+          textRecipientId,
           smsStatus: "FAILED" as const,
           deliveryStatus: "FAILED" as const,
           providerMessageId: null,
@@ -106,28 +139,11 @@ export async function sendTeamText(input: SendTeamTextInput) {
           errorMessage:
             error instanceof Error ? error.message : "SMS send failed.",
         };
+        await updateTextRecipientSendResult(sendResult);
+        return sendResult;
       }
     }),
   );
-
-  // .returning() preserves insertion order in Postgres, so we can pair 1:1
-  // with sendResults. A separate select keyed on phone would collide when
-  // two guardians share a number.
-  const inserted = await db
-    .insert(textRecipients)
-    .values(
-      sendResults.map((result) => ({
-        textMessageId: message.id,
-        userId: result.recipient.userId ?? null,
-        playerId: result.recipient.playerId ?? null,
-        phone: result.recipient.phone,
-        deliveryStatus: result.deliveryStatus,
-        providerMessageId: result.providerMessageId,
-        deliveredAt: result.deliveredAt,
-        errorMessage: result.errorMessage,
-      })),
-    )
-    .returning({ id: textRecipients.id });
 
   await db
     .update(textMessages)
@@ -136,11 +152,53 @@ export async function sendTeamText(input: SendTeamTextInput) {
 
   return {
     messageId: message.id,
-    sendResults: sendResults.map((result, idx) => ({
-      ...result,
-      textRecipientId: inserted[idx]?.id ?? null,
-    })),
+    sendResults,
   };
+}
+
+type TextSendResult = {
+  textRecipientId: string;
+  deliveryStatus: "PENDING" | "SENT" | "FAILED";
+  providerMessageId: string | null;
+  deliveredAt: Date | null;
+  errorMessage: string | null;
+};
+
+async function updateTextRecipientSendResult(result: TextSendResult) {
+  if (result.deliveryStatus === "PENDING") {
+    await db
+      .update(textRecipients)
+      .set({
+        providerMessageId: result.providerMessageId,
+        errorMessage: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(textRecipients.id, result.textRecipientId));
+    return;
+  }
+
+  await db
+    .update(textRecipients)
+    .set({
+      deliveryStatus: result.deliveryStatus,
+      providerMessageId: result.providerMessageId,
+      deliveredAt: result.deliveredAt,
+      errorMessage: result.errorMessage,
+      updatedAt: new Date(),
+    })
+    .where(eq(textRecipients.id, result.textRecipientId));
+}
+
+function statusCallbackUrlFor(textRecipientId: string) {
+  if (!env.TWILIO_STATUS_CALLBACK_URL) return undefined;
+
+  try {
+    const url = new URL(env.TWILIO_STATUS_CALLBACK_URL);
+    url.searchParams.set("textRecipientId", textRecipientId);
+    return url.toString();
+  } catch {
+    return env.TWILIO_STATUS_CALLBACK_URL;
+  }
 }
 
 async function resolveRecipients(

@@ -82,16 +82,19 @@ export async function runReminderSweep(now = new Date()) {
         ) ?? [];
 
       if (sentTexts.length > 0) {
-        await db.insert(reminderDeliveries).values(
-          sentTexts
-            .filter((r) => r.recipient.userId)
-            .map((r) => ({
-              eventId: event.id,
-              userId: r.recipient.userId!,
-              textRecipientId: r.textRecipientId,
-              reminderType: "NON_RESPONDER_24H_SMS" as const,
-            })),
-        );
+        await db
+          .insert(reminderDeliveries)
+          .values(
+            sentTexts
+              .filter((r) => r.recipient.userId)
+              .map((r) => ({
+                eventId: event.id,
+                userId: r.recipient.userId!,
+                textRecipientId: r.textRecipientId,
+                reminderType: "NON_RESPONDER_24H_SMS" as const,
+              })),
+          )
+          .onConflictDoNothing();
       }
 
       sent += sentTexts.length;
@@ -144,15 +147,18 @@ export async function runReminderSweep(now = new Date()) {
         message?.sendResults.filter((r) => r.deliveryStatus === "SENT") ?? [];
 
       if (sentEmails.length > 0) {
-        await db.insert(reminderDeliveries).values(
-          sentEmails
-            .filter((r) => r.recipient.userId)
-            .map((r) => ({
-              eventId: event.id,
-              userId: r.recipient.userId!,
-              reminderType: "NON_RESPONDER_24H" as const,
-            })),
-        );
+        await db
+          .insert(reminderDeliveries)
+          .values(
+            sentEmails
+              .filter((r) => r.recipient.userId)
+              .map((r) => ({
+                eventId: event.id,
+                userId: r.recipient.userId!,
+                reminderType: "NON_RESPONDER_24H" as const,
+              })),
+          )
+          .onConflictDoNothing();
       }
 
       sent += sentEmails.length;

@@ -30,9 +30,11 @@ function client() {
 export async function sendSms({
   to,
   body,
+  statusCallbackUrl,
 }: {
   to: string;
   body: string;
+  statusCallbackUrl?: string;
 }): Promise<SendSmsResult> {
   if (!isTwilioConfigured()) {
     console.info(`[sms:console] ${to}\n${body}`);
@@ -48,8 +50,8 @@ export async function sendSms({
       to,
       from: env.TWILIO_FROM_NUMBER,
       body,
-      ...(env.TWILIO_STATUS_CALLBACK_URL
-        ? { statusCallback: env.TWILIO_STATUS_CALLBACK_URL }
+      ...(statusCallbackUrl ?? env.TWILIO_STATUS_CALLBACK_URL
+        ? { statusCallback: statusCallbackUrl ?? env.TWILIO_STATUS_CALLBACK_URL }
         : {}),
     });
 
