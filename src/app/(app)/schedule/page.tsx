@@ -35,6 +35,39 @@ export default async function SchedulePage() {
   if (!viewer) return null;
 
   const data = await getSchedulePageData(viewer);
+  const now = new Date();
+  const upcomingEvents = data.events.filter(
+    (event) => (event.endsAt ?? event.startsAt) >= now,
+  );
+  const pastEvents = data.events
+    .filter((event) => (event.endsAt ?? event.startsAt) < now)
+    .toReversed();
+
+  function renderEventRow(event: (typeof data.events)[number]) {
+    const { mo, dy } = splitEventDay(event.startsAt);
+    const statusBit = summaryDot(event.viewerPlayers[0]?.response ?? null);
+
+    return (
+      <Link key={event.id} href={`/events/${event.id}`} className="event-row">
+        <div className="event-date">
+          <div className="event-date-mo">{mo}</div>
+          <div className="event-date-dy">{dy}</div>
+        </div>
+        <div className="row-grow">
+          <div className="row-title">{event.title}</div>
+          <div className="row-sub">
+            {formatEventTime(event.startsAt)} · {eventTypeLabel(event.type)}
+          </div>
+        </div>
+        {statusBit ? (
+          <span
+            className={`dot ${statusBit.className}`}
+            aria-label={statusBit.label}
+          />
+        ) : null}
+      </Link>
+    );
+  }
 
   return (
     <>
@@ -76,39 +109,17 @@ export default async function SchedulePage() {
             style={{ padding: "0.25rem 0.875rem", borderRadius: "1.25rem" }}
           >
             <div className="section-head">Events</div>
-            <div className="row-list">
-              {data.events.map((event) => {
-                const { mo, dy } = splitEventDay(event.startsAt);
-                const statusBit = summaryDot(
-                  event.viewerPlayers[0]?.response ?? null,
-                );
-                return (
-                  <Link
-                    key={event.id}
-                    href={`/events/${event.id}`}
-                    className="event-row"
-                  >
-                    <div className="event-date">
-                      <div className="event-date-mo">{mo}</div>
-                      <div className="event-date-dy">{dy}</div>
-                    </div>
-                    <div className="row-grow">
-                      <div className="row-title">{event.title}</div>
-                      <div className="row-sub">
-                        {formatEventTime(event.startsAt)} ·{" "}
-                        {eventTypeLabel(event.type)}
-                      </div>
-                    </div>
-                    {statusBit ? (
-                      <span
-                        className={`dot ${statusBit.className}`}
-                        aria-label={statusBit.label}
-                      />
-                    ) : null}
-                  </Link>
-                );
-              })}
-            </div>
+            {upcomingEvents.length > 0 ? (
+              <div className="row-list">{upcomingEvents.map(renderEventRow)}</div>
+            ) : null}
+            {pastEvents.length > 0 ? (
+              <div className="schedule-past-events">
+                <div className="section-head section-head--subtle">
+                  Past Events
+                </div>
+                <div className="row-list">{pastEvents.map(renderEventRow)}</div>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="shell-panel schedule-empty">
