@@ -101,30 +101,34 @@ export async function runReminderSweep(now = new Date()) {
           (r) => r.deliveryStatus === "PENDING",
         ) ?? [];
 
-      if (sentTexts.length > 0) {
-        await Promise.all(
-          sentTexts.map((result) => {
-            const reminder = result.recipient.userId
-              ? textReminderByUserId.get(result.recipient.userId)
-              : null;
-            if (!reminder) return Promise.resolve();
+      const sentTextUserIds = new Set(
+        sentTexts
+          .map((result) => result.recipient.userId)
+          .filter((id): id is string => Boolean(id)),
+      );
 
-            return db
-              .update(reminderDeliveries)
-              .set({ textRecipientId: result.textRecipientId })
-              .where(eq(reminderDeliveries.id, reminder.id));
-          }),
+      try {
+        if (sentTexts.length > 0) {
+          await Promise.all(
+            sentTexts.map((result) => {
+              const reminder = result.recipient.userId
+                ? textReminderByUserId.get(result.recipient.userId)
+                : null;
+              if (!reminder) return Promise.resolve();
+
+              return db
+                .update(reminderDeliveries)
+                .set({ textRecipientId: result.textRecipientId })
+                .where(eq(reminderDeliveries.id, reminder.id));
+            }),
+          );
+        }
+      } finally {
+        await releaseFailedReminderClaims(
+          claimedTextReminders,
+          sentTextUserIds,
         );
       }
-
-      await releaseFailedReminderClaims(
-        claimedTextReminders,
-        new Set(
-          sentTexts
-            .map((result) => result.recipient.userId)
-            .filter((id): id is string => Boolean(id)),
-        ),
-      );
 
       sent += sentTexts.length;
     }

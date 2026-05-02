@@ -170,7 +170,6 @@ async function updateTextRecipientSendResult(result: TextSendResult) {
       .update(textRecipients)
       .set({
         providerMessageId: result.providerMessageId,
-        errorMessage: null,
         updatedAt: new Date(),
       })
       .where(eq(textRecipients.id, result.textRecipientId));
