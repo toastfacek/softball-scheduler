@@ -706,6 +706,14 @@ select {
   border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
 }
 .event-row:last-child { border-bottom: none; }
+.schedule-past-events {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+}
+.section-head--subtle {
+  color: color-mix(in srgb, var(--navy) 60%, white);
+}
 .event-date {
   font-family: var(--font-barlow-condensed), sans-serif;
   font-weight: 700; text-align: center; line-height: 1;
