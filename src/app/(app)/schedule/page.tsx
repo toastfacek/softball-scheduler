@@ -111,7 +111,18 @@ export default async function SchedulePage() {
             <div className="section-head">Events</div>
             {upcomingEvents.length > 0 ? (
               <div className="row-list">{upcomingEvents.map(renderEventRow)}</div>
-            ) : null}
+            ) : (
+              <div
+                className="row"
+                style={{
+                  cursor: "default",
+                  color: "color-mix(in srgb, var(--navy) 60%, white)",
+                  fontSize: "0.85rem",
+                }}
+              >
+                No upcoming events.
+              </div>
+            )}
             {pastEvents.length > 0 ? (
               <div className="schedule-past-events">
                 <div className="section-head section-head--subtle">

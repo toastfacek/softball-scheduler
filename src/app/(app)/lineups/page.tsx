@@ -247,7 +247,7 @@ export default async function LineupsPage() {
                 <div className="row-list">{pastGames.map(renderGameRow)}</div>
               </div>
             ) : null}
-            {data.games.length === 0 ? (
+            {upcomingGames.length === 0 ? (
               <div
                 className="row"
                 style={{
