@@ -22,10 +22,42 @@ export default async function LineupsPage() {
     listLineupPresets(viewer),
   ]);
 
+  const now = new Date();
+  const upcomingGames = data.games.filter(
+    (game) => (game.endsAt ?? game.startsAt) >= now,
+  );
+  const pastGames = data.games
+    .filter((game) => (game.endsAt ?? game.startsAt) < now)
+    .toReversed();
+
   function split(date: Date) {
     const [dayWord, monthDay] = formatEventDay(date).split(",");
     const parts = (monthDay ?? "").trim().split(" ");
     return { mo: dayWord.trim(), dy: parts[parts.length - 1] ?? "" };
+  }
+
+  function renderGameRow(game: (typeof data.games)[number]) {
+    const { mo, dy } = split(game.startsAt);
+    return (
+      <Link key={game.id} href={`/lineups/${game.id}`} className="row">
+        <div className="event-date" style={{ width: 44 }}>
+          <div className="event-date-mo">{mo}</div>
+          <div className="event-date-dy">{dy}</div>
+        </div>
+        <div className="row-grow">
+          <div className="row-title">{game.title}</div>
+          <div className="row-sub">
+            {formatEventTime(game.startsAt)} · Game
+          </div>
+        </div>
+        <span
+          className={game.hasLineup ? "btn-secondary" : "btn-primary"}
+          style={{ padding: "0.35rem 0.75rem", fontSize: "0.7rem" }}
+        >
+          {game.hasLineup ? "Edit" : "Create"}
+        </span>
+      </Link>
+    );
   }
 
   return (
@@ -204,47 +236,29 @@ export default async function LineupsPage() {
             className="shell-panel"
             style={{ padding: "0.25rem 0.875rem", borderRadius: "1.25rem" }}
           >
-            <div className="row-list">
-              {data.games.map((game) => {
-                const { mo, dy } = split(game.startsAt);
-                return (
-                  <Link
-                    key={game.id}
-                    href={`/lineups/${game.id}`}
-                    className="row"
-                  >
-                    <div className="event-date" style={{ width: 44 }}>
-                      <div className="event-date-mo">{mo}</div>
-                      <div className="event-date-dy">{dy}</div>
-                    </div>
-                    <div className="row-grow">
-                      <div className="row-title">{game.title}</div>
-                      <div className="row-sub">
-                        {formatEventTime(game.startsAt)} · Game
-                      </div>
-                    </div>
-                    <span
-                      className={game.hasLineup ? "btn-secondary" : "btn-primary"}
-                      style={{ padding: "0.35rem 0.75rem", fontSize: "0.7rem" }}
-                    >
-                      {game.hasLineup ? "Edit" : "Create"}
-                    </span>
-                  </Link>
-                );
-              })}
-              {data.games.length === 0 ? (
-                <div
-                  className="row"
-                  style={{
-                    cursor: "default",
-                    color: "color-mix(in srgb, var(--navy) 60%, white)",
-                    fontSize: "0.85rem",
-                  }}
-                >
-                  No upcoming games yet.
+            {upcomingGames.length > 0 ? (
+              <div className="row-list">{upcomingGames.map(renderGameRow)}</div>
+            ) : null}
+            {pastGames.length > 0 ? (
+              <div className="schedule-past-events">
+                <div className="section-head section-head--subtle">
+                  Past Games
                 </div>
-              ) : null}
-            </div>
+                <div className="row-list">{pastGames.map(renderGameRow)}</div>
+              </div>
+            ) : null}
+            {data.games.length === 0 ? (
+              <div
+                className="row"
+                style={{
+                  cursor: "default",
+                  color: "color-mix(in srgb, var(--navy) 60%, white)",
+                  fontSize: "0.85rem",
+                }}
+              >
+                No upcoming games yet.
+              </div>
+            ) : null}
           </div>
         </section>
       </div>
