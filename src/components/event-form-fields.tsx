@@ -65,6 +65,29 @@ export function EventFormFields({ event }: { event?: EventSeed }) {
           placeholder="Bring black socks, arrive 20 minutes early, or note weather plans."
         />
       </div>
+
+      <div className="space-y-2 sm:col-span-2">
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            name="notifyCalendar"
+            value="on"
+            className="mt-1"
+          />
+          <span>
+            <span className="font-medium">Push update to parents&apos; calendars</span>
+            <span className="block text-sm opacity-75">
+              Emails everyone an iCal attachment so the event appears (or
+              updates) in Gmail / Outlook / Apple Calendar within minutes.
+            </span>
+          </span>
+        </label>
+        <textarea
+          name="notifyCalendarNote"
+          placeholder="Optional one-line note to include in the email body (e.g. why you're sending this update)."
+          rows={2}
+        />
+      </div>
     </div>
   );
 }

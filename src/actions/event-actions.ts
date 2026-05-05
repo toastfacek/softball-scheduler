@@ -17,6 +17,7 @@ import {
   teamMemberships,
 } from "@/db/schema";
 import type { EventType } from "@/db/schema";
+import { sendEventCalendarUpdate } from "@/lib/calendar-notifications";
 import { listEventUpdateRecipients } from "@/lib/data";
 import {
   renderEventDetailsText,
@@ -40,6 +41,11 @@ const eventSchema = z.object({
   city: z.string().trim().optional(),
   state: z.string().trim().optional(),
   postalCode: z.string().trim().optional(),
+  notifyCalendar: z
+    .union([z.literal("on"), z.literal("true"), z.literal("")])
+    .optional()
+    .transform((value) => value === "on" || value === "true"),
+  notifyCalendarNote: z.string().trim().optional(),
 });
 
 // Default durations — practice 90m, game 2h, team event 2h. Used to derive endsAt
@@ -123,26 +129,46 @@ export async function createEventAction(formData: FormData) {
     city: formData.get("city"),
     state: formData.get("state"),
     postalCode: formData.get("postalCode"),
+    notifyCalendar: formData.get("notifyCalendar"),
+    notifyCalendarNote: formData.get("notifyCalendarNote"),
   });
 
   const startsAt = localInputToDate(parsed.startsAt);
 
-  await db.insert(events).values({
-    teamId: viewer.teamId,
-    seasonId: viewer.seasonId,
-    type: parsed.type,
-    status: parsed.status,
-    title: parsed.title,
-    description: parsed.description || null,
-    startsAt,
-    endsAt: defaultEndFor(startsAt, parsed.type),
-    venueName: parsed.venueName || null,
-    addressLine1: parsed.addressLine1 || null,
-    city: parsed.city || null,
-    state: parsed.state || null,
-    postalCode: parsed.postalCode || null,
-    timezone: viewer.team.timezone,
-  });
+  const [created] = await db
+    .insert(events)
+    .values({
+      teamId: viewer.teamId,
+      seasonId: viewer.seasonId,
+      type: parsed.type,
+      status: parsed.status,
+      title: parsed.title,
+      description: parsed.description || null,
+      startsAt,
+      endsAt: defaultEndFor(startsAt, parsed.type),
+      venueName: parsed.venueName || null,
+      addressLine1: parsed.addressLine1 || null,
+      city: parsed.city || null,
+      state: parsed.state || null,
+      postalCode: parsed.postalCode || null,
+      timezone: viewer.team.timezone,
+    })
+    .returning({ id: events.id });
+
+  if (parsed.notifyCalendar && created) {
+    try {
+      await sendEventCalendarUpdate({
+        teamId: viewer.teamId,
+        eventId: created.id,
+        method: "REQUEST",
+        action: "Added",
+        createdByUserId: viewer.userId,
+        bodyNote: parsed.notifyCalendarNote || undefined,
+      });
+    } catch (error) {
+      console.error("Failed to send event invite email", error);
+    }
+  }
 
   revalidatePath("/schedule");
   redirect("/schedule?saved=event");
@@ -162,6 +188,8 @@ export async function updateEventAction(formData: FormData) {
     city: formData.get("city"),
     state: formData.get("state"),
     postalCode: formData.get("postalCode"),
+    notifyCalendar: formData.get("notifyCalendar"),
+    notifyCalendarNote: formData.get("notifyCalendarNote"),
   });
 
   if (!parsed.eventId) {
@@ -203,6 +231,32 @@ export async function updateEventAction(formData: FormData) {
       updatedAt: new Date(),
     })
     .where(eq(events.id, parsed.eventId));
+
+  if (parsed.notifyCalendar) {
+    // CANCELED status uses METHOD:CANCEL so calendar clients remove the event;
+    // any other status (incl. transitions back to SCHEDULED) uses REQUEST.
+    const isCancelTransition =
+      parsed.status === "CANCELED" && existing.status !== "CANCELED";
+    const method = isCancelTransition ? "CANCEL" : "REQUEST";
+    const action =
+      method === "CANCEL"
+        ? "Canceled"
+        : existing.status === "CANCELED" && parsed.status !== "CANCELED"
+          ? "Added"
+          : "Updated";
+    try {
+      await sendEventCalendarUpdate({
+        teamId: viewer.teamId,
+        eventId: parsed.eventId,
+        method,
+        action,
+        createdByUserId: viewer.userId,
+        bodyNote: parsed.notifyCalendarNote || undefined,
+      });
+    } catch (error) {
+      console.error("Failed to send event update email", error);
+    }
+  }
 
   revalidatePath("/schedule");
   revalidatePath(`/events/${parsed.eventId}`);

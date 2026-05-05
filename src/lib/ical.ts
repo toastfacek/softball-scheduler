@@ -25,6 +25,19 @@ export type BuildTeamCalendarArgs = {
   uidDomain: string;
 };
 
+export type InviteMethod = "REQUEST" | "CANCEL";
+
+export type BuildEventInviteArgs = {
+  event: CalendarEventInput;
+  method: InviteMethod;
+  appUrl: string;
+  uidDomain: string;
+  organizerEmail: string;
+  organizerName?: string;
+  attendeeEmail: string;
+  attendeeName?: string;
+};
+
 const PRODID = "-//BGSL//Schedule//EN";
 
 const DEFAULT_DURATION_MS: Record<EventType, number> = {
@@ -46,7 +59,13 @@ export function buildTeamCalendar(args: BuildTeamCalendarArgs): string {
   ];
 
   for (const event of args.events) {
-    lines.push(...buildVEvent(event, args, now));
+    lines.push(
+      ...buildVEvent(event, {
+        appUrl: args.appUrl,
+        uidDomain: args.uidDomain,
+        dtstamp: now,
+      }),
+    );
   }
 
   lines.push("END:VCALENDAR");
@@ -54,15 +73,56 @@ export function buildTeamCalendar(args: BuildTeamCalendarArgs): string {
   return lines.map(foldLine).join("\r\n") + "\r\n";
 }
 
-function buildVEvent(
-  event: CalendarEventInput,
-  args: BuildTeamCalendarArgs,
-  dtstamp: string,
-): string[] {
+export function buildEventInvite(args: BuildEventInviteArgs): string {
+  const now = formatUtc(new Date());
+  const organizer = buildIcalAddress("ORGANIZER", {
+    email: args.organizerEmail,
+    name: args.organizerName,
+  });
+  const attendee = buildIcalAddress("ATTENDEE", {
+    email: args.attendeeEmail,
+    name: args.attendeeName,
+  });
+
+  const lines: string[] = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    `PRODID:${PRODID}`,
+    "CALSCALE:GREGORIAN",
+    `METHOD:${args.method}`,
+  ];
+
+  lines.push(
+    ...buildVEvent(args.event, {
+      appUrl: args.appUrl,
+      uidDomain: args.uidDomain,
+      dtstamp: now,
+      method: args.method,
+      organizerLine: organizer,
+      attendeeLine: attendee,
+    }),
+  );
+
+  lines.push("END:VCALENDAR");
+
+  return lines.map(foldLine).join("\r\n") + "\r\n";
+}
+
+type BuildVEventCtx = {
+  appUrl: string;
+  uidDomain: string;
+  dtstamp: string;
+  method?: InviteMethod;
+  organizerLine?: string;
+  attendeeLine?: string;
+};
+
+function buildVEvent(event: CalendarEventInput, ctx: BuildVEventCtx): string[] {
   const start = event.startsAt;
   const end =
     event.endsAt ?? new Date(start.getTime() + DEFAULT_DURATION_MS[event.type]);
-  const isCanceled = event.status === "CANCELED";
+  const isCanceled =
+    ctx.method === "CANCEL" || event.status === "CANCELED";
   const summary = isCanceled ? `CANCELED: ${event.title}` : event.title;
   const location = formatLocation(event);
   const lastModified = formatUtc(event.updatedAt);
@@ -72,20 +132,23 @@ function buildVEvent(
   if (event.description) {
     descriptionParts.push(event.description);
   }
-  descriptionParts.push(`RSVP: ${args.appUrl}/events/${event.id}`);
+  descriptionParts.push(`RSVP: ${ctx.appUrl}/events/${event.id}`);
   const description = descriptionParts.join("\n\n");
 
   const lines: string[] = [
     "BEGIN:VEVENT",
-    `UID:${event.id}@${args.uidDomain}`,
-    `DTSTAMP:${dtstamp}`,
+    `UID:${event.id}@${ctx.uidDomain}`,
+    `DTSTAMP:${ctx.dtstamp}`,
     `LAST-MODIFIED:${lastModified}`,
     `SEQUENCE:${sequence}`,
     `DTSTART:${formatUtc(start)}`,
     `DTEND:${formatUtc(end)}`,
     `SUMMARY:${escapeText(summary)}`,
-    `STATUS:${isCanceled ? "CANCELLED" : "CONFIRMED"}`,
+    `STATUS:${ctx.method === "CANCEL" || isCanceled ? "CANCELLED" : "CONFIRMED"}`,
   ];
+
+  if (ctx.organizerLine) lines.push(ctx.organizerLine);
+  if (ctx.attendeeLine) lines.push(ctx.attendeeLine);
 
   if (description) {
     lines.push(`DESCRIPTION:${escapeText(description)}`);
@@ -96,6 +159,28 @@ function buildVEvent(
 
   lines.push("END:VEVENT");
   return lines;
+}
+
+function buildIcalAddress(
+  prop: "ORGANIZER" | "ATTENDEE",
+  args: { email: string; name?: string },
+): string {
+  const safeEmail = args.email.trim();
+  const params: string[] = [];
+  if (args.name && args.name.trim()) {
+    params.push(`CN="${args.name.replace(/"/g, "")}"`);
+  }
+  if (prop === "ATTENDEE") {
+    // Standard params so Outlook/Gmail recognize this as a normal invite
+    // recipient. RSVP=FALSE because we collect RSVPs via the in-app flow,
+    // not via email replies.
+    params.push("CUTYPE=INDIVIDUAL");
+    params.push("ROLE=REQ-PARTICIPANT");
+    params.push("PARTSTAT=NEEDS-ACTION");
+    params.push("RSVP=FALSE");
+  }
+  const paramStr = params.length ? `;${params.join(";")}` : "";
+  return `${prop}${paramStr}:mailto:${safeEmail}`;
 }
 
 function formatLocation(event: CalendarEventInput): string {

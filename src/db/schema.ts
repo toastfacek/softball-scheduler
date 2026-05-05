@@ -46,6 +46,7 @@ export const emailKindEnum = pgEnum("email_kind", [
   "INVITE",
   "BROADCAST",
   "REMINDER",
+  "EVENT_INVITE",
 ]);
 export const deliveryStatusEnum = pgEnum("delivery_status", [
   "PENDING",
