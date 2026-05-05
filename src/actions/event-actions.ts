@@ -42,8 +42,10 @@ const eventSchema = z.object({
   state: z.string().trim().optional(),
   postalCode: z.string().trim().optional(),
   notifyCalendar: z
-    .union([z.literal("on"), z.literal("true"), z.literal("")])
-    .optional()
+    .preprocess(
+      (value) => value ?? "",
+      z.union([z.literal("on"), z.literal("true"), z.literal("")]),
+    )
     .transform((value) => value === "on" || value === "true"),
   notifyCalendarNote: z.string().trim().optional(),
 });
