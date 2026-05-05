@@ -20,10 +20,17 @@ type RecipientInput = {
   playerId?: string | null;
 };
 
+type EmailAttachment = {
+  filename: string;
+  content: string | Buffer;
+  contentType?: string;
+};
+
 type PerRecipientContent = {
   subject?: string;
   body?: string;
   html?: string;
+  attachments?: EmailAttachment[];
 };
 
 type RenderBodyContext = {
@@ -100,10 +107,14 @@ export async function sendTeamEmail(input: SendTeamEmailInput) {
       const subject = override?.subject ?? input.subject;
       const body = override?.body ?? input.body;
       const html = override?.html ?? markdownishToHtml(body);
+      const attachments = override?.attachments;
 
       if (!isResendConfigured()) {
+        const attachmentNote = attachments?.length
+          ? ` [+${attachments.length} attachment(s): ${attachments.map((a) => a.filename).join(", ")}]`
+          : "";
         console.info(
-          `[email:console] ${subject} -> ${recipient.email}\n${body}`,
+          `[email:console] ${subject} -> ${recipient.email}${attachmentNote}\n${body}`,
         );
 
         sendResults.push({
@@ -122,6 +133,11 @@ export async function sendTeamEmail(input: SendTeamEmailInput) {
         subject,
         text: body,
         html,
+        attachments: attachments?.map((a) => ({
+          filename: a.filename,
+          content: a.content,
+          contentType: a.contentType,
+        })),
       });
 
       if (response.error) {

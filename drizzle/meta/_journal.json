@@ -64,6 +64,13 @@
       "when": 1777241862346,
       "tag": "0008_warm_magik",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777995852174,
+      "tag": "0009_stormy_sentinels",
+      "breakpoints": true
     }
   ]
 }
