@@ -11,6 +11,10 @@ const COPY: Record<string, { title: string; body: string }> = {
     title: "Event updated",
     body: "Guardians will see the changes.",
   },
+  "event-edit-rsvp-reset": {
+    title: "Event updated",
+    body: "RSVPs were reset so families can answer for the new details.",
+  },
   rsvp: {
     title: "RSVP saved",
     body: "Coaches can see your response.",

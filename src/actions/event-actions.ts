@@ -14,6 +14,7 @@ import {
   playerEventResponses,
   playerGuardians,
   players,
+  reminderDeliveries,
   teamMemberships,
 } from "@/db/schema";
 import type { EventType } from "@/db/schema";
@@ -98,6 +99,50 @@ const eventUpdateSchema = z.object({
   subject: z.string().trim().min(3),
   body: z.string().trim().min(3),
 });
+
+type EventFormInput = z.infer<typeof eventSchema>;
+
+function normalizedOptionalText(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function hasRsvpRelevantEventChange(
+  existing: typeof events.$inferSelect,
+  parsed: EventFormInput,
+  startsAt: Date,
+) {
+  return (
+    existing.type !== parsed.type ||
+    existing.status !== parsed.status ||
+    existing.startsAt.getTime() !== startsAt.getTime() ||
+    normalizedOptionalText(existing.title) !==
+      normalizedOptionalText(parsed.title) ||
+    normalizedOptionalText(existing.description) !==
+      normalizedOptionalText(parsed.description) ||
+    normalizedOptionalText(existing.venueName) !==
+      normalizedOptionalText(parsed.venueName) ||
+    normalizedOptionalText(existing.addressLine1) !==
+      normalizedOptionalText(parsed.addressLine1) ||
+    normalizedOptionalText(existing.city) !== normalizedOptionalText(parsed.city) ||
+    normalizedOptionalText(existing.state) !==
+      normalizedOptionalText(parsed.state) ||
+    normalizedOptionalText(existing.postalCode) !==
+      normalizedOptionalText(parsed.postalCode)
+  );
+}
+
+function shouldResetEventRsvps(
+  existing: typeof events.$inferSelect,
+  parsed: EventFormInput,
+  startsAt: Date,
+) {
+  if (existing.status === "COMPLETED" || parsed.status === "COMPLETED") {
+    return false;
+  }
+
+  return hasRsvpRelevantEventChange(existing, parsed, startsAt);
+}
 
 async function ensureEventBelongsToTeam(eventId: string, teamId: string) {
   const event = await db.query.events.findFirst({
@@ -197,9 +242,10 @@ export async function updateEventAction(formData: FormData) {
   if (!parsed.eventId) {
     throw new Error("Missing event id.");
   }
+  const eventId = parsed.eventId;
 
   const existing = await ensureEventBelongsToTeam(
-    parsed.eventId,
+    eventId,
     viewer.teamId,
   );
 
@@ -215,24 +261,39 @@ export async function updateEventAction(formData: FormData) {
     startChanged || typeChanged
       ? defaultEndFor(startsAt, parsed.type)
       : existing.endsAt;
+  const rsvpsWereReset = shouldResetEventRsvps(existing, parsed, startsAt);
 
-  await db
-    .update(events)
-    .set({
-      type: parsed.type,
-      status: parsed.status,
-      title: parsed.title,
-      description: parsed.description || null,
-      startsAt,
-      endsAt,
-      venueName: parsed.venueName || null,
-      addressLine1: parsed.addressLine1 || null,
-      city: parsed.city || null,
-      state: parsed.state || null,
-      postalCode: parsed.postalCode || null,
-      updatedAt: new Date(),
-    })
-    .where(eq(events.id, parsed.eventId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(events)
+      .set({
+        type: parsed.type,
+        status: parsed.status,
+        title: parsed.title,
+        description: parsed.description || null,
+        startsAt,
+        endsAt,
+        venueName: parsed.venueName || null,
+        addressLine1: parsed.addressLine1 || null,
+        city: parsed.city || null,
+        state: parsed.state || null,
+        postalCode: parsed.postalCode || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(events.id, eventId));
+
+    if (rsvpsWereReset) {
+      await tx
+        .delete(playerEventResponses)
+        .where(eq(playerEventResponses.eventId, eventId));
+      await tx
+        .delete(adultEventResponses)
+        .where(eq(adultEventResponses.eventId, eventId));
+      await tx
+        .delete(reminderDeliveries)
+        .where(eq(reminderDeliveries.eventId, eventId));
+    }
+  });
 
   if (parsed.notifyCalendar) {
     // CANCELED status uses METHOD:CANCEL so calendar clients remove the event;
@@ -249,7 +310,7 @@ export async function updateEventAction(formData: FormData) {
     try {
       await sendEventCalendarUpdate({
         teamId: viewer.teamId,
-        eventId: parsed.eventId,
+        eventId,
         method,
         action,
         createdByUserId: viewer.userId,
@@ -261,8 +322,16 @@ export async function updateEventAction(formData: FormData) {
   }
 
   revalidatePath("/schedule");
-  revalidatePath(`/events/${parsed.eventId}`);
-  redirect(`/events/${parsed.eventId}?saved=event-edit`);
+  revalidatePath(`/events/${eventId}`);
+  if (rsvpsWereReset) {
+    revalidateEventResponseViews(eventId);
+  }
+
+  redirect(
+    `/events/${eventId}?saved=${
+      rsvpsWereReset ? "event-edit-rsvp-reset" : "event-edit"
+    }`,
+  );
 }
 
 export async function updatePlayerAvailabilityAction(formData: FormData) {
