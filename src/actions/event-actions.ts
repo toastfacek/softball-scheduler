@@ -49,6 +49,7 @@ const eventSchema = z.object({
     )
     .transform((value) => value === "on" || value === "true"),
   notifyCalendarNote: z.string().trim().optional(),
+  resetRsvps: z.enum(["true", "false"]).optional(),
 });
 
 // Default durations — practice 90m, game 2h, team event 2h. Used to derive endsAt
@@ -219,6 +220,7 @@ export async function updateEventAction(formData: FormData) {
     postalCode: formData.get("postalCode"),
     notifyCalendar: formData.get("notifyCalendar"),
     notifyCalendarNote: formData.get("notifyCalendarNote"),
+    resetRsvps: formData.get("resetRsvps") ?? undefined,
   });
 
   if (!parsed.eventId) {
@@ -243,7 +245,12 @@ export async function updateEventAction(formData: FormData) {
     startChanged || typeChanged
       ? defaultEndFor(startsAt, parsed.type)
       : existing.endsAt;
-  const rsvpsWereReset = shouldResetEventRsvps(existing, parsed, startsAt);
+  const rsvpsWereReset =
+    parsed.resetRsvps !== undefined
+      ? parsed.resetRsvps === "true" &&
+        existing.status !== "COMPLETED" &&
+        parsed.status !== "COMPLETED"
+      : shouldResetEventRsvps(existing, parsed, startsAt);
 
   await db.transaction(async (tx) => {
     await tx
