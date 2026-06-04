@@ -1,12 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 
-import { updateEventAction } from "@/actions/event-actions";
+import { EditEventForm } from "@/components/edit-event-form";
 import { EventFormFields } from "@/components/event-form-fields";
 import { LocationSearch } from "@/components/location-search";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { canManageTeam } from "@/lib/authz";
 import { getEventPageData, getViewerContext } from "@/lib/data";
+import { dateToLocalInput } from "@/lib/time";
 
 export default async function EditEventPage({
   params,
@@ -25,8 +26,10 @@ export default async function EditEventPage({
   return (
     <>
       <PageHeader title="Edit event" back={`/events/${eventId}`} />
-      <form
-        action={updateEventAction}
+      <EditEventForm
+        originalStartsAt={dateToLocalInput(data.event.startsAt)}
+        originalType={data.event.type}
+        originalStatus={data.event.status}
         className="shell-panel rounded-tile p-5"
       >
         <div className="orange-bar-top" />
@@ -43,7 +46,7 @@ export default async function EditEventPage({
           <EventFormFields event={data.event} />
           <SubmitButton label="Save changes" />
         </div>
-      </form>
+      </EditEventForm>
     </>
   );
 }

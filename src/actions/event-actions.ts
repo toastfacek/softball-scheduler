@@ -49,6 +49,7 @@ const eventSchema = z.object({
     )
     .transform((value) => value === "on" || value === "true"),
   notifyCalendarNote: z.string().trim().optional(),
+  resetRsvps: z.enum(["true", "false"]).optional(),
 });
 
 // Default durations — practice 90m, game 2h, team event 2h. Used to derive endsAt
@@ -107,31 +108,6 @@ function normalizedOptionalText(value: string | null | undefined) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function hasRsvpRelevantEventChange(
-  existing: typeof events.$inferSelect,
-  parsed: EventFormInput,
-  startsAt: Date,
-) {
-  return (
-    existing.type !== parsed.type ||
-    existing.status !== parsed.status ||
-    existing.startsAt.getTime() !== startsAt.getTime() ||
-    normalizedOptionalText(existing.title) !==
-      normalizedOptionalText(parsed.title) ||
-    normalizedOptionalText(existing.description) !==
-      normalizedOptionalText(parsed.description) ||
-    normalizedOptionalText(existing.venueName) !==
-      normalizedOptionalText(parsed.venueName) ||
-    normalizedOptionalText(existing.addressLine1) !==
-      normalizedOptionalText(parsed.addressLine1) ||
-    normalizedOptionalText(existing.city) !== normalizedOptionalText(parsed.city) ||
-    normalizedOptionalText(existing.state) !==
-      normalizedOptionalText(parsed.state) ||
-    normalizedOptionalText(existing.postalCode) !==
-      normalizedOptionalText(parsed.postalCode)
-  );
-}
-
 function shouldResetEventRsvps(
   existing: typeof events.$inferSelect,
   parsed: EventFormInput,
@@ -141,7 +117,14 @@ function shouldResetEventRsvps(
     return false;
   }
 
-  return hasRsvpRelevantEventChange(existing, parsed, startsAt);
+  // Only reset RSVPs when the time, type, or status changes — things that
+  // affect whether someone can still attend. Location/title/description edits
+  // are cosmetic and must not wipe existing responses.
+  return (
+    existing.type !== parsed.type ||
+    existing.status !== parsed.status ||
+    existing.startsAt.getTime() !== startsAt.getTime()
+  );
 }
 
 async function ensureEventBelongsToTeam(eventId: string, teamId: string) {
@@ -237,6 +220,7 @@ export async function updateEventAction(formData: FormData) {
     postalCode: formData.get("postalCode"),
     notifyCalendar: formData.get("notifyCalendar"),
     notifyCalendarNote: formData.get("notifyCalendarNote"),
+    resetRsvps: formData.get("resetRsvps") ?? undefined,
   });
 
   if (!parsed.eventId) {
@@ -261,7 +245,12 @@ export async function updateEventAction(formData: FormData) {
     startChanged || typeChanged
       ? defaultEndFor(startsAt, parsed.type)
       : existing.endsAt;
-  const rsvpsWereReset = shouldResetEventRsvps(existing, parsed, startsAt);
+  const rsvpsWereReset =
+    parsed.resetRsvps !== undefined
+      ? parsed.resetRsvps === "true" &&
+        existing.status !== "COMPLETED" &&
+        parsed.status !== "COMPLETED"
+      : shouldResetEventRsvps(existing, parsed, startsAt);
 
   await db.transaction(async (tx) => {
     await tx
