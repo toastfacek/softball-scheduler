@@ -98,28 +98,27 @@ export async function saveLineupAction(
   const { slotRows, assignmentRows } = parsedEntries;
 
   await db.transaction(async (tx) => {
-    const lineup =
-      existingPlan ??
-      (
-        await tx
-          .insert(lineupPlans)
-          .values({
-            teamId: viewer.teamId,
-            eventId: parsed.eventId,
-            inningsCount: parsed.inningsCount,
-            updatedByUserId: viewer.userId,
-          })
-          .returning()
-      )[0];
-
-    await tx
-      .update(lineupPlans)
-      .set({
-        inningsCount: parsed.inningsCount,
-        updatedByUserId: viewer.userId,
-        updatedAt: new Date(),
-      })
-      .where(eq(lineupPlans.id, lineup.id));
+    let lineup = existingPlan;
+    if (lineup) {
+      await tx
+        .update(lineupPlans)
+        .set({
+          inningsCount: parsed.inningsCount,
+          updatedByUserId: viewer.userId,
+          updatedAt: new Date(),
+        })
+        .where(eq(lineupPlans.id, lineup.id));
+    } else {
+      [lineup] = await tx
+        .insert(lineupPlans)
+        .values({
+          teamId: viewer.teamId,
+          eventId: parsed.eventId,
+          inningsCount: parsed.inningsCount,
+          updatedByUserId: viewer.userId,
+        })
+        .returning();
+    }
 
     await tx.delete(battingSlots).where(eq(battingSlots.lineupPlanId, lineup.id));
     await tx

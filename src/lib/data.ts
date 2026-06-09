@@ -223,11 +223,6 @@ function summarizePlayerStatuses(
 }
 
 export async function getSchedulePageData(viewer: AppViewer) {
-  const teamPlayers = await db.query.players.findMany({
-    where: eq(players.teamId, viewer.teamId),
-    orderBy: [asc(players.lastName), asc(players.firstName)],
-  });
-
   // No row limit: the desktop calendar navigates month-to-month and would
   // render misleadingly-empty months if we capped here. A single team across
   // one season is at most ~100 events, which is fine to load in full.
@@ -236,65 +231,25 @@ export async function getSchedulePageData(viewer: AppViewer) {
     orderBy: [asc(events.startsAt)],
   });
 
-  const eventIds = eventRows.map((event) => event.id);
-
-  const [playerResponses, adultResponses] = eventIds.length
-    ? await Promise.all([
-        db.query.playerEventResponses.findMany({
-          where: inArray(playerEventResponses.eventId, eventIds),
-        }),
-        db.query.adultEventResponses.findMany({
-          where: inArray(adultEventResponses.eventId, eventIds),
-        }),
-      ])
-    : [[], []];
+  // The schedule page only surfaces RSVP state for the viewer's own linked
+  // players, so load just their responses — not the whole team's.
+  const playerResponses = viewer.linkedPlayerIds.length
+    ? await db.query.playerEventResponses.findMany({
+        where: inArray(playerEventResponses.playerId, viewer.linkedPlayerIds),
+      })
+    : [];
 
   const playerResponseMap = buildPlayerResponseMap(playerResponses);
-  const adultResponseMap = buildAdultResponseMap(adultResponses);
 
-  const cards = eventRows.map((event) => {
-    const playerSummary = summarizePlayerStatuses(
-      event.id,
-      teamPlayers,
-      playerResponseMap,
-    );
-
-    return {
+  return {
+    events: eventRows.map((event) => ({
       ...event,
-      playerSummary,
       viewerPlayers: viewer.linkedPlayers.map((player) => ({
         ...player,
         response:
           playerResponseMap.get(`${event.id}:${player.id}`)?.status ?? null,
       })),
-      viewerAdultResponse:
-        adultResponseMap.get(`${event.id}:${viewer.userId}`)?.status ?? null,
-    };
-  });
-
-  const nextEvent = cards.find((event) => event.status !== "COMPLETED") ?? null;
-  const needsResponseCount = cards.reduce((count, event) => {
-    return (
-      count +
-      event.viewerPlayers.filter((player) => player.response === null).length
-    );
-  }, 0);
-
-  return {
-    events: cards,
-    nextEvent,
-    roster: teamPlayers.map((p) => ({
-      id: p.id,
-      firstName: p.firstName,
-      lastName: p.lastName,
-      preferredName: p.preferredName,
-      jerseyNumber: p.jerseyNumber,
     })),
-    stats: {
-      playerCount: teamPlayers.length,
-      coachCount: adultResponses.length,
-      needsResponseCount,
-    },
   };
 }
 
@@ -697,57 +652,6 @@ export async function getLineupPresetEditorData(
       id: p.id,
       displayName: fullName(p.firstName, p.lastName, p.preferredName),
     })),
-  };
-}
-
-/** Load a preset's batting order + assignments in a form ready to be applied
- *  in the client editor (batting order array, assignments map keyed by
- *  inning:playerId). */
-export async function getPresetApplyPayload(
-  viewer: AppViewer,
-  presetId: string,
-) {
-  const [preset, slotRows, assignmentRows] = await Promise.all([
-    db.query.lineupPresets.findFirst({
-      where: and(
-        eq(lineupPresets.id, presetId),
-        eq(lineupPresets.teamId, viewer.teamId),
-      ),
-    }),
-    db.query.lineupPresetSlots.findMany({
-      where: eq(lineupPresetSlots.presetId, presetId),
-    }),
-    db.query.lineupPresetAssignments.findMany({
-      where: eq(lineupPresetAssignments.presetId, presetId),
-    }),
-  ]);
-
-  if (!preset) return null;
-
-  return {
-    inningsCount: preset.inningsCount,
-    battingOrder: slotRows
-      .sort((a, b) => a.slotNumber - b.slotNumber)
-      .map((s) => s.playerId),
-    assignments: assignmentRows.map((a) => ({
-      inningNumber: a.inningNumber,
-      playerId: a.playerId,
-      positionCode: a.positionCode,
-    })),
-  };
-}
-
-export async function getSettingsPageData(viewer: AppViewer) {
-  const membershipRows = await db.query.teamMemberships.findMany({
-    where: and(
-      eq(teamMemberships.teamId, viewer.teamId),
-      eq(teamMemberships.userId, viewer.userId),
-    ),
-    orderBy: [asc(teamMemberships.role)],
-  });
-
-  return {
-    roles: membershipRows.map((row) => row.role),
   };
 }
 

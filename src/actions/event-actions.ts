@@ -103,11 +103,6 @@ const eventUpdateSchema = z.object({
 
 type EventFormInput = z.infer<typeof eventSchema>;
 
-function normalizedOptionalText(value: string | null | undefined) {
-  const trimmed = value?.trim() ?? "";
-  return trimmed.length > 0 ? trimmed : null;
-}
-
 function shouldResetEventRsvps(
   existing: typeof events.$inferSelect,
   parsed: EventFormInput,
@@ -489,10 +484,10 @@ export async function recordRsvpFromLinkAction(input: {
   const now = new Date();
   const note = parsed.note?.trim() || null;
 
-  for (const playerId of targetPlayerIds) {
-    await db
-      .insert(playerEventResponses)
-      .values({
+  await db
+    .insert(playerEventResponses)
+    .values(
+      targetPlayerIds.map((playerId) => ({
         eventId: claims.eventId,
         playerId,
         status: parsed.status,
@@ -500,19 +495,19 @@ export async function recordRsvpFromLinkAction(input: {
         respondedByUserId: claims.guardianId,
         respondedAt: now,
         responseSource: claims.source,
-      })
-      .onConflictDoUpdate({
-        target: [playerEventResponses.eventId, playerEventResponses.playerId],
-        set: {
-          status: parsed.status,
-          note,
-          respondedByUserId: claims.guardianId,
-          respondedAt: now,
-          responseSource: claims.source,
-          updatedAt: now,
-        },
-      });
-  }
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [playerEventResponses.eventId, playerEventResponses.playerId],
+      set: {
+        status: parsed.status,
+        note,
+        respondedByUserId: claims.guardianId,
+        respondedAt: now,
+        responseSource: claims.source,
+        updatedAt: now,
+      },
+    });
 
   revalidatePath(`/events/${claims.eventId}`);
 

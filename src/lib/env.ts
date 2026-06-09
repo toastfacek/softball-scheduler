@@ -1,11 +1,39 @@
+// Vercel and Railway both mark their environments; local dev has neither.
+// Dev fallbacks are convenient locally but dangerous when deployed — a
+// missing AUTH_SECRET would silently sign sessions and RSVP/unsubscribe
+// tokens with a publicly known string.
+const isDeployed = Boolean(
+  process.env.VERCEL || process.env.RAILWAY_ENVIRONMENT,
+);
+
+function withDevFallback(
+  name: string,
+  value: string | undefined,
+  devFallback: string,
+) {
+  if (value) return value;
+  if (isDeployed) {
+    throw new Error(`${name} must be set in deployed environments.`);
+  }
+  return devFallback;
+}
+
 export const env = {
-  DATABASE_URL:
-    process.env.DATABASE_URL ??
+  DATABASE_URL: withDevFallback(
+    "DATABASE_URL",
+    process.env.DATABASE_URL,
     "postgresql://postgres:postgres@127.0.0.1:5432/softball",
-  AUTH_SECRET:
-    process.env.AUTH_SECRET ?? "development-secret-change-before-production",
-  NEXT_PUBLIC_APP_URL:
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  ),
+  AUTH_SECRET: withDevFallback(
+    "AUTH_SECRET",
+    process.env.AUTH_SECRET,
+    "development-secret-change-before-production",
+  ),
+  NEXT_PUBLIC_APP_URL: withDevFallback(
+    "NEXT_PUBLIC_APP_URL",
+    process.env.NEXT_PUBLIC_APP_URL,
+    "http://localhost:3000",
+  ),
   AUTH_RESEND_FROM:
     process.env.AUTH_RESEND_FROM ?? "BGSL <hello@example.com>",
   AUTH_RESEND_FROM_NAME:

@@ -56,12 +56,6 @@ export function roleLabel(role: TeamRole) {
   return TEAM_ROLE_LABELS[role];
 }
 
-export function toSentenceList(items: string[]) {
-  if (items.length <= 1) return items[0] ?? "";
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
-}
-
 export function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -87,8 +81,4 @@ export function formatAddress(parts: Array<string | null | undefined>) {
 
 export function googleMapsHref(address: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-}
-
-export function appleMapsHref(address: string) {
-  return `http://maps.apple.com/?q=${encodeURIComponent(address)}`;
 }
