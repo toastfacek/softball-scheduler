@@ -50,6 +50,15 @@ export default async function SettingsPage() {
               </div>
               <ChevronRightIcon />
             </Link>
+            <Link href="/settings/golf-tournament" className="row">
+              <div className="row-grow">
+                <div className="row-title">Golf tournament</div>
+                <div className="row-sub">
+                  Purchases, sponsors, raffle items, and exports
+                </div>
+              </div>
+              <ChevronRightIcon />
+            </Link>
           </>
         ) : null}
         <form action={signOutAction} className="row danger">

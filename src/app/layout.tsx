@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
-import { Barlow_Condensed, Sora } from "next/font/google";
+import {
+  Barlow_Condensed,
+  Cormorant_Garamond,
+  Fraunces,
+  Hanken_Grotesk,
+  Libre_Baskerville,
+  Libre_Franklin,
+  Sora,
+} from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -11,6 +19,34 @@ const barlowCondensed = Barlow_Condensed({
 
 const sora = Sora({
   variable: "--font-sora",
+  subsets: ["latin"],
+});
+
+const cormorantGaramond = Cormorant_Garamond({
+  variable: "--font-cormorant-garamond",
+  weight: ["500", "600", "700"],
+  subsets: ["latin"],
+});
+
+const libreBaskerville = Libre_Baskerville({
+  variable: "--font-libre-baskerville",
+  weight: ["400", "700"],
+  subsets: ["latin"],
+});
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+});
+
+const hankenGrotesk = Hanken_Grotesk({
+  variable: "--font-hanken-grotesk",
+  subsets: ["latin"],
+});
+
+const libreFranklin = Libre_Franklin({
+  variable: "--font-libre-franklin",
+  weight: ["500", "600", "700", "800"],
   subsets: ["latin"],
 });
 
@@ -28,7 +64,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${barlowCondensed.variable} ${sora.variable} h-full antialiased`}
+      className={`${barlowCondensed.variable} ${sora.variable} ${cormorantGaramond.variable} ${libreBaskerville.variable} ${fraunces.variable} ${hankenGrotesk.variable} ${libreFranklin.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

@@ -1,0 +1,629 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { and, count, eq } from "drizzle-orm";
+
+import {
+  createGolfCheckoutSessionAction,
+  submitGolfInKindDonationAction,
+} from "@/actions/golf-tournament-actions";
+import { db } from "@/db";
+import {
+  golfTournamentAssets,
+  golfTournamentPurchases,
+} from "@/db/schema";
+import { isDatabaseConfigured } from "@/lib/env";
+import {
+  GOLF_TOURNAMENT_ADDRESS,
+  GOLF_TOURNAMENT_SAFE_PROCEEDS,
+  GOLF_TOURNAMENT_TITLE,
+  GOLF_TOURNAMENT_VENUE,
+  golfTournamentContactEmail,
+} from "@/lib/golf-tournament/event";
+import {
+  formatGolfPackagePrice,
+  getGolfTournamentPackage,
+  golfPackageCategories,
+  golfTournamentPackages,
+} from "@/lib/golf-tournament/packages";
+
+export const metadata: Metadata = {
+  title: GOLF_TOURNAMENT_TITLE,
+  description:
+    "Register or sponsor the inaugural Beverly Girls Softball League golf tournament at Beverly Golf & Tennis Club on Monday, September 28, 2026.",
+  openGraph: {
+    title: GOLF_TOURNAMENT_TITLE,
+    description:
+      "Golf, sponsorships, raffles, and community support for Beverly Girls Softball League.",
+    type: "website",
+  },
+};
+
+type GolfTournamentPageProps = {
+  searchParams?: Promise<{
+    checkout?: string;
+    inKind?: string;
+  }>;
+};
+
+function formatGolfPackageDisplayName(
+  item: (typeof golfTournamentPackages)[number],
+) {
+  if (item.kind !== "SPONSORSHIP") {
+    return item.name;
+  }
+
+  return item.name.replace(/\s+Sponsor$/, "");
+}
+
+export default async function GolfTournamentPage({
+  searchParams,
+}: GolfTournamentPageProps) {
+  const params = (await searchParams) ?? {};
+  const contactEmail = golfTournamentContactEmail();
+  const [approvedSponsors, soldCounts] = isDatabaseConfigured()
+    ? await Promise.all([listApprovedSponsors(), listGolfPackageSoldCounts()])
+    : [[], new Map<string, number>()];
+
+  return (
+    <main className="golf-page">
+      <header className="golf-topbar golf-wrap">
+        <Link href="/" className="golf-brand" aria-label="BGSL home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="golf-brand-logo"
+            src="/golf-tournament/league-images/bgsl-logo.png"
+            alt=""
+          />
+          <span>Beverly Girls Softball League</span>
+        </Link>
+        <nav className="golf-nav" aria-label="Golf tournament navigation">
+          <a href="#event">Event</a>
+          <a href="#sponsorships">Sponsorships</a>
+          <a href="#raffle">Raffle</a>
+          <a href="#faq">FAQ</a>
+          <a className="golf-nav-cta" href="#packages">Register</a>
+        </nav>
+      </header>
+
+      <GolfNotice
+        checkout={params.checkout}
+        inKind={params.inKind}
+        contactEmail={contactEmail}
+      />
+
+      <section className="golf-hero golf-wrap">
+        <div className="golf-hero-copy">
+          <h1>{GOLF_TOURNAMENT_TITLE}</h1>
+          <p className="golf-lead">
+            Join us for Beverly’s inaugural BGSL golf tournament. Play, sponsor,
+            and help create more opportunities for girls across Beverly.
+          </p>
+          <div className="golf-actions">
+            <a className="golf-button golf-button-primary" href="#packages">
+              Register or Sponsor
+            </a>
+            <a className="golf-button golf-button-secondary" href="#raffle">
+              Donate a Raffle Prize
+            </a>
+          </div>
+        </div>
+        <div className="golf-hero-art" aria-hidden="true">
+          <div className="golf-tournament-card">
+            <strong className="golf-tournament-date">September 28</strong>
+            <em>Registration 9 AM · Tee off 10 AM</em>
+          </div>
+        </div>
+      </section>
+
+      <section className="golf-scoreboard golf-wrap" aria-label="Tournament details">
+        <div className="golf-fact">
+          <span>Date</span>
+          <strong>Monday, Sep. 28, 2026</strong>
+        </div>
+        <div className="golf-fact">
+          <span>Schedule</span>
+          <strong>Registration 9:00 AM · Start 10:00 AM</strong>
+        </div>
+        <div className="golf-fact">
+          <span>Venue</span>
+          <strong>{GOLF_TOURNAMENT_VENUE}</strong>
+        </div>
+        <div className="golf-fact">
+          <span>Format</span>
+          <strong>Scramble</strong>
+        </div>
+      </section>
+
+      <section className="golf-band golf-wrap" id="event">
+        <div className="golf-event-story">
+          <div className="golf-event-copy">
+            <h2>Golf, community, and giving back.</h2>
+            <div className="golf-doc-copy">
+              <p>
+                Whether you’re sponsoring a contest hole, registering a
+                foursome, or partnering as a premier event sponsor, your support
+                directly impacts hundreds of players and families in our
+                community while putting your business in front of a highly
+                engaged local audience.
+              </p>
+              <p>
+                We are proud to celebrate the businesses and community partners
+                who continue to show up for girls sports in Beverly.
+              </p>
+            </div>
+          </div>
+          <div className="golf-event-media" aria-label="Beverly Girls Softball League moments">
+            <div className="golf-course-photo golf-league-photo-main" />
+          </div>
+        </div>
+        <div className="golf-poster-strip" aria-label="Tournament highlights">
+          <div className="golf-poster-note">
+            <strong>Play as a team</strong>
+            <span>Foursomes only for public registration.</span>
+          </div>
+          <div className="golf-poster-note">
+            <strong>Support the league</strong>
+            <span>
+              Your support helps fund programming, equipment, scholarships,
+              field improvements, and opportunities for girls across Beverly.
+            </span>
+          </div>
+          <div className="golf-poster-note">
+            <strong>Day-of extras</strong>
+            <span>
+              Mulligans, 50/50 raffle, raffle prizes, contest giveaways, and
+              sponsor recognition throughout the day.
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="golf-packages-banner"
+        id="packages"
+        style={{
+          backgroundImage:
+            'linear-gradient(180deg, rgba(7, 25, 17, 0.24), rgba(7, 25, 17, 0.82)), url("/golf-tournament/course-images/beverly-club-hero.jpg")',
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="golf-wrap golf-photo-banner-inner">
+          <div>
+            <h2>Secure your place on the course.</h2>
+          </div>
+        </div>
+      </section>
+
+      <section className="golf-band golf-wrap golf-packages-list">
+
+        <div className="golf-package-sections">
+          {golfPackageCategories.map((category) => {
+            const packages = golfTournamentPackages.filter(
+              (item) => item.category === category.id,
+            );
+
+            return (
+              <section
+                key={category.id}
+                className="golf-package-group"
+                id={category.id === "HOLE_OR_CONTEST" ? "sponsorships" : undefined}
+              >
+                <div className="golf-package-group-head">
+                  <h3>{category.label}</h3>
+                  <p>{category.description}</p>
+                </div>
+                <div className="golf-package-grid">
+                  {packages.map((item) => {
+                    const soldCount = soldCounts.get(item.id) ?? 0;
+                    const remaining =
+                      item.capacity === null
+                        ? null
+                        : Math.max(item.capacity - soldCount, 0);
+                    const isSoldOut = remaining === 0;
+
+                    return (
+                      <article
+                        key={item.id}
+                        className={[
+                          "golf-package",
+                          item.featured ? "golf-package-featured" : null,
+                          isSoldOut ? "golf-package-sold-out" : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                      <div className="golf-package-topline">
+                        <span>{item.availability}</span>
+                      </div>
+                      <div className="golf-package-identity">
+                        {item.locationLabel ? (
+                          <span className="golf-package-location">
+                            {item.locationLabel}
+                          </span>
+                        ) : null}
+                        <h4>{formatGolfPackageDisplayName(item)}</h4>
+                      </div>
+                      {remaining !== null ? (
+                        <div
+                          className="golf-availability-marker"
+                          aria-label={
+                            isSoldOut
+                              ? "Sold out"
+                              : `${remaining} ${remaining === 1 ? "spot" : "spots"} remaining`
+                          }
+                        >
+                          <strong>{isSoldOut ? "Fully" : remaining}</strong>
+                          <span>
+                            {isSoldOut
+                              ? "claimed"
+                              : remaining === 1
+                                ? "spot left"
+                                : "spots left"}
+                          </span>
+                        </div>
+                      ) : null}
+                      <p className="golf-price">
+                        {formatGolfPackagePrice(item.priceCents)}
+                      </p>
+                      <ul>
+                        {item.benefits.map((benefit) => (
+                          <li key={benefit}>{benefit}</li>
+                        ))}
+                      </ul>
+                      {item.checkoutUrl && !isSoldOut ? (
+                        <a
+                          className="golf-package-action"
+                          href={item.checkoutUrl}
+                          aria-label={`${item.kind === "GOLF" ? "Claim your spot" : "Select package"}: ${formatGolfPackageDisplayName(item)} — secure checkout powered by Stripe`}
+                        >
+                          <span>
+                            {item.kind === "GOLF"
+                              ? "Claim your spot"
+                              : "Select package"}
+                          </span>
+                          <i aria-hidden="true" />
+                        </a>
+                      ) : (
+                        <form action={createGolfCheckoutSessionAction}>
+                          <input
+                            type="hidden"
+                            name="packageId"
+                            value={item.id}
+                          />
+                          <button
+                            className="golf-package-action"
+                            disabled={isSoldOut}
+                          >
+                            <span>
+                              {isSoldOut
+                                ? "Sold out"
+                                : item.kind === "GOLF"
+                                  ? "Claim your spot"
+                                  : "Select package"}
+                            </span>
+                            <i aria-hidden="true" />
+                          </button>
+                        </form>
+                      )}
+                    </article>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      </section>
+
+      {approvedSponsors.length > 0 ? (
+        <section className="golf-band golf-wrap">
+          <div className="golf-section-head">
+            <h2>Thank you to our tournament sponsors.</h2>
+            <p>
+              These businesses and families have stepped up for {GOLF_TOURNAMENT_TITLE}.
+            </p>
+          </div>
+          <div className="golf-sponsor-wall">
+            {approvedSponsors.map(({ purchase, asset, packageConfig }) => {
+              const name =
+                purchase.sponsorRecognitionName ||
+                purchase.sponsorDisplayName ||
+                "BGSL sponsor";
+              const websiteUrl = normalizeSponsorUrl(purchase.sponsorWebsiteUrl);
+              const tile = (
+                <article className="golf-sponsor-tile">
+                  {asset && asset.contentType.startsWith("image/") ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/golf-tournament/sponsor-assets/${asset.id}`}
+                      alt={`${name} logo`}
+                    />
+                  ) : (
+                    <strong>{name}</strong>
+                  )}
+                  <span>{packageConfig?.name ?? "Tournament sponsor"}</span>
+                </article>
+              );
+              return websiteUrl ? (
+                <a
+                  key={purchase.id}
+                  href={websiteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Visit ${name} website`}
+                >
+                  {tile}
+                </a>
+              ) : (
+                <div key={purchase.id}>{tile}</div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="golf-band golf-band-mint" id="raffle">
+        <div className="golf-wrap golf-raffle-grid">
+          <div className="golf-section-head">
+            <h2>Got a prize, gift card, or service?</h2>
+            <p>
+              Donate a gift card, product, service, or promotional item for the
+              raffle. BGSL will recognize raffle and in-kind supporters during
+              raffle announcements, on social, and on the website. Responses go
+              to{" "}
+              <a
+                className="golf-email-link"
+                href={`mailto:${contactEmail}`}
+              >
+                {contactEmail}
+              </a>
+              .
+            </p>
+          </div>
+          <form
+            className="golf-form"
+            action={submitGolfInKindDonationAction}
+          >
+            <label>
+              Donor or business name
+              <input name="donorName" placeholder="Business or family name" />
+            </label>
+            <label>
+              Contact email
+              <input name="email" type="email" placeholder="name@example.com" />
+            </label>
+            <label>
+              Item or service
+              <textarea
+                name="description"
+                placeholder="Gift card, basket, service, product, or promotional item"
+              />
+            </label>
+            <button className="golf-button golf-button-primary">
+              Submit Donation
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section className="golf-band golf-wrap" id="faq">
+        <div className="golf-section-head">
+          <h2>FAQs</h2>
+        </div>
+        <div className="golf-faq">
+          <FaqItem
+            question="When do I provide all four player names?"
+            answer="After payment, the foursome organizer must provide all four player names through the private registration completion form."
+          />
+          <FaqItem
+            question="Can sponsors provide included golfer names later?"
+            answer="Yes. Sponsors can decide later whether they will use included player spots, decline them, or send names closer to the event."
+          />
+          <FaqItem
+            question="What does this support?"
+            answer={GOLF_TOURNAMENT_SAFE_PROCEEDS}
+          />
+          <FaqItem
+            question="What does scramble format mean?"
+            answer="Your foursome plays as one team. Everyone tees off, the group chooses its best shot, and all four golfers play their next shot from that spot. You repeat the process until the ball is in the hole, recording one team score per hole."
+          />
+          <FaqItem
+            question="How do the on-course contests work?"
+            answer="Closest to the Pin rewards the tee shot that finishes nearest the hole on the designated par-3 holes. Longest Drive rewards the longest eligible tee shot on its designated hole. The Longest Marshmallow Drive is the playful version: golfers hit a marshmallow instead of a golf ball, and the farthest one wins. Final eligibility and tie-breaking rules will be shared before play."
+          />
+          <FaqItem
+            question="What are mulligans and the 50/50 raffle?"
+            answer="A mulligan lets a golfer replay a shot without counting the first attempt. They will be available for $5 each or five for $20. In a 50/50 raffle, participants buy tickets and one winner receives half of the raffle pot; the other half supports BGSL. Final purchase and drawing details will be shared before the tournament."
+          />
+          <FaqItem
+            question="What does sponsoring a contest mean?"
+            answer="A contest sponsorship helps fund the tournament and gives the sponsor recognition tied to a designated activity or hole. Depending on the package, that may include course signage, BGSL social and website recognition, and included golfer registrations. The sponsor does not need to run or officiate the contest."
+          />
+          <FaqItem
+            question="Who do I contact with questions?"
+            answer={
+              <>
+                Email{" "}
+                <a
+                  className="golf-email-link"
+                  href={`mailto:${contactEmail}`}
+                >
+                  {contactEmail}
+                </a>
+                .
+              </>
+            }
+          />
+        </div>
+      </section>
+
+      <footer className="golf-footer">
+        <div className="golf-wrap golf-footer-inner">
+          <div className="golf-footer-lead">
+            <strong>
+              Tee Up for
+              <br />
+              Beverly Girls Softball
+            </strong>
+            <p>
+            Thank you for helping create opportunities for girls in our
+            community to learn, compete, and grow through softball.
+            </p>
+          </div>
+
+          <div className="golf-footer-details">
+            <div>
+              <span>Course</span>
+              <a
+                href="https://beverlygolfandtennis.com/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {GOLF_TOURNAMENT_VENUE}
+              </a>
+              <p>{GOLF_TOURNAMENT_ADDRESS}</p>
+            </div>
+            <div>
+              <span>Questions</span>
+              <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
+            </div>
+          </div>
+
+          <div className="golf-footer-signoff">
+            <span>
+              <a href="https://bgsl.net/" target="_blank" rel="noreferrer">
+                Beverly Girls Softball League
+              </a>{" "}
+              · 2026
+            </span>
+            <a href="mailto:jelee85@gmail.com">Designed by JL</a>
+          </div>
+        </div>
+      </footer>
+    </main>
+  );
+}
+
+async function listApprovedSponsors() {
+  try {
+    const approvedSponsorPurchases =
+      await db.query.golfTournamentPurchases.findMany({
+        where: and(
+          eq(golfTournamentPurchases.paymentStatus, "PAID"),
+          eq(golfTournamentPurchases.approvedForPublicDisplay, true),
+        ),
+        orderBy: (table, { desc }) => [desc(table.approvedPublicDisplayAt)],
+      });
+    const approvedSponsorAssets = await db.query.golfTournamentAssets.findMany({
+      where: eq(golfTournamentAssets.approvedForPublicDisplay, true),
+      orderBy: (table, { desc }) => [desc(table.approvedPublicDisplayAt)],
+    });
+
+    return approvedSponsorPurchases
+      .map((purchase) => ({
+        purchase,
+        asset: approvedSponsorAssets.find(
+          (asset) => asset.purchaseId === purchase.id,
+        ),
+        packageConfig: getGolfTournamentPackage(purchase.packageId),
+      }))
+      .filter(
+        ({ purchase }) =>
+          purchase.sponsorDisplayName || purchase.sponsorRecognitionName,
+      );
+  } catch (error) {
+    console.warn("[golf-tournament] sponsor wall unavailable", error);
+    return [];
+  }
+}
+
+async function listGolfPackageSoldCounts() {
+  try {
+    const rows = await db
+      .select({
+        packageId: golfTournamentPurchases.packageId,
+        soldCount: count(),
+      })
+      .from(golfTournamentPurchases)
+      .where(eq(golfTournamentPurchases.paymentStatus, "PAID"))
+      .groupBy(golfTournamentPurchases.packageId);
+
+    return new Map(rows.map((row) => [row.packageId, Number(row.soldCount)]));
+  } catch (error) {
+    console.warn("[golf-tournament] availability unavailable", error);
+    return new Map<string, number>();
+  }
+}
+
+function GolfNotice({
+  checkout,
+  inKind,
+  contactEmail,
+}: {
+  checkout?: string;
+  inKind?: string;
+  contactEmail: string;
+}) {
+  if (inKind === "thanks") {
+    return (
+      <div className="golf-wrap golf-alert" role="status">
+        Thanks. Your raffle or in-kind donation idea was submitted for BGSL to
+        review.
+      </div>
+    );
+  }
+
+  if (!checkout) return null;
+
+  if (checkout === "setup-pending") {
+    return (
+      <div className="golf-wrap golf-alert" role="status">
+        Online payment is being connected. No payment was submitted. For help,
+        email{" "}
+        <a
+          className="golf-email-link"
+          href={`mailto:${contactEmail}`}
+        >
+          {contactEmail}
+        </a>
+        .
+      </div>
+    );
+  }
+
+  const message =
+    {
+      "sold-out": "That package is sold out. Pick another option or contact BGSL.",
+      unavailable:
+        "That package is not available right now. Pick another option or contact BGSL.",
+      cancelled: "Checkout was cancelled. Your card was not charged.",
+    }[checkout] ?? null;
+
+  if (!message) return null;
+
+  return (
+    <div className="golf-wrap golf-alert" role="status">
+      {message}
+    </div>
+  );
+}
+
+function FaqItem({ question, answer }: { question: string; answer: ReactNode }) {
+  return (
+    <article className="golf-faq-item">
+      <h3>{question}</h3>
+      <p>{answer}</p>
+    </article>
+  );
+}
+
+function normalizeSponsorUrl(value: string | null) {
+  if (!value) return null;
+
+  try {
+    return new URL(value.startsWith("http") ? value : `https://${value}`).toString();
+  } catch {
+    return null;
+  }
+}

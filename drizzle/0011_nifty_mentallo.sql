@@ -1,0 +1,1 @@
+ALTER TABLE "golf_tournament_purchases" ALTER COLUMN "buyer_email" DROP NOT NULL;

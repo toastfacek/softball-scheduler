@@ -63,6 +63,34 @@ export const responseSourceEnum = pgEnum("response_source", [
   "COACH_MANUAL",
   "SMS",
 ]);
+export const golfPurchaseTypeEnum = pgEnum("golf_purchase_type", [
+  "GOLF",
+  "SPONSORSHIP",
+]);
+export const golfPaymentStatusEnum = pgEnum("golf_payment_status", [
+  "PENDING",
+  "PAID",
+  "FAILED",
+  "CANCELED",
+  "REFUNDED",
+]);
+export const golfFulfillmentStatusEnum = pgEnum("golf_fulfillment_status", [
+  "PAID_NEEDS_DETAILS",
+  "DETAILS_SUBMITTED",
+  "NEEDS_REVIEW",
+  "COMPLETE",
+]);
+export const includedGolfIntentEnum = pgEnum("included_golf_intent", [
+  "WILL_USE",
+  "WILL_NOT_USE",
+  "NOT_SURE",
+]);
+export const inKindStatusEnum = pgEnum("in_kind_status", [
+  "NEW",
+  "ACCEPTED",
+  "NEEDS_FOLLOW_UP",
+  "DECLINED",
+]);
 
 export const adultUsers = pgTable(
   "adult_users",
@@ -582,9 +610,146 @@ export const reminderDeliveries = pgTable(
   (table) => [uniqueIndex("reminder_deliveries_event_user_type_key").on(table.eventId, table.userId, table.reminderType)],
 );
 
+export const golfTournamentPurchases = pgTable(
+  "golf_tournament_purchases",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    packageId: text("package_id").notNull(),
+    purchaseType: golfPurchaseTypeEnum("purchase_type").notNull(),
+    buyerName: text("buyer_name"),
+    buyerEmail: text("buyer_email"),
+    buyerPhone: text("buyer_phone"),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").default("usd").notNull(),
+    paymentStatus: golfPaymentStatusEnum("payment_status")
+      .default("PENDING")
+      .notNull(),
+    fulfillmentStatus: golfFulfillmentStatusEnum("fulfillment_status")
+      .default("PAID_NEEDS_DETAILS")
+      .notNull(),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    stripeCustomerId: text("stripe_customer_id"),
+    completionTokenHash: text("completion_token_hash").notNull(),
+    completionTokenExpiresAt: timestamp("completion_token_expires_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    completionTokenRevokedAt: timestamp("completion_token_revoked_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    includedGolfIntent: includedGolfIntentEnum("included_golf_intent"),
+    sponsorDisplayName: text("sponsor_display_name"),
+    sponsorContactName: text("sponsor_contact_name"),
+    sponsorWebsiteUrl: text("sponsor_website_url"),
+    sponsorRecognitionName: text("sponsor_recognition_name"),
+    sponsorNotes: text("sponsor_notes"),
+    approvedForPublicDisplay: boolean("approved_for_public_display")
+      .default(false)
+      .notNull(),
+    approvedPublicDisplayAt: timestamp("approved_public_display_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    paidAt: timestamp("paid_at", { withTimezone: true, mode: "date" }),
+    detailsSubmittedAt: timestamp("details_submitted_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("golf_tournament_purchases_session_key").on(
+      table.stripeCheckoutSessionId,
+    ),
+    uniqueIndex("golf_tournament_purchases_payment_intent_key").on(
+      table.stripePaymentIntentId,
+    ),
+    uniqueIndex("golf_tournament_purchases_completion_token_key").on(
+      table.completionTokenHash,
+    ),
+  ],
+);
+
+export const golfTournamentPlayers = pgTable(
+  "golf_tournament_players",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    purchaseId: uuid("purchase_id")
+      .notNull()
+      .references(() => golfTournamentPurchases.id, { onDelete: "cascade" }),
+    slotNumber: integer("slot_number").notNull(),
+    name: text("name"),
+    email: text("email"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("golf_tournament_players_purchase_slot_key").on(
+      table.purchaseId,
+      table.slotNumber,
+    ),
+  ],
+);
+
+export const golfTournamentAssets = pgTable(
+  "golf_tournament_assets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    purchaseId: uuid("purchase_id")
+      .notNull()
+      .references(() => golfTournamentPurchases.id, { onDelete: "cascade" }),
+    kind: text("kind").default("LOGO").notNull(),
+    r2Key: text("r2_key").notNull(),
+    originalFilename: text("original_filename").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    approvedForPublicDisplay: boolean("approved_for_public_display")
+      .default(false)
+      .notNull(),
+    approvedPublicDisplayAt: timestamp("approved_public_display_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("golf_tournament_assets_r2_key").on(table.r2Key),
+  ],
+);
+
+export const golfTournamentInKindSubmissions = pgTable(
+  "golf_tournament_in_kind_submissions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    donorName: text("donor_name").notNull(),
+    contactName: text("contact_name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    itemDescription: text("item_description").notNull(),
+    estimatedValueCents: integer("estimated_value_cents"),
+    pickupNotes: text("pickup_notes"),
+    status: inKindStatusEnum("status").default("NEW").notNull(),
+    adminNotes: text("admin_notes"),
+    createdAt,
+    updatedAt,
+  },
+);
+
 export type TeamRole = (typeof teamRoleEnum.enumValues)[number];
 export type EventType = (typeof eventTypeEnum.enumValues)[number];
 export type EventStatus = (typeof eventStatusEnum.enumValues)[number];
 export type AttendanceStatus = (typeof attendanceStatusEnum.enumValues)[number];
 export type ActualAttendance = (typeof actualAttendanceEnum.enumValues)[number];
 export type EmailKind = (typeof emailKindEnum.enumValues)[number];
+export type GolfPurchaseType = (typeof golfPurchaseTypeEnum.enumValues)[number];
+export type GolfPaymentStatus =
+  (typeof golfPaymentStatusEnum.enumValues)[number];
+export type GolfFulfillmentStatus =
+  (typeof golfFulfillmentStatusEnum.enumValues)[number];
+export type IncludedGolfIntent =
+  (typeof includedGolfIntentEnum.enumValues)[number];
+export type InKindStatus = (typeof inKindStatusEnum.enumValues)[number];

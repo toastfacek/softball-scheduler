@@ -9,6 +9,5 @@ export default async function HomePage() {
     redirect("/schedule");
   }
 
-  redirect("/sign-in");
+  redirect("/golf-tournament");
 }
-
