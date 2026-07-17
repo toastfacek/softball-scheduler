@@ -42,6 +42,13 @@ const checkoutSchema = z.object({
   packageId: z.string().trim().min(1),
 });
 
+const paymentLinkCheckoutSchema = z.object({
+  packageId: z.string().trim().min(1),
+  playerNames: z
+    .array(z.string().trim().min(1))
+    .length(4),
+});
+
 const inKindSchema = z.object({
   donorName: z.string().trim().min(1, "Donor name is required."),
   email: z.string().email(),
@@ -172,6 +179,63 @@ export async function createGolfCheckoutSessionAction(formData: FormData) {
   }
 
   redirect(session.url);
+}
+
+export async function startGolfPaymentLinkCheckoutAction(formData: FormData) {
+  const parsed = paymentLinkCheckoutSchema.parse({
+    packageId: formData.get("packageId"),
+    playerNames: [1, 2, 3, 4].map(
+      (slotNumber) => formData.get(`player${slotNumber}`)?.toString() ?? "",
+    ),
+  });
+  const packageConfig = getGolfTournamentPackage(parsed.packageId);
+
+  if (
+    !packageConfig?.checkoutUrl ||
+    includedGolfSlotCount(packageConfig.includedGolf) !== 4
+  ) {
+    redirect("/golf-tournament?checkout=unavailable");
+  }
+
+  const soldCount = await db.$count(
+    golfTournamentPurchases,
+    and(
+      eq(golfTournamentPurchases.packageId, packageConfig.id),
+      eq(golfTournamentPurchases.paymentStatus, "PAID"),
+    ),
+  );
+
+  if (packageConfig.capacity !== null && soldCount >= packageConfig.capacity) {
+    redirect("/golf-tournament?checkout=sold-out");
+  }
+
+  const token = createCompletionToken();
+  const purchase = await db.transaction(async (tx) => {
+    const [createdPurchase] = await tx
+      .insert(golfTournamentPurchases)
+      .values({
+        packageId: packageConfig.id,
+        purchaseType: packageConfig.kind,
+        amountCents: packageConfig.priceCents,
+        completionTokenHash: hashCompletionToken(token),
+        completionTokenExpiresAt: completionTokenExpiry(),
+      })
+      .returning({ id: golfTournamentPurchases.id });
+
+    await tx.insert(golfTournamentPlayers).values(
+      parsed.playerNames.map((name, index) => ({
+        purchaseId: createdPurchase.id,
+        slotNumber: index + 1,
+        name,
+      })),
+    );
+
+    return createdPurchase;
+  });
+
+  const checkoutUrl = new URL(packageConfig.checkoutUrl);
+  checkoutUrl.searchParams.set("client_reference_id", purchase.id);
+  redirect(checkoutUrl.toString());
 }
 
 export async function submitGolfInKindDonationAction(formData: FormData) {

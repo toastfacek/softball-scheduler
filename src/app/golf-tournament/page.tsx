@@ -26,6 +26,7 @@ import {
   golfPackageCategories,
   golfTournamentPackages,
 } from "@/lib/golf-tournament/packages";
+import { GolfCheckoutButton } from "./golf-checkout-button";
 
 export const metadata: Metadata = {
   title: GOLF_TOURNAMENT_TITLE,
@@ -294,7 +295,17 @@ export default async function GolfTournamentPage({
                           <li key={benefit}>{benefit}</li>
                         ))}
                       </ul>
-                      {item.checkoutUrl && !isSoldOut ? (
+                      {item.checkoutUrl && !isSoldOut && item.includedGolf === "FOURSOME" ? (
+                        <GolfCheckoutButton
+                          packageId={item.id}
+                          packageName={formatGolfPackageDisplayName(item)}
+                          buttonLabel={
+                            item.kind === "GOLF"
+                              ? "Claim your spot"
+                              : "Select package"
+                          }
+                        />
+                      ) : item.checkoutUrl && !isSoldOut ? (
                         <a
                           className="golf-package-action"
                           href={item.checkoutUrl}
@@ -437,11 +448,11 @@ export default async function GolfTournamentPage({
         <div className="golf-faq">
           <FaqItem
             question="When do I provide all four player names?"
-            answer="After payment, the foursome organizer must provide all four player names through the private registration completion form."
+            answer="Before continuing to Stripe, the foursome organizer enters all four player names in the registration popup. BGSL can help update a name later if plans change."
           />
           <FaqItem
             question="Can sponsors provide included golfer names later?"
-            answer="Yes. Sponsors can decide later whether they will use included player spots, decline them, or send names closer to the event."
+            answer="Packages that include a foursome collect all four player names before checkout so BGSL can reconcile the registration with payment. Contact BGSL if a golfer needs to be changed later."
           />
           <FaqItem
             question="What does this support?"

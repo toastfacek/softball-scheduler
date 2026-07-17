@@ -42,7 +42,7 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
       "Cart Fees",
       "Lunch",
       "Registration for one (1) foursome",
-      "All four player names are required after payment",
+      "All four player names are collected before checkout",
     ],
   },
   {

@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function markGolfPurchasePaid(session: Stripe.Checkout.Session) {
-  const purchaseId = session.metadata?.purchaseId;
+  const purchaseId = session.metadata?.purchaseId ?? session.client_reference_id;
 
   if (!purchaseId) return;
 

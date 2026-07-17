@@ -3556,6 +3556,158 @@ when Jesse/Michelle provide real golf/course/candid photos.
   }
 }
 
+/* Golf checkout dialog */
+.golf-package > .golf-package-action {
+  grid-area: purchase;
+  align-self: end;
+  justify-self: end;
+  position: relative;
+  z-index: 1;
+}
+
+.golf-checkout-dialog {
+  width: min(92vw, 620px);
+  max-height: min(88vh, 760px);
+  margin: auto;
+  border: 1px solid rgba(216, 184, 79, 0.42);
+  border-radius: 0.75rem;
+  background: #f7f5ec;
+  padding: 0;
+  color: var(--golf-ink);
+  box-shadow: 0 28px 90px rgba(4, 18, 12, 0.38);
+}
+
+.golf-checkout-dialog::backdrop {
+  background: rgba(4, 18, 12, 0.74);
+  backdrop-filter: blur(5px);
+}
+
+.golf-page .golf-checkout-dialog form {
+  display: block;
+  width: auto;
+  margin: 0;
+  padding: clamp(1.4rem, 4vw, 2.25rem);
+}
+
+.golf-checkout-dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(9, 32, 22, 0.12);
+  padding-bottom: 1.15rem;
+}
+
+.golf-checkout-dialog-heading span {
+  color: var(--golf-orange-strong);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.golf-checkout-dialog h3 {
+  margin: 0.35rem 0 0;
+  font-family: var(--golf-display);
+  font-size: clamp(2rem, 6vw, 3rem);
+  font-weight: 600;
+  line-height: 0.98;
+}
+
+.golf-checkout-dialog-close {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 2.25rem;
+  border: 1px solid rgba(9, 32, 22, 0.2);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--golf-ink);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.golf-checkout-dialog p {
+  max-width: 55ch;
+  margin: 1.15rem 0;
+  color: color-mix(in srgb, var(--golf-navy) 76%, white);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.golf-checkout-player-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.golf-checkout-player-grid label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.golf-checkout-player-grid label span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.golf-checkout-player-grid input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(9, 32, 22, 0.2);
+  border-radius: 0.35rem;
+  background: white;
+  padding: 0.75rem 0.85rem;
+  color: var(--golf-ink);
+  font: inherit;
+}
+
+.golf-checkout-player-grid input:focus {
+  outline: 3px solid rgba(216, 184, 79, 0.34);
+  border-color: var(--golf-orange-strong);
+}
+
+.golf-checkout-submit {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--golf-green);
+  padding: 0.9rem 1.2rem;
+  color: white;
+  font-family: var(--font-golf-body), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.golf-checkout-submit:hover {
+  background: color-mix(in srgb, var(--golf-green) 86%, black);
+}
+
+.golf-checkout-dialog small {
+  display: block;
+  margin-top: 0.75rem;
+  color: color-mix(in srgb, var(--golf-navy) 58%, white);
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  .golf-package > .golf-package-action {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .golf-checkout-player-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Golf tournament closing footer */
 .golf-page .golf-footer {
   position: relative;
