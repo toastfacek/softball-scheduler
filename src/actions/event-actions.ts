@@ -103,11 +103,6 @@ const eventUpdateSchema = z.object({
 
 type EventFormInput = z.infer<typeof eventSchema>;
 
-function normalizedOptionalText(value: string | null | undefined) {
-  const trimmed = value?.trim() ?? "";
-  return trimmed.length > 0 ? trimmed : null;
-}
-
 function shouldResetEventRsvps(
   existing: typeof events.$inferSelect,
   parsed: EventFormInput,
