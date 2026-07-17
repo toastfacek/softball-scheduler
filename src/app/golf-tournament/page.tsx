@@ -31,11 +31,34 @@ export const metadata: Metadata = {
   title: GOLF_TOURNAMENT_TITLE,
   description:
     "Register or sponsor the inaugural Beverly Girls Softball League golf tournament at Beverly Golf & Tennis Club on Monday, September 28, 2026.",
+  alternates: {
+    canonical: "https://www.beverlysoftball.com/golf-tournament",
+  },
   openGraph: {
     title: GOLF_TOURNAMENT_TITLE,
     description:
       "Golf, sponsorships, raffles, and community support for Beverly Girls Softball League.",
+    url: "https://www.beverlysoftball.com/golf-tournament",
+    siteName: "Beverly Girls Softball League",
+    images: [
+      {
+        url: "https://www.beverlysoftball.com/golf-tournament/course-images/beverly-club-hero.jpg",
+        width: 1920,
+        height: 797,
+        alt: "Beverly Golf and Tennis Club course",
+      },
+    ],
+    locale: "en_US",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: GOLF_TOURNAMENT_TITLE,
+    description:
+      "Golf, sponsorships, raffles, and community support for Beverly Girls Softball League.",
+    images: [
+      "https://www.beverlysoftball.com/golf-tournament/course-images/beverly-club-hero.jpg",
+    ],
   },
 };
 
