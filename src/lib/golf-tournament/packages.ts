@@ -66,6 +66,8 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     kind: "SPONSORSHIP",
     category: "HOLE_OR_CONTEST",
     name: "Closest to the Pin Contest Sponsor",
+    checkoutUrl:
+      "https://donate.stripe.com/5kQfZg2261qj1rP8m6gfu03?utm_source=bgsl_golf_site&utm_medium=website&utm_campaign=2026_golf_tournament&utm_content=closest_to_pin",
     priceCents: 30000,
     availability: "2 available",
     capacity: 2,
@@ -81,6 +83,8 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     kind: "SPONSORSHIP",
     category: "HOLE_OR_CONTEST",
     name: "Longest Drive Contest Sponsor",
+    checkoutUrl:
+      "https://buy.stripe.com/fZu4gy8qu6KD3zX8m6gfu04?utm_source=bgsl_golf_site&utm_medium=website&utm_campaign=2026_golf_tournament&utm_content=longest_drive",
     priceCents: 30000,
     availability: "1 available",
     capacity: 1,
@@ -96,6 +100,8 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     kind: "SPONSORSHIP",
     category: "HOLE_OR_CONTEST",
     name: "Longest Marshmallow Drive Sponsor",
+    checkoutUrl:
+      "https://buy.stripe.com/dRm3cucGKgld9Yl9qagfu05?utm_source=bgsl_golf_site&utm_medium=website&utm_campaign=2026_golf_tournament&utm_content=longest_marshmallow_drive",
     priceCents: 50000,
     availability: "1 available",
     capacity: 1,
@@ -112,6 +118,8 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     kind: "SPONSORSHIP",
     category: "TOURNAMENT_EXPERIENCE",
     name: "Double Play Sponsor",
+    checkoutUrl:
+      "https://buy.stripe.com/aFaaEW6im7OHeeB0TEgfu06?utm_source=bgsl_golf_site&utm_medium=website&utm_campaign=2026_golf_tournament&utm_content=double_play",
     priceCents: 80000,
     availability: "Available",
     capacity: null,
@@ -127,6 +135,8 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     kind: "SPONSORSHIP",
     category: "TOURNAMENT_EXPERIENCE",
     name: "Sunrise Breakfast Sponsor",
+    checkoutUrl:
+      "https://buy.stripe.com/00w7sKayC8SLgmJfOygfu07?utm_source=bgsl_golf_site&utm_medium=website&utm_campaign=2026_golf_tournament&utm_content=sunrise_breakfast",
     priceCents: 100000,
     availability: "1 available",
     capacity: 1,
@@ -142,6 +152,8 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     kind: "SPONSORSHIP",
     category: "TOURNAMENT_EXPERIENCE",
     name: "Golf Cart Sponsor",
+    checkoutUrl:
+      "https://buy.stripe.com/14AdR836a6KDc6t59Ugfu08?utm_source=bgsl_golf_site&utm_medium=website&utm_campaign=2026_golf_tournament&utm_content=golf_cart",
     priceCents: 130000,
     availability: "1 available",
     capacity: 1,
@@ -159,6 +171,8 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     kind: "SPONSORSHIP",
     category: "TOURNAMENT_EXPERIENCE",
     name: "Triple Play Sponsor",
+    checkoutUrl:
+      "https://buy.stripe.com/6oU3cuayCb0T2vT45Qgfu09?utm_source=bgsl_golf_site&utm_medium=website&utm_campaign=2026_golf_tournament&utm_content=triple_play",
     priceCents: 160000,
     availability: "Available",
     capacity: null,
@@ -174,6 +188,8 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     kind: "SPONSORSHIP",
     category: "TOURNAMENT_EXPERIENCE",
     name: "Grab & Go Lunch Sponsor",
+    checkoutUrl:
+      "https://buy.stripe.com/fZu14mcGK1qjb2p59Ugfu0a?utm_source=bgsl_golf_site&utm_medium=website&utm_campaign=2026_golf_tournament&utm_content=grab_go_lunch",
     priceCents: 220000,
     availability: "1 available",
     capacity: 1,
@@ -189,6 +205,8 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     kind: "SPONSORSHIP",
     category: "TOURNAMENT_EXPERIENCE",
     name: "Grand Slam Sponsor",
+    checkoutUrl:
+      "https://buy.stripe.com/9B6dR8eOS7OH0nL0TEgfu0b?utm_source=bgsl_golf_site&utm_medium=website&utm_campaign=2026_golf_tournament&utm_content=grand_slam",
     priceCents: 250000,
     availability: "2 available",
     capacity: 2,
