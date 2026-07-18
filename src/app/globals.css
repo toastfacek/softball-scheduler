@@ -3697,12 +3697,15 @@ when Jesse/Michelle provide real golf/course/candid photos.
   text-align: center;
 }
 
-@media (max-width: 620px) {
+@media (max-width: 920px) {
   .golf-package > .golf-package-action {
+    grid-area: action;
     justify-self: stretch;
     width: 100%;
   }
+}
 
+@media (max-width: 620px) {
   .golf-checkout-player-grid {
     grid-template-columns: 1fr;
   }
@@ -5061,9 +5064,9 @@ when Jesse/Michelle provide real golf/course/candid photos.
   }
 
   .golf-page .golf-package h4 {
-    max-width: none;
+    max-width: 12ch;
     font-size: clamp(1.55rem, 8vw, 2rem);
-    overflow-wrap: normal;
+    overflow-wrap: anywhere;
   }
 
   .golf-page .golf-price {
@@ -5090,7 +5093,7 @@ when Jesse/Michelle provide real golf/course/candid photos.
     padding-left: 0.1rem;
     font-size: 0.9rem;
     line-height: 1.35;
-    overflow-wrap: normal;
+    overflow-wrap: anywhere;
   }
 
   .golf-page .golf-package form {
