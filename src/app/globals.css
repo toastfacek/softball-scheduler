@@ -5051,8 +5051,8 @@ when Jesse/Michelle provide real golf/course/candid photos.
 @media (max-width: 620px) {
   .golf-page .golf-package {
     grid-template-areas:
-      "title title"
-      "price availability"
+      "title availability"
+      "title price"
       "benefits benefits"
       "action action";
     grid-template-columns: minmax(0, 1fr) auto;
@@ -5090,7 +5090,7 @@ when Jesse/Michelle provide real golf/course/candid photos.
     padding-left: 0.1rem;
     font-size: 0.9rem;
     line-height: 1.35;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
   }
 
   .golf-page .golf-package form {
