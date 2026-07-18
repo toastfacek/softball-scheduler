@@ -44,9 +44,11 @@ const checkoutSchema = z.object({
 
 const paymentLinkCheckoutSchema = z.object({
   packageId: z.string().trim().min(1),
-  playerNames: z
-    .array(z.string().trim().min(1))
-    .length(4),
+  contactName: z.string().trim().optional(),
+  businessName: z.string().trim().optional(),
+  email: z.union([z.literal(""), z.string().email()]).optional(),
+  phone: z.string().trim().optional(),
+  playerNames: z.array(z.string().trim()).length(4),
 });
 
 const inKindSchema = z.object({
@@ -184,6 +186,10 @@ export async function createGolfCheckoutSessionAction(formData: FormData) {
 export async function startGolfPaymentLinkCheckoutAction(formData: FormData) {
   const parsed = paymentLinkCheckoutSchema.parse({
     packageId: formData.get("packageId"),
+    contactName: formData.get("contactName")?.toString(),
+    businessName: formData.get("businessName")?.toString(),
+    email: formData.get("email")?.toString(),
+    phone: formData.get("phone")?.toString(),
     playerNames: [1, 2, 3, 4].map(
       (slotNumber) => formData.get(`player${slotNumber}`)?.toString() ?? "",
     ),
@@ -192,7 +198,17 @@ export async function startGolfPaymentLinkCheckoutAction(formData: FormData) {
 
   if (
     !packageConfig?.checkoutUrl ||
-    includedGolfSlotCount(packageConfig.includedGolf) !== 4
+    (packageConfig.kind !== "SPONSORSHIP" &&
+      includedGolfSlotCount(packageConfig.includedGolf) !== 4)
+  ) {
+    redirect("/golf-tournament?checkout=unavailable");
+  }
+
+  const requiresFoursomeNames =
+    includedGolfSlotCount(packageConfig.includedGolf) === 4;
+  if (
+    requiresFoursomeNames &&
+    parsed.playerNames.some((playerName) => !playerName)
   ) {
     redirect("/golf-tournament?checkout=unavailable");
   }
@@ -217,24 +233,34 @@ export async function startGolfPaymentLinkCheckoutAction(formData: FormData) {
         packageId: packageConfig.id,
         purchaseType: packageConfig.kind,
         amountCents: packageConfig.priceCents,
+        buyerName: parsed.contactName || null,
+        buyerEmail: parsed.email || null,
+        buyerPhone: parsed.phone || null,
+        sponsorDisplayName: parsed.businessName || null,
+        sponsorContactName: parsed.contactName || null,
         completionTokenHash: hashCompletionToken(token),
         completionTokenExpiresAt: completionTokenExpiry(),
       })
       .returning({ id: golfTournamentPurchases.id });
 
-    await tx.insert(golfTournamentPlayers).values(
-      parsed.playerNames.map((name, index) => ({
-        purchaseId: createdPurchase.id,
-        slotNumber: index + 1,
-        name,
-      })),
-    );
+    if (requiresFoursomeNames) {
+      await tx.insert(golfTournamentPlayers).values(
+        parsed.playerNames.map((name, index) => ({
+          purchaseId: createdPurchase.id,
+          slotNumber: index + 1,
+          name,
+        })),
+      );
+    }
 
     return createdPurchase;
   });
 
   const checkoutUrl = new URL(packageConfig.checkoutUrl);
   checkoutUrl.searchParams.set("client_reference_id", purchase.id);
+  if (parsed.email) {
+    checkoutUrl.searchParams.set("prefilled_email", parsed.email);
+  }
   redirect(checkoutUrl.toString());
 }
 

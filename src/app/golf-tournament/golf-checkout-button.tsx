@@ -8,12 +8,16 @@ type GolfCheckoutButtonProps = {
   packageId: string;
   packageName: string;
   buttonLabel: string;
+  isSponsorship: boolean;
+  includedPlayerCount: number;
 };
 
 export function GolfCheckoutButton({
   packageId,
   packageName,
   buttonLabel,
+  isSponsorship,
+  includedPlayerCount,
 }: GolfCheckoutButtonProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -38,7 +42,13 @@ export function GolfCheckoutButton({
           <input type="hidden" name="packageId" value={packageId} />
           <div className="golf-checkout-dialog-heading">
             <div>
-              <span>Foursome registration included</span>
+              <span>
+                {includedPlayerCount === 4
+                  ? "Foursome registration included"
+                  : isSponsorship
+                    ? "Sponsorship details"
+                    : "Tournament registration"}
+              </span>
               <h3 id={`checkout-title-${packageId}`}>{packageName}</h3>
             </div>
             <button
@@ -52,24 +62,52 @@ export function GolfCheckoutButton({
           </div>
 
           <p>
-            Add the four golfers who will play in your group. You’ll continue
-            to Stripe to securely complete payment.
+            {isSponsorship
+              ? "Share the best contact information for this sponsorship. You’ll continue to Stripe to securely complete payment."
+              : "Add the four golfers who will play in your group. You’ll continue to Stripe to securely complete payment."}
           </p>
 
-          <div className="golf-checkout-player-grid">
-            {[1, 2, 3, 4].map((slotNumber) => (
-              <label key={slotNumber}>
-                <span>Player {slotNumber}</span>
+          {isSponsorship ? (
+            <div className="golf-checkout-player-grid">
+              <label>
+                <span>Contact name</span>
+                <input name="contactName" type="text" autoComplete="name" />
+              </label>
+              <label>
+                <span>Business name</span>
                 <input
-                  name={`player${slotNumber}`}
+                  name="businessName"
                   type="text"
-                  autoComplete="name"
-                  placeholder="Full name"
-                  required
+                  autoComplete="organization"
                 />
               </label>
-            ))}
-          </div>
+              <label>
+                <span>Email</span>
+                <input name="email" type="email" autoComplete="email" />
+              </label>
+              <label>
+                <span>Phone number</span>
+                <input name="phone" type="tel" autoComplete="tel" />
+              </label>
+            </div>
+          ) : null}
+
+          {includedPlayerCount === 4 ? (
+            <div className="golf-checkout-player-grid">
+              {[1, 2, 3, 4].map((slotNumber) => (
+                <label key={slotNumber}>
+                  <span>Player {slotNumber}</span>
+                  <input
+                    name={`player${slotNumber}`}
+                    type="text"
+                    autoComplete="name"
+                    placeholder="Full name"
+                    required
+                  />
+                </label>
+              ))}
+            </div>
+          ) : null}
 
           <button className="golf-checkout-submit" type="submit">
             Continue to secure checkout

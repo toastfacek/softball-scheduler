@@ -25,6 +25,7 @@ import {
   getGolfTournamentPackage,
   golfPackageCategories,
   golfTournamentPackages,
+  includedGolfSlotCount,
 } from "@/lib/golf-tournament/packages";
 import { GolfCheckoutButton } from "./golf-checkout-button";
 
@@ -295,10 +296,17 @@ export default async function GolfTournamentPage({
                           <li key={benefit}>{benefit}</li>
                         ))}
                       </ul>
-                      {item.checkoutUrl && !isSoldOut && item.includedGolf === "FOURSOME" ? (
+                      {item.checkoutUrl &&
+                      !isSoldOut &&
+                      (item.kind === "SPONSORSHIP" ||
+                        item.includedGolf === "FOURSOME") ? (
                         <GolfCheckoutButton
                           packageId={item.id}
                           packageName={formatGolfPackageDisplayName(item)}
+                          isSponsorship={item.kind === "SPONSORSHIP"}
+                          includedPlayerCount={includedGolfSlotCount(
+                            item.includedGolf,
+                          )}
                           buttonLabel={
                             item.kind === "GOLF"
                               ? "Claim your spot"
