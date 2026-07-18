@@ -39,13 +39,13 @@ export const metadata: Metadata = {
     telephone: false,
   },
   alternates: {
-    canonical: "https://www.beverlysoftball.com/golf-tournament",
+    canonical: "https://www.beverlysoftball.com/",
   },
   openGraph: {
     title: GOLF_TOURNAMENT_TITLE,
     description:
       "Golf, sponsorships, raffles, and community support for Beverly Girls Softball League.",
-    url: "https://www.beverlysoftball.com/golf-tournament",
+    url: "https://www.beverlysoftball.com/",
     siteName: "Beverly Girls Softball League",
     images: [
       {
