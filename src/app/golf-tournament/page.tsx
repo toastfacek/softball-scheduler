@@ -33,6 +33,11 @@ export const metadata: Metadata = {
   title: GOLF_TOURNAMENT_TITLE,
   description:
     "Register or sponsor the inaugural Beverly Girls Softball League golf tournament at Beverly Golf & Tennis Club on Monday, September 28, 2026.",
+  formatDetection: {
+    address: false,
+    email: false,
+    telephone: false,
+  },
   alternates: {
     canonical: "https://www.beverlysoftball.com/golf-tournament",
   },

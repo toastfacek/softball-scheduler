@@ -3700,8 +3700,8 @@ when Jesse/Michelle provide real golf/course/candid photos.
 @media (max-width: 920px) {
   .golf-package > .golf-package-action {
     grid-area: action;
-    justify-self: stretch;
-    width: 100%;
+    justify-self: end;
+    width: 176px;
   }
 }
 
@@ -5033,7 +5033,7 @@ when Jesse/Michelle provide real golf/course/candid photos.
   }
 
   .golf-package .golf-package-action {
-    width: 100%;
+    width: 176px;
   }
 
   .golf-package ul {
@@ -5102,8 +5102,14 @@ when Jesse/Michelle provide real golf/course/candid photos.
   }
 
   .golf-page .golf-package .golf-package-action {
-    width: 100%;
+    justify-self: end;
+    width: min(176px, 100%);
     min-height: 44px;
     padding-inline: 0.15rem;
   }
+}
+
+.golf-page a[x-apple-data-detectors] {
+  color: inherit !important;
+  text-decoration: none !important;
 }
