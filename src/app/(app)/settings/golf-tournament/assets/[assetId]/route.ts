@@ -2,8 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
-import { canManageTeam } from "@/lib/authz";
-import { getViewerContext } from "@/lib/data";
+import { hasGolfAdminSession } from "@/lib/golf-tournament/admin-auth";
 import { getGolfTournamentAssetObject } from "@/lib/golf-tournament/storage";
 
 type AssetRouteProps = {
@@ -11,9 +10,7 @@ type AssetRouteProps = {
 };
 
 export async function GET(_request: Request, { params }: AssetRouteProps) {
-  const viewer = await getViewerContext();
-
-  if (!viewer || !canManageTeam(viewer)) {
+  if (!(await hasGolfAdminSession())) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 

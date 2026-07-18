@@ -7,9 +7,11 @@ import {
   updateGolfInKindStatusAction,
   updateGolfPurchaseAdminAction,
 } from "@/actions/golf-tournament-actions";
-import { requireTeamManager } from "@/actions/helpers";
+import { signOutGolfAdminAction } from "@/actions/golf-admin-actions";
 import { db } from "@/db";
 import { PageHeader } from "@/components/page-header";
+import { SubmitButton } from "@/components/submit-button";
+import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
 import {
   estimatedStripeFeeCents,
   estimatedStripeNetCents,
@@ -24,7 +26,7 @@ type GolfTournamentAdminPageProps = {
 export default async function GolfTournamentAdminPage({
   searchParams,
 }: GolfTournamentAdminPageProps) {
-  await requireTeamManager();
+  await requireGolfAdmin();
   const params = (await searchParams) ?? {};
   const view = params.view ?? "all";
 
@@ -66,9 +68,14 @@ export default async function GolfTournamentAdminPage({
       <PageHeader
         title="Golf tournament"
         action={
-          <Link className="btn-secondary" href="/settings/golf-tournament/export">
-            Export CSV
-          </Link>
+          <div className="flex gap-2">
+            <Link className="btn-secondary" href="/settings/golf-tournament/export">
+              Export CSV
+            </Link>
+            <form action={signOutGolfAdminAction}>
+              <SubmitButton label="Sign out" />
+            </form>
+          </div>
         }
       />
 
@@ -97,27 +104,27 @@ export default async function GolfTournamentAdminPage({
           </div>
         </div>
         <div className="admin-filter-row" aria-label="Golf purchase filters">
-          <Link className="btn-secondary" href="/settings/golf-tournament">
+          <Link className="btn-secondary" href="/golf-admin">
             All
           </Link>
-          <Link className="btn-secondary" href="/settings/golf-tournament?view=paid">
+          <Link className="btn-secondary" href="/golf-admin?view=paid">
             Paid
           </Link>
           <Link
             className="btn-secondary"
-            href="/settings/golf-tournament?view=needs-details"
+            href="/golf-admin?view=needs-details"
           >
             Needs Details
           </Link>
           <Link
             className="btn-secondary"
-            href="/settings/golf-tournament?view=needs-review"
+            href="/golf-admin?view=needs-review"
           >
             Needs Review
           </Link>
           <Link
             className="btn-secondary"
-            href="/settings/golf-tournament?view=public"
+            href="/golf-admin?view=public"
           >
             Public
           </Link>

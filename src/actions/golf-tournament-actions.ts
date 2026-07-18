@@ -6,7 +6,6 @@ import { redirect } from "next/navigation";
 import Stripe from "stripe";
 import { z } from "zod";
 
-import { requireTeamManager } from "@/actions/helpers";
 import { db } from "@/db";
 import {
   golfTournamentAssets,
@@ -16,6 +15,7 @@ import {
 } from "@/db/schema";
 import { env, isR2Configured, isStripeConfigured } from "@/lib/env";
 import { sendGolfTournamentEmail } from "@/lib/golf-tournament/email";
+import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
 import {
   GOLF_TOURNAMENT_SAFE_PROCEEDS,
   GOLF_TOURNAMENT_TITLE,
@@ -302,7 +302,7 @@ export async function submitGolfInKindDonationAction(formData: FormData) {
       `Email: ${parsed.email}`,
       `Item: ${parsed.description}`,
       "",
-      `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/settings/golf-tournament`,
+      `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/golf-admin`,
     ].join("\n"),
   });
 
@@ -410,7 +410,7 @@ export async function updateGolfCompletionAction(formData: FormData) {
         ? `Sponsor: ${parsed.sponsorDisplayName}`
         : null,
       "",
-      `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/settings/golf-tournament`,
+      `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/golf-admin`,
     ]
       .filter(Boolean)
       .join("\n"),
@@ -500,17 +500,17 @@ export async function uploadGolfLogoAction(formData: FormData) {
       `Sponsor: ${purchase.sponsorDisplayName ?? purchase.buyerName ?? "Unknown"}`,
       `File: ${file.name}`,
       "",
-      `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/settings/golf-tournament`,
+      `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/golf-admin`,
     ].join("\n"),
   });
 
   revalidatePath(`/golf-tournament/complete/${parsed.token}`);
-  revalidatePath("/settings/golf-tournament");
+  revalidatePath("/golf-admin");
   redirect(`/golf-tournament/complete/${parsed.token}?upload=success`);
 }
 
 export async function updateGolfPurchaseAdminAction(formData: FormData) {
-  await requireTeamManager();
+  await requireGolfAdmin();
   const parsed = purchaseAdminSchema.parse({
     purchaseId: formData.get("purchaseId"),
     fulfillmentStatus: formData.get("fulfillmentStatus"),
@@ -528,13 +528,13 @@ export async function updateGolfPurchaseAdminAction(formData: FormData) {
     })
     .where(eq(golfTournamentPurchases.id, parsed.purchaseId));
 
-  revalidatePath("/settings/golf-tournament");
+  revalidatePath("/golf-admin");
   revalidatePath("/golf-tournament");
-  redirect("/settings/golf-tournament?saved=purchase");
+  redirect("/golf-admin?saved=purchase");
 }
 
 export async function updateGolfInKindStatusAction(formData: FormData) {
-  await requireTeamManager();
+  await requireGolfAdmin();
   const parsed = inKindAdminSchema.parse({
     submissionId: formData.get("submissionId"),
     status: formData.get("status"),
@@ -548,12 +548,12 @@ export async function updateGolfInKindStatusAction(formData: FormData) {
     })
     .where(eq(golfTournamentInKindSubmissions.id, parsed.submissionId));
 
-  revalidatePath("/settings/golf-tournament");
-  redirect("/settings/golf-tournament?saved=in-kind");
+  revalidatePath("/golf-admin");
+  redirect("/golf-admin?saved=in-kind");
 }
 
 export async function updateGolfAssetAdminAction(formData: FormData) {
-  await requireTeamManager();
+  await requireGolfAdmin();
   const parsed = assetAdminSchema.parse({
     assetId: formData.get("assetId"),
     approvedForPublicDisplay: formData.get("approvedForPublicDisplay") === "on",
@@ -569,13 +569,13 @@ export async function updateGolfAssetAdminAction(formData: FormData) {
     })
     .where(eq(golfTournamentAssets.id, parsed.assetId));
 
-  revalidatePath("/settings/golf-tournament");
+  revalidatePath("/golf-admin");
   revalidatePath("/golf-tournament");
-  redirect("/settings/golf-tournament?saved=asset");
+  redirect("/golf-admin?saved=asset");
 }
 
 export async function resendGolfCompletionLinkAction(formData: FormData) {
-  await requireTeamManager();
+  await requireGolfAdmin();
   const parsed = resendCompletionLinkSchema.parse({
     purchaseId: formData.get("purchaseId"),
   });
@@ -585,7 +585,7 @@ export async function resendGolfCompletionLinkAction(formData: FormData) {
   });
 
   if (!existing?.buyerEmail) {
-    redirect("/settings/golf-tournament?saved=missing-email");
+    redirect("/golf-admin?saved=missing-email");
   }
   const buyerEmail = existing.buyerEmail;
 
@@ -604,7 +604,7 @@ export async function resendGolfCompletionLinkAction(formData: FormData) {
     .returning();
 
   if (!purchase) {
-    redirect("/settings/golf-tournament?saved=missing-email");
+    redirect("/golf-admin?saved=missing-email");
   }
 
   const packageConfig = getGolfTournamentPackage(purchase.packageId);
@@ -632,11 +632,11 @@ export async function resendGolfCompletionLinkAction(formData: FormData) {
       .join("\n"),
   });
 
-  redirect("/settings/golf-tournament?saved=resent");
+  redirect("/golf-admin?saved=resent");
 }
 
 export async function revokeGolfCompletionLinkAction(formData: FormData) {
-  await requireTeamManager();
+  await requireGolfAdmin();
   const parsed = resendCompletionLinkSchema.parse({
     purchaseId: formData.get("purchaseId"),
   });
@@ -649,5 +649,5 @@ export async function revokeGolfCompletionLinkAction(formData: FormData) {
     })
     .where(eq(golfTournamentPurchases.id, parsed.purchaseId));
 
-  redirect("/settings/golf-tournament?saved=revoked");
+  redirect("/golf-admin?saved=revoked");
 }

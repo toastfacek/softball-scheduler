@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
-import { canManageTeam } from "@/lib/authz";
-import { getViewerContext } from "@/lib/data";
+import { hasGolfAdminSession } from "@/lib/golf-tournament/admin-auth";
 import {
   formatGolfPackagePrice,
   getGolfTournamentPackage,
 } from "@/lib/golf-tournament/packages";
 
 export async function GET() {
-  const viewer = await getViewerContext();
-
-  if (!viewer || !canManageTeam(viewer)) {
+  if (!(await hasGolfAdminSession())) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
@@ -101,6 +98,7 @@ export async function GET() {
 
   return new NextResponse(csv, {
     headers: {
+      "cache-control": "private, no-store",
       "content-type": "text/csv; charset=utf-8",
       "content-disposition":
         'attachment; filename="bgsl-golf-tournament-export.csv"',

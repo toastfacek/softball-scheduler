@@ -17,6 +17,8 @@ export const env = {
     process.env.GOLF_TOURNAMENT_CONTACT_EMAIL ?? "mishlambert10@gmail.com",
   GOLF_TOURNAMENT_ADMIN_EMAILS:
     process.env.GOLF_TOURNAMENT_ADMIN_EMAILS ?? "mishlambert10@gmail.com",
+  GOLF_ADMIN_PASSWORD: process.env.GOLF_ADMIN_PASSWORD ?? "",
+  GOLF_ADMIN_SESSION_SECRET: process.env.GOLF_ADMIN_SESSION_SECRET ?? "",
   CLOUDFLARE_R2_ACCOUNT_ID: process.env.CLOUDFLARE_R2_ACCOUNT_ID ?? "",
   CLOUDFLARE_R2_ACCESS_KEY_ID:
     process.env.CLOUDFLARE_R2_ACCESS_KEY_ID ?? "",

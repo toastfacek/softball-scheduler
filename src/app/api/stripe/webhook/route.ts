@@ -158,7 +158,7 @@ async function markGolfPurchasePaid(session: Stripe.Checkout.Session) {
         ? `Stripe PaymentIntent: ${purchase.stripePaymentIntentId}`
         : null,
       "",
-      `${appUrl}/settings/golf-tournament`,
+      `${appUrl}/golf-admin`,
     ]
       .filter(Boolean)
       .join("\n"),
