@@ -65,11 +65,11 @@ export default async function GolfTournamentAdminPage({
   );
 
   return (
-    <>
+    <div className="golf-admin-dashboard">
       <PageHeader
         title="Golf tournament"
         action={
-          <div className="flex gap-2">
+          <div className="golf-admin-header-actions">
             <Link className="btn-secondary" href="/golf-admin/email-preview">
               Email preview
             </Link>
@@ -133,7 +133,7 @@ export default async function GolfTournamentAdminPage({
             Public
           </Link>
         </div>
-        <div className="linked-list">
+        <div className="linked-list golf-admin-purchase-list">
           {filteredPurchases.length > 0 ? (
             filteredPurchases.map((purchase) => {
               const packageConfig = getGolfTournamentPackage(purchase.packageId);
@@ -197,64 +197,68 @@ export default async function GolfTournamentAdminPage({
                       </div>
                     ) : null}
                   </div>
-                  <span className="status-chip">
-                    {formatGolfPackagePrice(purchase.amountCents)}
-                  </span>
-                  <form
-                    action={updateGolfPurchaseAdminAction}
-                    className="admin-inline-form"
-                  >
-                    <input type="hidden" name="purchaseId" value={purchase.id} />
-                    <select
-                      name="fulfillmentStatus"
-                      defaultValue={purchase.fulfillmentStatus}
-                      aria-label="Fulfillment status"
+                  <div className="admin-purchase-actions">
+                    <span className="admin-purchase-price">
+                      {formatGolfPackagePrice(purchase.amountCents)}
+                    </span>
+                    <form
+                      action={updateGolfPurchaseAdminAction}
+                      className="admin-inline-form"
                     >
-                      <option value="PAID_NEEDS_DETAILS">
-                        Paid / needs details
-                      </option>
-                      <option value="DETAILS_SUBMITTED">
-                        Details submitted
-                      </option>
-                      <option value="NEEDS_REVIEW">Needs review</option>
-                      <option value="COMPLETE">Complete</option>
-                    </select>
-                    <label className="admin-checkbox">
-                      <input
-                        type="checkbox"
-                        name="approvedForPublicDisplay"
-                        defaultChecked={purchase.approvedForPublicDisplay}
-                      />
-                      Public
-                    </label>
-                    <button className="btn-secondary" type="submit">
-                      Save
-                    </button>
-                  </form>
-                  <form action={resendGolfCompletionLinkAction}>
-                    <input type="hidden" name="purchaseId" value={purchase.id} />
-                    <button className="btn-secondary" type="submit">
-                      Resend Link
-                    </button>
-                  </form>
-                  {purchase.paymentStatus === "PAID" ? (
-                    <form action={resendGolfConfirmationAction}>
                       <input type="hidden" name="purchaseId" value={purchase.id} />
-                      <button
-                        className="btn-secondary"
-                        type="submit"
-                        disabled={!purchase.buyerEmail}
+                      <select
+                        name="fulfillmentStatus"
+                        defaultValue={purchase.fulfillmentStatus}
+                        aria-label="Fulfillment status"
                       >
-                        Send confirmation
+                        <option value="PAID_NEEDS_DETAILS">
+                          Paid / needs details
+                        </option>
+                        <option value="DETAILS_SUBMITTED">
+                          Details submitted
+                        </option>
+                        <option value="NEEDS_REVIEW">Needs review</option>
+                        <option value="COMPLETE">Complete</option>
+                      </select>
+                      <label className="admin-checkbox">
+                        <input
+                          type="checkbox"
+                          name="approvedForPublicDisplay"
+                          defaultChecked={purchase.approvedForPublicDisplay}
+                        />
+                        Public
+                      </label>
+                      <button className="btn-secondary" type="submit">
+                        Save
                       </button>
                     </form>
-                  ) : null}
-                  <form action={revokeGolfCompletionLinkAction}>
-                    <input type="hidden" name="purchaseId" value={purchase.id} />
-                    <button className="btn-secondary" type="submit">
-                      Revoke Link
-                    </button>
-                  </form>
+                    <div className="admin-purchase-secondary-actions">
+                      <form action={resendGolfCompletionLinkAction}>
+                        <input type="hidden" name="purchaseId" value={purchase.id} />
+                        <button className="btn-secondary" type="submit">
+                          Resend link
+                        </button>
+                      </form>
+                      {purchase.paymentStatus === "PAID" ? (
+                        <form action={resendGolfConfirmationAction}>
+                          <input type="hidden" name="purchaseId" value={purchase.id} />
+                          <button
+                            className="btn-secondary"
+                            type="submit"
+                            disabled={!purchase.buyerEmail}
+                          >
+                            Send confirmation
+                          </button>
+                        </form>
+                      ) : null}
+                      <form action={revokeGolfCompletionLinkAction}>
+                        <input type="hidden" name="purchaseId" value={purchase.id} />
+                        <button className="btn-ghost" type="submit">
+                          Revoke link
+                        </button>
+                      </form>
+                    </div>
+                  </div>
                 </div>
               );
             })
@@ -313,7 +317,7 @@ export default async function GolfTournamentAdminPage({
           )}
         </div>
       </section>
-    </>
+    </div>
   );
 }
 
