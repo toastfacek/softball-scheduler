@@ -8,13 +8,9 @@ import {
   golfTournamentPurchases,
 } from "@/db/schema";
 import { env } from "@/lib/env";
+import { sendGolfPurchaseConfirmation } from "@/lib/golf-tournament/confirmation-email";
 import { sendGolfTournamentEmail } from "@/lib/golf-tournament/email";
-import {
-  GOLF_TOURNAMENT_SAFE_PROCEEDS,
-  GOLF_TOURNAMENT_TITLE,
-  golfTournamentAdminEmails,
-  golfTournamentContactEmail,
-} from "@/lib/golf-tournament/event";
+import { golfTournamentAdminEmails } from "@/lib/golf-tournament/event";
 import {
   formatGolfPackagePrice,
   getGolfTournamentPackage,
@@ -65,32 +61,35 @@ async function markGolfPurchasePaid(session: Stripe.Checkout.Session) {
     where: eq(golfTournamentPurchases.id, purchaseId),
   });
 
-  if (!existing || existing.paymentStatus === "PAID") return;
+  if (!existing) return;
 
   const now = new Date();
-  const [purchase] = await db
-    .update(golfTournamentPurchases)
-    .set({
-      buyerName:
-        session.customer_details?.name ??
-        session.customer_details?.email ??
-        existing.buyerName,
-      buyerEmail: session.customer_details?.email ?? existing.buyerEmail,
-      paymentStatus: "PAID",
-      paidAt: now,
-      stripeCheckoutSessionId: session.id,
-      stripePaymentIntentId:
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent?.id,
-      stripeCustomerId:
-        typeof session.customer === "string"
-          ? session.customer
-          : session.customer?.id,
-      updatedAt: now,
-    })
-    .where(eq(golfTournamentPurchases.id, purchaseId))
-    .returning();
+  const wasAlreadyPaid = existing.paymentStatus === "PAID";
+  const [purchase] = wasAlreadyPaid
+    ? [existing]
+    : await db
+        .update(golfTournamentPurchases)
+        .set({
+          buyerName:
+            session.customer_details?.name ??
+            session.customer_details?.email ??
+            existing.buyerName,
+          buyerEmail: session.customer_details?.email ?? existing.buyerEmail,
+          paymentStatus: "PAID",
+          paidAt: now,
+          stripeCheckoutSessionId: session.id,
+          stripePaymentIntentId:
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : session.payment_intent?.id,
+          stripeCustomerId:
+            typeof session.customer === "string"
+              ? session.customer
+              : session.customer?.id,
+          updatedAt: now,
+        })
+        .where(eq(golfTournamentPurchases.id, purchaseId))
+        .returning();
 
   if (!purchase) return;
 
@@ -111,56 +110,29 @@ async function markGolfPurchasePaid(session: Stripe.Checkout.Session) {
     ),
   );
 
-  const buyerEmail = purchase.buyerEmail;
-  const completionToken = session.metadata?.completionToken;
   const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
-  const completionUrl = completionToken
-    ? `${appUrl}/golf-tournament/complete/${completionToken}`
-    : null;
-  const contactEmail = golfTournamentContactEmail();
+  await sendGolfPurchaseConfirmation(purchase.id);
 
-  if (buyerEmail) {
+  if (!wasAlreadyPaid) {
     await sendGolfTournamentEmail({
-      to: [buyerEmail],
-      subject: `You're confirmed for ${GOLF_TOURNAMENT_TITLE}`,
+      to: golfTournamentAdminEmails(),
+      subject: "New paid BGSL golf tournament purchase",
       body: [
-        `You're confirmed. Thanks for supporting ${GOLF_TOURNAMENT_TITLE}.`,
+        "A BGSL golf tournament purchase was paid.",
         "",
         `Package: ${packageConfig?.name ?? purchase.packageId}`,
-        `Amount paid: ${formatGolfPackagePrice(purchase.amountCents)}`,
+        `Amount: ${formatGolfPackagePrice(purchase.amountCents)}`,
+        `Buyer: ${purchase.buyerName ?? "Unknown"}`,
+        `Email: ${purchase.buyerEmail ?? "Unknown"}`,
+        `Stripe Checkout Session: ${session.id}`,
+        purchase.stripePaymentIntentId
+          ? `Stripe PaymentIntent: ${purchase.stripePaymentIntentId}`
+          : null,
         "",
-        completionUrl
-          ? "Use this private link to add player names, sponsor details, and logo/artwork:"
-          : "BGSL will follow up to collect player names, sponsor details, and logo/artwork.",
-        completionUrl,
-        "",
-        contactEmail ? `Questions? Email ${contactEmail}.` : null,
-        "",
-        GOLF_TOURNAMENT_SAFE_PROCEEDS,
+        `${appUrl}/golf-admin`,
       ]
         .filter(Boolean)
         .join("\n"),
     });
   }
-
-  await sendGolfTournamentEmail({
-    to: golfTournamentAdminEmails(),
-    subject: "New paid BGSL golf tournament purchase",
-    body: [
-      "A BGSL golf tournament purchase was paid.",
-      "",
-      `Package: ${packageConfig?.name ?? purchase.packageId}`,
-      `Amount: ${formatGolfPackagePrice(purchase.amountCents)}`,
-      `Buyer: ${purchase.buyerName ?? "Unknown"}`,
-      `Email: ${buyerEmail ?? "Unknown"}`,
-      `Stripe Checkout Session: ${session.id}`,
-      purchase.stripePaymentIntentId
-        ? `Stripe PaymentIntent: ${purchase.stripePaymentIntentId}`
-        : null,
-      "",
-      `${appUrl}/golf-admin`,
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  });
 }

@@ -16,6 +16,7 @@ import {
 import { env, isR2Configured, isStripeConfigured } from "@/lib/env";
 import { sendGolfTournamentEmail } from "@/lib/golf-tournament/email";
 import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
+import { sendGolfPurchaseConfirmation } from "@/lib/golf-tournament/confirmation-email";
 import {
   GOLF_TOURNAMENT_SAFE_PROCEEDS,
   GOLF_TOURNAMENT_TITLE,
@@ -650,4 +651,17 @@ export async function revokeGolfCompletionLinkAction(formData: FormData) {
     .where(eq(golfTournamentPurchases.id, parsed.purchaseId));
 
   redirect("/golf-admin?saved=revoked");
+}
+
+export async function resendGolfConfirmationAction(formData: FormData) {
+  await requireGolfAdmin();
+  const parsed = resendCompletionLinkSchema.parse({
+    purchaseId: formData.get("purchaseId"),
+  });
+  const result = await sendGolfPurchaseConfirmation(parsed.purchaseId, {
+    force: true,
+  });
+
+  revalidatePath("/golf-admin");
+  redirect(`/golf-admin?saved=confirmation-${result.status}`);
 }

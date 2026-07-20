@@ -652,6 +652,15 @@ export const golfTournamentPurchases = pgTable(
       withTimezone: true,
       mode: "date",
     }),
+    confirmationEmailStatus: deliveryStatusEnum("confirmation_email_status")
+      .default("PENDING")
+      .notNull(),
+    confirmationEmailSentAt: timestamp("confirmation_email_sent_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    confirmationEmailProviderId: text("confirmation_email_provider_id"),
+    confirmationEmailError: text("confirmation_email_error"),
     paidAt: timestamp("paid_at", { withTimezone: true, mode: "date" }),
     detailsSubmittedAt: timestamp("details_submitted_at", {
       withTimezone: true,

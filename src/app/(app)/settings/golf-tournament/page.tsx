@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import {
+  resendGolfConfirmationAction,
   resendGolfCompletionLinkAction,
   revokeGolfCompletionLinkAction,
   updateGolfAssetAdminAction,
@@ -69,6 +70,9 @@ export default async function GolfTournamentAdminPage({
         title="Golf tournament"
         action={
           <div className="flex gap-2">
+            <Link className="btn-secondary" href="/golf-admin/email-preview">
+              Email preview
+            </Link>
             <Link className="btn-secondary" href="/settings/golf-tournament/export">
               Export CSV
             </Link>
@@ -152,6 +156,17 @@ export default async function GolfTournamentAdminPage({
                         Stripe session: {purchase.stripeCheckoutSessionId}
                       </div>
                     ) : null}
+                    <div className="row-sub">
+                      Confirmation email: {purchase.confirmationEmailStatus.toLowerCase()}
+                      {purchase.confirmationEmailSentAt
+                        ? ` · ${purchase.confirmationEmailSentAt.toLocaleString("en-US", { timeZone: "America/New_York" })}`
+                        : ""}
+                    </div>
+                    {purchase.confirmationEmailError ? (
+                      <div className="row-sub text-red-700">
+                        {purchase.confirmationEmailError}
+                      </div>
+                    ) : null}
                     {purchaseAssets.length > 0 ? (
                       <div className="admin-asset-list">
                         {purchaseAssets.map((asset) => (
@@ -222,6 +237,18 @@ export default async function GolfTournamentAdminPage({
                       Resend Link
                     </button>
                   </form>
+                  {purchase.paymentStatus === "PAID" ? (
+                    <form action={resendGolfConfirmationAction}>
+                      <input type="hidden" name="purchaseId" value={purchase.id} />
+                      <button
+                        className="btn-secondary"
+                        type="submit"
+                        disabled={!purchase.buyerEmail}
+                      >
+                        Send confirmation
+                      </button>
+                    </form>
+                  ) : null}
                   <form action={revokeGolfCompletionLinkAction}>
                     <input type="hidden" name="purchaseId" value={purchase.id} />
                     <button className="btn-secondary" type="submit">
