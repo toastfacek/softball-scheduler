@@ -28,6 +28,8 @@ type ConfirmationEmailInput = {
   packageName: string;
   amount: string;
   playerNames?: string[];
+  benefits?: string[];
+  kind?: "registration" | "sponsorship";
   tournamentUrl: string;
 };
 
@@ -43,17 +45,22 @@ export function buildGolfConfirmationEmail(input: ConfirmationEmailInput) {
     timeZone: "America/New_York",
   }).format(GOLF_TOURNAMENT_START);
   const players = input.playerNames?.filter(Boolean) ?? [];
+  const benefits = input.benefits?.filter(Boolean) ?? [];
+  const isSponsorship = input.kind === "sponsorship";
   const contactEmail = golfTournamentContactEmail();
-  const subject = `You're confirmed for ${GOLF_TOURNAMENT_TITLE}`;
+  const subject = isSponsorship
+    ? `Your ${input.packageName} is confirmed`
+    : `You're confirmed for ${GOLF_TOURNAMENT_TITLE}`;
   const text = [
     greeting,
     "",
-    "You're on the tee sheet.",
+    isSponsorship ? "Your sponsorship is official." : "You're on the tee sheet.",
     `Your payment for ${input.packageName} has been confirmed. Thank you for supporting Beverly Girls Softball.`,
     "",
     `Package: ${input.packageName}`,
     `Amount paid: ${input.amount}`,
     players.length ? `Golfers: ${players.join(", ")}` : null,
+    benefits.length ? `Sponsorship includes: ${benefits.join("; ")}` : null,
     "",
     `${eventDate} · ${GOLF_TOURNAMENT_VENUE}`,
     GOLF_TOURNAMENT_ADDRESS,
@@ -72,6 +79,8 @@ export function buildGolfConfirmationEmail(input: ConfirmationEmailInput) {
       greeting,
       eventDate,
       players,
+      benefits,
+      isSponsorship,
       contactEmail,
     }),
   };
@@ -109,6 +118,8 @@ export async function sendGolfPurchaseConfirmation(
     packageName: packageConfig?.name ?? purchase.packageId,
     amount: formatGolfPackagePrice(purchase.amountCents),
     playerNames: players.map((player) => player.name ?? "").filter(Boolean),
+    benefits: packageConfig?.benefits,
+    kind: purchase.purchaseType === "SPONSORSHIP" ? "sponsorship" : "registration",
     tournamentUrl,
   });
 
@@ -171,20 +182,19 @@ export async function sendGolfConfirmationPreview(to: string) {
 
   const email = buildGolfConfirmationEmail({
     buyerName: "Michelle",
-    packageName: "Foursome Registration",
-    amount: "$640",
-    playerNames: [
-      "Michelle Lambert",
-      "Missy Ulrich",
-      "Meesh Ritchie",
-      "Amie Crawford",
+    packageName: "Tee Box or Green Sponsor",
+    amount: "$200",
+    kind: "sponsorship",
+    benefits: [
+      "Company name and/or logo signage at one tee box or green",
+      "Recognition on BGSL social media and website",
     ],
     tournamentUrl: `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/golf-tournament`,
   });
   const response = await resend.emails.send({
     from,
     to,
-    subject: `[TEST] ${email.subject}`,
+    subject: `TEST — ${email.subject}`,
     text: `TEST EMAIL — No payment or registration was changed.\n\n${email.text}`,
     html: `<div style="max-width:620px;margin:0 auto 12px;padding:10px 14px;background:#f4d35e;color:#082116;font:700 12px Arial,sans-serif;text-align:center;letter-spacing:1px">TEST EMAIL — NO PAYMENT OR REGISTRATION WAS CHANGED</div>${email.html}`,
   });
@@ -203,11 +213,16 @@ function renderConfirmationHtml(
     greeting: string;
     eventDate: string;
     players: string[];
+    benefits: string[];
+    isSponsorship: boolean;
     contactEmail: string;
   },
 ) {
   const playerRows = input.players.length
     ? `<tr><td style="padding:0 0 22px"><p style="margin:0 0 8px;color:#557064;font:700 11px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase">Your foursome</p><p style="margin:0;color:#082116;font:16px/1.7 Georgia,serif">${input.players.map(escapeHtml).join(" · ")}</p></td></tr>`
+    : "";
+  const benefitRows = input.benefits.length
+    ? `<tr><td style="padding:0 0 22px"><p style="margin:0 0 8px;color:#557064;font:700 11px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase">Your sponsorship includes</p>${input.benefits.map((benefit) => `<p style="margin:0 0 6px;color:#082116;font:15px/1.55 Arial,sans-serif">• ${escapeHtml(benefit)}</p>`).join("")}</td></tr>`
     : "";
   const logoUrl = `${input.tournamentUrl.replace(/\/golf-tournament$/, "")}/golf-tournament/bgsl-logo.png`;
 
@@ -218,11 +233,11 @@ function renderConfirmationHtml(
 <tr><td style="background:#006747;padding:24px 34px;border-bottom:6px solid #f4d35e">
 <table role="presentation" width="100%"><tr><td><p style="margin:0;color:#f4d35e;font:700 11px Arial,sans-serif;letter-spacing:2px;text-transform:uppercase">Beverly Girls Softball</p><p style="margin:7px 0 0;color:#f8f2df;font:700 21px Georgia,serif">Tee Up for BGSL</p></td><td align="right"><img src="${escapeHtml(logoUrl)}" width="62" alt="BGSL" style="display:block;max-width:62px;height:auto"></td></tr></table>
 </td></tr>
-<tr><td style="padding:42px 34px 18px"><p style="margin:0 0 18px;color:#557064;font:15px/1.6 Arial,sans-serif">${escapeHtml(input.greeting)}</p><h1 style="margin:0;color:#082116;font:700 42px/1.04 Georgia,serif;letter-spacing:-1px">You’re on the<br>tee sheet.</h1><p style="margin:20px 0 0;color:#365247;font:16px/1.7 Arial,sans-serif">Your payment is confirmed. Thank you for showing up for Beverly’s girls—on the field and in our community.</p></td></tr>
+<tr><td style="padding:42px 34px 18px"><p style="margin:0 0 18px;color:#557064;font:15px/1.6 Arial,sans-serif">${escapeHtml(input.greeting)}</p><h1 style="margin:0;color:#082116;font:700 42px/1.04 Georgia,serif;letter-spacing:-1px">${input.isSponsorship ? "Your sponsorship<br>is official." : "You’re on the<br>tee sheet."}</h1><p style="margin:20px 0 0;color:#365247;font:16px/1.7 Arial,sans-serif">Your payment is confirmed. Thank you for showing up for Beverly’s girls—on the field and in our community.</p></td></tr>
 <tr><td style="padding:18px 34px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:2px solid #082116;border-bottom:1px solid #d8c28a">
 <tr><td style="padding:18px 0"><p style="margin:0 0 5px;color:#557064;font:700 11px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase">Package</p><p style="margin:0;color:#082116;font:700 20px Georgia,serif">${escapeHtml(input.packageName)}</p></td><td align="right" style="padding:18px 0"><p style="margin:0 0 5px;color:#557064;font:700 11px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase">Paid</p><p style="margin:0;color:#006747;font:700 24px Georgia,serif">${escapeHtml(input.amount)}</p></td></tr>
 </table></td></tr>
-<tr><td style="padding:8px 34px 6px"><table role="presentation" width="100%">${playerRows}<tr><td><p style="margin:0 0 8px;color:#557064;font:700 11px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase">Save the date</p><p style="margin:0 0 4px;color:#082116;font:700 18px Georgia,serif">${escapeHtml(input.eventDate)}</p><p style="margin:0;color:#365247;font:15px/1.6 Arial,sans-serif">${escapeHtml(GOLF_TOURNAMENT_VENUE)}<br>${escapeHtml(GOLF_TOURNAMENT_ADDRESS)}</p></td></tr></table></td></tr>
+<tr><td style="padding:8px 34px 6px"><table role="presentation" width="100%">${playerRows}${benefitRows}<tr><td><p style="margin:0 0 8px;color:#557064;font:700 11px Arial,sans-serif;letter-spacing:1.5px;text-transform:uppercase">Save the date</p><p style="margin:0 0 4px;color:#082116;font:700 18px Georgia,serif">${escapeHtml(input.eventDate)}</p><p style="margin:0;color:#365247;font:15px/1.6 Arial,sans-serif">${escapeHtml(GOLF_TOURNAMENT_VENUE)}<br>${escapeHtml(GOLF_TOURNAMENT_ADDRESS)}</p></td></tr></table></td></tr>
 <tr><td style="padding:30px 34px 42px"><a href="${escapeHtml(input.tournamentUrl)}" style="display:inline-block;background:#f4d35e;border:1px solid #b58a22;color:#082116;padding:14px 21px;text-decoration:none;font:700 12px Arial,sans-serif;letter-spacing:1.2px;text-transform:uppercase">View tournament details →</a></td></tr>
 <tr><td style="background:#082116;padding:22px 34px"><p style="margin:0;color:#cbd8ca;font:12px/1.6 Arial,sans-serif">Questions? <a href="mailto:${escapeHtml(input.contactEmail)}" style="color:#f4d35e">${escapeHtml(input.contactEmail)}</a><br>Proceeds support BGSL programming, equipment, scholarships, fields, and opportunities for girls across Beverly.</p></td></tr>
 </table></td></tr></table></body></html>`;

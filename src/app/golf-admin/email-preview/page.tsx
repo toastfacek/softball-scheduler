@@ -18,13 +18,12 @@ export default async function GolfConfirmationEmailPreviewPage({
   const params = (await searchParams) ?? {};
   const preview = buildGolfConfirmationEmail({
     buyerName: "Michelle",
-    packageName: "Foursome Registration",
-    amount: "$640",
-    playerNames: [
-      "Michelle Lambert",
-      "Missy Ulrich",
-      "Meesh Ritchie",
-      "Amie Crawford",
+    packageName: "Tee Box or Green Sponsor",
+    amount: "$200",
+    kind: "sponsorship",
+    benefits: [
+      "Company name and/or logo signage at one tee box or green",
+      "Recognition on BGSL social media and website",
     ],
     tournamentUrl: "https://www.beverlysoftball.com/golf-tournament",
   });
@@ -37,12 +36,12 @@ export default async function GolfConfirmationEmailPreviewPage({
             <p className="eyebrow">Customer communication</p>
             <h1 className="text-4xl text-navy-strong">Confirmation email</h1>
             <p className="mt-2 text-sm text-navy-soft">
-              Subject: {preview.subject}
+              Suggested subject: {preview.subject}
             </p>
           </div>
           <div className="flex gap-2">
             <form action={sendGolfConfirmationPreviewAction}>
-              <SubmitButton label="Send test to Michelle" />
+              <SubmitButton label="Send sponsor test to Michelle" />
             </form>
             <Link className="btn-secondary" href="/golf-admin">
               Back to admin
@@ -50,7 +49,7 @@ export default async function GolfConfirmationEmailPreviewPage({
           </div>
         </div>
         {params.sent === "1" ? (
-          <div className="saved-flash">Test email sent to Michelle.</div>
+          <div className="saved-flash">Sponsor test email sent to Michelle.</div>
         ) : null}
         <div className="overflow-hidden border border-[#c7cdb9] bg-white shadow-[0_20px_60px_rgba(8,33,22,0.12)]">
           <iframe
