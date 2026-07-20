@@ -164,6 +164,40 @@ export async function sendGolfPurchaseConfirmation(
   }
 }
 
+export async function sendGolfConfirmationPreview(to: string) {
+  if (!isResendConfigured()) {
+    throw new Error("Resend is not configured.");
+  }
+
+  const email = buildGolfConfirmationEmail({
+    buyerName: "Michelle",
+    packageName: "Foursome Registration",
+    amount: "$640",
+    playerNames: [
+      "Michelle Lambert",
+      "Missy Ulrich",
+      "Meesh Ritchie",
+      "Amie Crawford",
+    ],
+    tournamentUrl: `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/golf-tournament`,
+  });
+  const response = await resend.emails.send({
+    from,
+    to,
+    subject: `[TEST] ${email.subject}`,
+    text: `TEST EMAIL — No payment or registration was changed.\n\n${email.text}`,
+    html: `<div style="max-width:620px;margin:0 auto 12px;padding:10px 14px;background:#f4d35e;color:#082116;font:700 12px Arial,sans-serif;text-align:center;letter-spacing:1px">TEST EMAIL — NO PAYMENT OR REGISTRATION WAS CHANGED</div>${email.html}`,
+  });
+
+  if (response.error || !response.data?.id) {
+    throw new Error(
+      response.error?.message ?? "Resend did not return a message id.",
+    );
+  }
+
+  return response.data.id;
+}
+
 function renderConfirmationHtml(
   input: ConfirmationEmailInput & {
     greeting: string;

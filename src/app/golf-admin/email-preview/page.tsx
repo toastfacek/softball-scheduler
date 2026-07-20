@@ -1,12 +1,21 @@
 import Link from "next/link";
 
+import { sendGolfConfirmationPreviewAction } from "@/actions/golf-admin-actions";
+import { SubmitButton } from "@/components/submit-button";
 import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
 import { buildGolfConfirmationEmail } from "@/lib/golf-tournament/confirmation-email";
 
 export const dynamic = "force-dynamic";
 
-export default async function GolfConfirmationEmailPreviewPage() {
+type GolfConfirmationEmailPreviewPageProps = {
+  searchParams?: Promise<{ sent?: string }>;
+};
+
+export default async function GolfConfirmationEmailPreviewPage({
+  searchParams,
+}: GolfConfirmationEmailPreviewPageProps) {
   await requireGolfAdmin();
+  const params = (await searchParams) ?? {};
   const preview = buildGolfConfirmationEmail({
     buyerName: "Michelle",
     packageName: "Foursome Registration",
@@ -31,10 +40,18 @@ export default async function GolfConfirmationEmailPreviewPage() {
               Subject: {preview.subject}
             </p>
           </div>
-          <Link className="btn-secondary" href="/golf-admin">
-            Back to admin
-          </Link>
+          <div className="flex gap-2">
+            <form action={sendGolfConfirmationPreviewAction}>
+              <SubmitButton label="Send test to Michelle" />
+            </form>
+            <Link className="btn-secondary" href="/golf-admin">
+              Back to admin
+            </Link>
+          </div>
         </div>
+        {params.sent === "1" ? (
+          <div className="saved-flash">Test email sent to Michelle.</div>
+        ) : null}
         <div className="overflow-hidden border border-[#c7cdb9] bg-white shadow-[0_20px_60px_rgba(8,33,22,0.12)]">
           <iframe
             className="h-[920px] w-full bg-[#edf2df]"
