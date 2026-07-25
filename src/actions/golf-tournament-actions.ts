@@ -27,6 +27,7 @@ import {
   formatGolfPackagePrice,
   getGolfTournamentPackage,
   includedGolfSlotCount,
+  requiresGolfPlayerNames,
 } from "@/lib/golf-tournament/packages";
 import { reconcileGolfStripePayments } from "@/lib/golf-tournament/stripe-payments";
 import {
@@ -197,20 +198,23 @@ export async function startGolfPaymentLinkCheckoutAction(formData: FormData) {
     ),
   });
   const packageConfig = getGolfTournamentPackage(parsed.packageId);
+  const includedPlayerCount = packageConfig
+    ? includedGolfSlotCount(packageConfig.includedGolf)
+    : 0;
 
   if (
     !packageConfig?.checkoutUrl ||
-    (packageConfig.kind !== "SPONSORSHIP" &&
-      includedGolfSlotCount(packageConfig.includedGolf) !== 4)
+    (packageConfig.kind !== "SPONSORSHIP" && includedPlayerCount === 0)
   ) {
     redirect("/golf-tournament?checkout=unavailable");
   }
 
-  const requiresFoursomeNames =
-    includedGolfSlotCount(packageConfig.includedGolf) === 4;
+  const requiresPlayerNames = requiresGolfPlayerNames(packageConfig);
   if (
-    requiresFoursomeNames &&
-    parsed.playerNames.some((playerName) => !playerName)
+    requiresPlayerNames &&
+    parsed.playerNames
+      .slice(0, includedPlayerCount)
+      .some((playerName) => !playerName)
   ) {
     redirect("/golf-tournament?checkout=unavailable");
   }
@@ -245,9 +249,9 @@ export async function startGolfPaymentLinkCheckoutAction(formData: FormData) {
       })
       .returning({ id: golfTournamentPurchases.id });
 
-    if (requiresFoursomeNames) {
+    if (requiresPlayerNames) {
       await tx.insert(golfTournamentPlayers).values(
-        parsed.playerNames.map((name, index) => ({
+        parsed.playerNames.slice(0, includedPlayerCount).map((name, index) => ({
           purchaseId: createdPurchase.id,
           slotNumber: index + 1,
           name,
@@ -345,9 +349,14 @@ export async function updateGolfCompletionAction(formData: FormData) {
   }
 
   const packageConfig = getGolfTournamentPackage(existingPurchase.packageId);
+  const includedPlayerCount = packageConfig
+    ? includedGolfSlotCount(packageConfig.includedGolf)
+    : 0;
   if (
     packageConfig?.kind === "GOLF" &&
-    parsed.playerNames.slice(0, 4).some((name) => name.length === 0)
+    parsed.playerNames
+      .slice(0, includedPlayerCount)
+      .some((name) => name.length === 0)
   ) {
     redirect(
       `/golf-tournament/complete/${parsed.token}?details=player-names`,
@@ -377,7 +386,7 @@ export async function updateGolfCompletionAction(formData: FormData) {
   }
 
   await Promise.all(
-    parsed.playerNames.map((name, index) =>
+    parsed.playerNames.slice(0, includedPlayerCount).map((name, index) =>
       db
         .insert(golfTournamentPlayers)
         .values({

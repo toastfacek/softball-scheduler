@@ -10,6 +10,7 @@ type GolfCheckoutButtonProps = {
   buttonLabel: string;
   isSponsorship: boolean;
   includedPlayerCount: number;
+  collectsPlayerNames: boolean;
 };
 
 export function GolfCheckoutButton({
@@ -18,6 +19,7 @@ export function GolfCheckoutButton({
   buttonLabel,
   isSponsorship,
   includedPlayerCount,
+  collectsPlayerNames,
 }: GolfCheckoutButtonProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -45,6 +47,8 @@ export function GolfCheckoutButton({
               <span>
                 {includedPlayerCount === 4
                   ? "Foursome registration included"
+                  : includedPlayerCount === 2
+                    ? "Twosome registration"
                   : isSponsorship
                     ? "Sponsorship details"
                     : "Tournament registration"}
@@ -64,7 +68,7 @@ export function GolfCheckoutButton({
           <p>
             {isSponsorship
               ? "Share the best contact information for this sponsorship. You’ll continue to Stripe to securely complete payment."
-              : "Add the four golfers who will play in your group. You’ll continue to Stripe to securely complete payment."}
+              : `Add the ${includedPlayerCount === 2 ? "two" : "four"} golfers who will play in your group. You’ll continue to Stripe to securely complete payment.`}
           </p>
 
           {isSponsorship ? (
@@ -92,9 +96,12 @@ export function GolfCheckoutButton({
             </div>
           ) : null}
 
-          {includedPlayerCount === 4 ? (
+          {collectsPlayerNames ? (
             <div className="golf-checkout-player-grid">
-              {[1, 2, 3, 4].map((slotNumber) => (
+              {Array.from(
+                { length: includedPlayerCount },
+                (_, index) => index + 1,
+              ).map((slotNumber) => (
                 <label key={slotNumber}>
                   <span>Player {slotNumber}</span>
                   <input

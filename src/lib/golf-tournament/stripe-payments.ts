@@ -110,15 +110,37 @@ export async function recordGolfCheckoutSession(
 
   const paidAt = new Date(session.created * 1000);
   const customerId = stripeObjectId(session.customer);
+  const checkoutContactName = checkoutCustomFieldValue(
+    session,
+    "contactname",
+    "contact name",
+  );
+  const checkoutContactEmail = checkoutCustomFieldValue(
+    session,
+    "contactemail",
+    "contact email",
+  );
+  const checkoutContactPhone = checkoutCustomFieldValue(
+    session,
+    "contactphonenumber",
+    "contact phone",
+  );
   const buyerName =
+    checkoutContactName ??
     session.customer_details?.name ??
     session.customer_details?.email ??
     existingByPurchaseId?.buyerName ??
     null;
   const buyerEmail =
-    session.customer_details?.email ?? existingByPurchaseId?.buyerEmail ?? null;
+    checkoutContactEmail ??
+    session.customer_details?.email ??
+    existingByPurchaseId?.buyerEmail ??
+    null;
   const buyerPhone =
-    session.customer_details?.phone ?? existingByPurchaseId?.buyerPhone ?? null;
+    checkoutContactPhone ??
+    session.customer_details?.phone ??
+    existingByPurchaseId?.buyerPhone ??
+    null;
   const amountCents =
     session.amount_total ?? existingByPurchaseId?.amountCents ?? packageConfig.priceCents;
   const currency =
@@ -315,6 +337,27 @@ export function findGolfPackageByPaymentLinkUrl(url: string) {
 function normalizePaymentLinkUrl(url: string) {
   const parsed = new URL(url);
   return `${parsed.hostname.toLowerCase()}${parsed.pathname.replace(/\/$/, "")}`;
+}
+
+function checkoutCustomFieldValue(
+  session: Stripe.Checkout.Session,
+  key: string,
+  label: string,
+) {
+  const normalizedKey = key.toLowerCase();
+  const normalizedLabel = label.toLowerCase();
+  const field = session.custom_fields.find(
+    (customField) =>
+      customField.key.toLowerCase() === normalizedKey ||
+      customField.label.custom?.trim().toLowerCase() === normalizedLabel,
+  );
+
+  return (
+    field?.text?.value ??
+    field?.numeric?.value ??
+    field?.dropdown?.value ??
+    null
+  );
 }
 
 async function resolveGolfPackageForSession(

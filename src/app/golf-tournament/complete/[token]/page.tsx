@@ -89,7 +89,8 @@ export default async function GolfCompletionPage({
         ) : null}
         {query.details === "player-names" ? (
           <div className="golf-alert" role="alert">
-            Please enter all four player names to complete the foursome
+            Please enter {slotCount === 2 ? "both" : "all four"} player names
+            to complete the {slotCount === 2 ? "twosome" : "foursome"}{" "}
             registration.
           </div>
         ) : null}
@@ -103,7 +104,9 @@ export default async function GolfCompletionPage({
           <p>
             {isPaid
               ? packageConfig?.kind === "GOLF"
-                ? "Your payment is confirmed. Add the contact information and all four player names to complete registration."
+                ? `Your payment is confirmed. Add the contact information and ${
+                    slotCount === 2 ? "both" : "all four"
+                  } player names to complete registration.`
                 : "Your payment is confirmed. Add sponsor details and included golfer information below."
               : "This link is ready, but payment has not been confirmed yet. Once Stripe confirms payment, this form becomes your detail hub."}
           </p>

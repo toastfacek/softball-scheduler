@@ -46,6 +46,25 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     ],
   },
   {
+    id: "twosome-registration",
+    kind: "GOLF",
+    category: "PLAY_GOLF",
+    name: "Twosome Registration",
+    checkoutUrl:
+      "https://buy.stripe.com/7sY8wOfSW2uneeBfOygfu0c?utm_source=bgsl_golf_site&utm_medium=website&utm_campaign=2026_golf_tournament&utm_content=twosome_registration",
+    priceCents: 32000,
+    availability: "Available",
+    capacity: null,
+    includedGolf: "TWOSOME",
+    benefits: [
+      "Green Fees",
+      "Cart Fees",
+      "Lunch",
+      "Registration for two (2) golfers",
+      "Both player names are collected before checkout",
+    ],
+  },
+  {
     id: "tee-box-green-sponsor",
     kind: "SPONSORSHIP",
     category: "HOLE_OR_CONTEST",
@@ -229,7 +248,7 @@ export const golfPackageCategories: Array<{
   {
     id: "PLAY_GOLF",
     label: "Play Golf",
-    description: "Register a foursome and lock in your spot.",
+    description: "Register a foursome or twosome and lock in your spot.",
   },
   {
     id: "HOLE_OR_CONTEST",
@@ -266,6 +285,16 @@ export function includedGolfSlotCount(includedGolf: IncludedGolf) {
     case "FOURSOME":
       return 4;
   }
+}
+
+export function requiresGolfPlayerNames(
+  packageConfig: GolfTournamentPackage,
+) {
+  const includedPlayerCount = includedGolfSlotCount(packageConfig.includedGolf);
+  return (
+    (packageConfig.kind === "GOLF" && includedPlayerCount > 0) ||
+    includedPlayerCount === 4
+  );
 }
 
 export function estimatedStripeFeeCents(amountCents: number) {

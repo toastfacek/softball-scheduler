@@ -26,6 +26,7 @@ import {
   golfPackageCategories,
   golfTournamentPackages,
   includedGolfSlotCount,
+  requiresGolfPlayerNames,
 } from "@/lib/golf-tournament/packages";
 import { GolfCheckoutButton } from "./golf-checkout-button";
 
@@ -190,7 +191,7 @@ export default async function GolfTournamentPage({
         <div className="golf-poster-strip" aria-label="Tournament highlights">
           <div className="golf-poster-note">
             <strong>Play as a team</strong>
-            <span>Foursomes only for public registration.</span>
+            <span>Register a foursome or twosome.</span>
           </div>
           <div className="golf-poster-note">
             <strong>Support the league</strong>
@@ -304,7 +305,7 @@ export default async function GolfTournamentPage({
                       {item.checkoutUrl &&
                       !isSoldOut &&
                       (item.kind === "SPONSORSHIP" ||
-                        item.includedGolf === "FOURSOME") ? (
+                        includedGolfSlotCount(item.includedGolf) > 0) ? (
                         <GolfCheckoutButton
                           packageId={item.id}
                           packageName={formatGolfPackageDisplayName(item)}
@@ -312,6 +313,7 @@ export default async function GolfTournamentPage({
                           includedPlayerCount={includedGolfSlotCount(
                             item.includedGolf,
                           )}
+                          collectsPlayerNames={requiresGolfPlayerNames(item)}
                           buttonLabel={
                             item.kind === "GOLF"
                               ? "Claim your spot"
@@ -460,8 +462,8 @@ export default async function GolfTournamentPage({
         </div>
         <div className="golf-faq">
           <FaqItem
-            question="When do I provide all four player names?"
-            answer="Before continuing to Stripe, the foursome organizer enters all four player names in the registration popup. BGSL can help update a name later if plans change."
+            question="When do I provide player names?"
+            answer="Before continuing to Stripe, the organizer enters both twosome names or all four foursome names in the registration popup. BGSL can help update a name later if plans change."
           />
           <FaqItem
             question="Can sponsors provide included golfer names later?"
