@@ -2,9 +2,21 @@ import GolfTournamentAdminPage from "@/app/(app)/settings/golf-tournament/page";
 import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 type GolfAdminPageProps = {
-  searchParams?: Promise<{ saved?: string; view?: string }>;
+  searchParams?: Promise<{
+    saved?: string;
+    view?: string;
+    sync?: string;
+    imported?: string;
+    updated?: string;
+    existing?: string;
+    scanned?: string;
+    links?: string;
+    configuredLinks?: string;
+    failed?: string;
+  }>;
 };
 
 export default async function GolfAdminPage(props: GolfAdminPageProps) {

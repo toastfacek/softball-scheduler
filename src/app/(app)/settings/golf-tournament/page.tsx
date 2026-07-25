@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import {
+  reconcileGolfStripePaymentsAction,
   resendGolfConfirmationAction,
   resendGolfCompletionLinkAction,
   revokeGolfCompletionLinkAction,
@@ -20,8 +21,21 @@ import {
   getGolfTournamentPackage,
 } from "@/lib/golf-tournament/packages";
 
+export const maxDuration = 60;
+
 type GolfTournamentAdminPageProps = {
-  searchParams?: Promise<{ saved?: string; view?: string }>;
+  searchParams?: Promise<{
+    saved?: string;
+    view?: string;
+    sync?: string;
+    imported?: string;
+    updated?: string;
+    existing?: string;
+    scanned?: string;
+    links?: string;
+    configuredLinks?: string;
+    failed?: string;
+  }>;
 };
 
 export default async function GolfTournamentAdminPage({
@@ -70,6 +84,9 @@ export default async function GolfTournamentAdminPage({
         title="Golf tournament"
         action={
           <div className="golf-admin-header-actions">
+            <form action={reconcileGolfStripePaymentsAction}>
+              <SubmitButton label="Sync Stripe" />
+            </form>
             <Link className="btn-secondary" href="/golf-admin/email-preview">
               Email preview
             </Link>
@@ -85,6 +102,30 @@ export default async function GolfTournamentAdminPage({
 
       {params.saved ? (
         <div className="saved-flash">Golf tournament changes saved.</div>
+      ) : null}
+      {params.sync === "success" ? (
+        <div className="saved-flash">
+          Stripe sync complete: {params.imported ?? "0"} imported,{" "}
+          {params.updated ?? "0"} updated, {params.existing ?? "0"} already in
+          the database. Scanned {params.scanned ?? "0"} completed payments
+          across {params.links ?? "0"} of {params.configuredLinks ?? "0"} BGSL
+          links
+          {params.failed && params.failed !== "0"
+            ? `; ${params.failed} could not be imported`
+            : ""}
+          .
+        </div>
+      ) : null}
+      {params.sync === "failed" ? (
+        <div className="saved-flash">
+          Stripe sync failed. Check the Vercel runtime log for the recorded
+          error.
+        </div>
+      ) : null}
+      {params.sync === "not-configured" ? (
+        <div className="saved-flash">
+          Stripe is not configured for this deployment.
+        </div>
       ) : null}
 
       <section className="settings-grid">

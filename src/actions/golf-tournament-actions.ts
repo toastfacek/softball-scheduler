@@ -28,6 +28,7 @@ import {
   getGolfTournamentPackage,
   includedGolfSlotCount,
 } from "@/lib/golf-tournament/packages";
+import { reconcileGolfStripePayments } from "@/lib/golf-tournament/stripe-payments";
 import {
   logoObjectKey,
   uploadGolfTournamentLogo,
@@ -532,6 +533,41 @@ export async function updateGolfPurchaseAdminAction(formData: FormData) {
   revalidatePath("/golf-admin");
   revalidatePath("/golf-tournament");
   redirect("/golf-admin?saved=purchase");
+}
+
+export async function reconcileGolfStripePaymentsAction() {
+  await requireGolfAdmin();
+
+  if (!isStripeConfigured()) {
+    redirect("/golf-admin?sync=not-configured");
+  }
+
+  const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+  let result;
+
+  try {
+    result = await reconcileGolfStripePayments(stripe);
+  } catch (error) {
+    console.error("[stripe:golf] reconciliation failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    redirect("/golf-admin?sync=failed");
+  }
+
+  revalidatePath("/golf-admin");
+  revalidatePath("/golf-tournament");
+
+  const query = new URLSearchParams({
+    sync: "success",
+    imported: String(result.importedPurchases),
+    updated: String(result.updatedPurchases),
+    existing: String(result.existingPurchases),
+    scanned: String(result.scannedSessions),
+    links: String(result.matchedLinks),
+    configuredLinks: String(result.configuredLinks),
+    failed: String(result.failedSessions),
+  });
+  redirect(`/golf-admin?${query.toString()}`);
 }
 
 export async function updateGolfInKindStatusAction(formData: FormData) {
