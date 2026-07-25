@@ -10,9 +10,14 @@ import {
   updateGolfPurchaseAdminAction,
 } from "@/actions/golf-tournament-actions";
 import { signOutGolfAdminAction } from "@/actions/golf-admin-actions";
-import { db } from "@/db";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
+import { db } from "@/db";
+import type {
+  GolfFulfillmentStatus,
+  GolfPaymentStatus,
+} from "@/db/schema";
+import { golfTournamentPurchases } from "@/db/schema";
 import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
 import {
   estimatedStripeFeeCents,
@@ -22,6 +27,28 @@ import {
 } from "@/lib/golf-tournament/packages";
 
 export const maxDuration = 60;
+
+const purchaseViewOrder = [
+  "paid",
+  "needs-details",
+  "needs-review",
+  "pending",
+  "public",
+  "all",
+] as const;
+
+type PurchaseView = (typeof purchaseViewOrder)[number];
+
+const purchaseViewLabels: Record<PurchaseView, string> = {
+  paid: "Paid",
+  "needs-details": "Needs details",
+  "needs-review": "Review",
+  pending: "Not paid",
+  public: "Public",
+  all: "All",
+};
+
+type GolfPurchase = typeof golfTournamentPurchases.$inferSelect;
 
 type GolfTournamentAdminPageProps = {
   searchParams?: Promise<{
@@ -43,7 +70,7 @@ export default async function GolfTournamentAdminPage({
 }: GolfTournamentAdminPageProps) {
   await requireGolfAdmin();
   const params = (await searchParams) ?? {};
-  const view = params.view ?? "all";
+  const view = isPurchaseView(params.view) ? params.view : "paid";
 
   const purchases = await db.query.golfTournamentPurchases.findMany({
     orderBy: (table, { desc }) => [desc(table.createdAt)],
@@ -55,16 +82,18 @@ export default async function GolfTournamentAdminPage({
   const assets = await db.query.golfTournamentAssets.findMany({
     orderBy: (table, { desc }) => [desc(table.createdAt)],
   });
+
   const paidPurchases = purchases.filter(
     (purchase) => purchase.paymentStatus === "PAID",
   );
-  const filteredPurchases = purchases.filter((purchase) => {
-    if (view === "paid") return purchase.paymentStatus === "PAID";
-    if (view === "needs-review") return purchase.fulfillmentStatus === "NEEDS_REVIEW";
-    if (view === "needs-details") return purchase.fulfillmentStatus === "PAID_NEEDS_DETAILS";
-    if (view === "public") return purchase.approvedForPublicDisplay;
-    return true;
-  });
+  const filteredPurchases = purchases
+    .filter((purchase) => purchaseMatchesView(purchase, view))
+    .sort(
+      (a, b) =>
+        purchaseActivityDate(b).getTime() -
+        purchaseActivityDate(a).getTime(),
+    );
+
   const grossPaid = paidPurchases.reduce(
     (total, purchase) => total + purchase.amountCents,
     0,
@@ -78,6 +107,14 @@ export default async function GolfTournamentAdminPage({
     0,
   );
 
+  const filters = purchaseViewOrder.map((filterView) => ({
+    view: filterView,
+    label: purchaseViewLabels[filterView],
+    count: purchases.filter((purchase) =>
+      purchaseMatchesView(purchase, filterView),
+    ).length,
+  }));
+
   return (
     <div className="golf-admin-dashboard">
       <PageHeader
@@ -85,17 +122,26 @@ export default async function GolfTournamentAdminPage({
         action={
           <div className="golf-admin-header-actions">
             <form action={reconcileGolfStripePaymentsAction}>
-              <SubmitButton label="Sync Stripe" />
+              <SubmitButton
+                label="Sync Stripe"
+                className="admin-primary-action"
+              />
             </form>
-            <Link className="btn-secondary" href="/golf-admin/email-preview">
-              Email preview
+            <Link
+              className="admin-header-link"
+              href="/settings/golf-tournament/export"
+            >
+              Export
             </Link>
-            <Link className="btn-secondary" href="/settings/golf-tournament/export">
-              Export CSV
-            </Link>
-            <form action={signOutGolfAdminAction}>
-              <SubmitButton label="Sign out" />
-            </form>
+            <details className="admin-tools-menu">
+              <summary>More</summary>
+              <div className="admin-tools-menu-panel">
+                <Link href="/golf-admin/email-preview">Email preview</Link>
+                <form action={signOutGolfAdminAction}>
+                  <SubmitButton label="Sign out" />
+                </form>
+              </div>
+            </details>
           </div>
         }
       />
@@ -128,205 +174,314 @@ export default async function GolfTournamentAdminPage({
         </div>
       ) : null}
 
-      <section className="settings-grid">
-        <SummaryCard label="Gross paid" value={formatGolfPackagePrice(grossPaid)} />
-        <SummaryCard
-          label="Estimated fees"
-          value={formatGolfPackagePrice(estimatedFees)}
+      <section className="golf-admin-summary" aria-label="Payment summary">
+        <SummaryMetric
+          label="Gross volume"
+          value={formatGolfPackagePrice(grossPaid)}
         />
-        <SummaryCard
+        <SummaryMetric
           label="Estimated net"
           value={formatGolfPackagePrice(estimatedNet)}
         />
-        <SummaryCard label="Paid purchases" value={String(paidPurchases.length)} />
+        <SummaryMetric label="Paid" value={String(paidPurchases.length)} />
+        <SummaryMetric
+          label="Estimated fees"
+          value={formatGolfPackagePrice(estimatedFees)}
+        />
       </section>
 
-      <section className="shell-panel list-panel">
-        <div className="panel-heading">
+      <section className="golf-admin-ledger">
+        <header className="admin-ledger-header">
           <div>
-            <p className="eyebrow">Purchases</p>
-            <h2>Registration and sponsorships</h2>
+            <p className="eyebrow">Payments</p>
+            <h2>Registrations and sponsorships</h2>
           </div>
-        </div>
-        <div className="admin-filter-row" aria-label="Golf purchase filters">
-          <Link className="btn-secondary" href="/golf-admin">
-            All
-          </Link>
-          <Link className="btn-secondary" href="/golf-admin?view=paid">
-            Paid
-          </Link>
-          <Link
-            className="btn-secondary"
-            href="/golf-admin?view=needs-details"
-          >
-            Needs Details
-          </Link>
-          <Link
-            className="btn-secondary"
-            href="/golf-admin?view=needs-review"
-          >
-            Needs Review
-          </Link>
-          <Link
-            className="btn-secondary"
-            href="/golf-admin?view=public"
-          >
-            Public
-          </Link>
-        </div>
-        <div className="linked-list golf-admin-purchase-list">
+          <span>
+            {filteredPurchases.length}{" "}
+            {filteredPurchases.length === 1 ? "record" : "records"}
+          </span>
+        </header>
+
+        <nav className="admin-filter-tabs" aria-label="Golf purchase filters">
+          {filters.map((filter) => {
+            const isActive = view === filter.view;
+            return (
+              <Link
+                key={filter.view}
+                href={
+                  filter.view === "paid"
+                    ? "/golf-admin"
+                    : `/golf-admin?view=${filter.view}`
+                }
+                className={isActive ? "is-active" : undefined}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {filter.label}
+                <span>{filter.count}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="admin-table-wrap">
           {filteredPurchases.length > 0 ? (
-            filteredPurchases.map((purchase) => {
-              const packageConfig = getGolfTournamentPackage(purchase.packageId);
-              const purchaseAssets = assets.filter(
-                (asset) => asset.purchaseId === purchase.id,
-              );
-              return (
-                <div key={purchase.id} className="row">
-                  <div className="row-grow">
-                    <div className="row-title">
-                      {packageConfig?.name ?? purchase.packageId}
-                    </div>
-                    <div className="row-sub">
-                      {purchase.buyerName || purchase.buyerEmail || "No buyer details yet"} ·{" "}
-                      {purchase.paymentStatus.replaceAll("_", " ")} ·{" "}
-                      {purchase.fulfillmentStatus.replaceAll("_", " ")}
-                    </div>
-                    {purchase.stripeCheckoutSessionId ? (
-                      <div className="row-sub">
-                        Stripe session: {purchase.stripeCheckoutSessionId}
-                      </div>
-                    ) : null}
-                    <div className="row-sub">
-                      Confirmation email: {purchase.confirmationEmailStatus.toLowerCase()}
-                      {purchase.confirmationEmailSentAt
-                        ? ` · ${purchase.confirmationEmailSentAt.toLocaleString("en-US", { timeZone: "America/New_York" })}`
-                        : ""}
-                    </div>
-                    {purchase.confirmationEmailError ? (
-                      <div className="row-sub text-red-700">
-                        {purchase.confirmationEmailError}
-                      </div>
-                    ) : null}
-                    {purchaseAssets.length > 0 ? (
-                      <div className="admin-asset-list">
-                        {purchaseAssets.map((asset) => (
-                          <form
-                            key={asset.id}
-                            action={updateGolfAssetAdminAction}
-                            className="admin-asset-row"
+            <table className="admin-purchase-table">
+              <thead>
+                <tr>
+                  <th scope="col">Customer</th>
+                  <th scope="col">Purchase</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="admin-amount-heading">
+                    Amount
+                  </th>
+                  <th scope="col">
+                    <span className="sr-only">Manage</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPurchases.map((purchase) => {
+                  const packageConfig = getGolfTournamentPackage(
+                    purchase.packageId,
+                  );
+                  const purchaseAssets = assets.filter(
+                    (asset) => asset.purchaseId === purchase.id,
+                  );
+                  const customerName =
+                    purchase.buyerName ||
+                    purchase.buyerEmail ||
+                    "Customer not provided";
+                  const showEmail =
+                    purchase.buyerEmail &&
+                    purchase.buyerEmail !== purchase.buyerName;
+                  const purchaseDate =
+                    purchase.paymentStatus === "PAID"
+                      ? purchase.paidAt
+                      : purchase.createdAt;
+
+                  return (
+                    <tr key={purchase.id}>
+                      <td className="admin-col-customer">
+                        <strong>{customerName}</strong>
+                        {showEmail ? <span>{purchase.buyerEmail}</span> : null}
+                      </td>
+                      <td className="admin-col-purchase">
+                        <strong>
+                          {packageConfig?.name ?? purchase.packageId}
+                        </strong>
+                        <span>
+                          {purchaseActivityLabel(purchase.paymentStatus)}{" "}
+                          {formatAdminDate(purchaseDate)}
+                        </span>
+                      </td>
+                      <td className="admin-col-status">
+                        <span
+                          className={`admin-payment-state admin-payment-state--${purchase.paymentStatus.toLowerCase()}`}
+                        >
+                          <i aria-hidden="true" />
+                          {paymentStatusLabel(purchase.paymentStatus)}
+                        </span>
+                        <span>
+                          {purchase.paymentStatus === "PAID"
+                            ? fulfillmentStatusLabel(
+                                purchase.fulfillmentStatus,
+                              )
+                            : nonPaidStatusDetail(purchase.paymentStatus)}
+                          {purchase.approvedForPublicDisplay
+                            ? " · Public"
+                            : ""}
+                        </span>
+                      </td>
+                      <td className="admin-col-amount">
+                        {formatGolfPackagePrice(purchase.amountCents)}
+                      </td>
+                      <td className="admin-col-action">
+                        <details className="admin-row-menu">
+                          <summary
+                            aria-label={`Manage ${customerName}'s purchase`}
                           >
-                            <input type="hidden" name="assetId" value={asset.id} />
-                            <Link
-                              href={`/settings/golf-tournament/assets/${asset.id}`}
+                            <span aria-hidden="true">•••</span>
+                          </summary>
+                          <div className="admin-row-menu-panel">
+                            <div className="admin-row-menu-heading">
+                              <strong>Manage purchase</strong>
+                              <span>
+                                {purchase.stripeCheckoutSessionId
+                                  ? `Stripe ${purchase.stripeCheckoutSessionId.slice(-10)}`
+                                  : "No Stripe session"}
+                              </span>
+                            </div>
+
+                            <form
+                              action={updateGolfPurchaseAdminAction}
+                              className="admin-manage-form"
                             >
-                              {asset.originalFilename}
-                            </Link>
-                            <label className="admin-checkbox">
                               <input
-                                type="checkbox"
-                                name="approvedForPublicDisplay"
-                                defaultChecked={asset.approvedForPublicDisplay}
+                                type="hidden"
+                                name="purchaseId"
+                                value={purchase.id}
                               />
-                              Logo public
-                            </label>
-                            <button className="btn-secondary" type="submit">
-                              Save Logo
-                            </button>
-                          </form>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="admin-purchase-actions">
-                    <span className="admin-purchase-price">
-                      {formatGolfPackagePrice(purchase.amountCents)}
-                    </span>
-                    <form
-                      action={updateGolfPurchaseAdminAction}
-                      className="admin-inline-form"
-                    >
-                      <input type="hidden" name="purchaseId" value={purchase.id} />
-                      <select
-                        name="fulfillmentStatus"
-                        defaultValue={purchase.fulfillmentStatus}
-                        aria-label="Fulfillment status"
-                      >
-                        <option value="PAID_NEEDS_DETAILS">
-                          Paid / needs details
-                        </option>
-                        <option value="DETAILS_SUBMITTED">
-                          Details submitted
-                        </option>
-                        <option value="NEEDS_REVIEW">Needs review</option>
-                        <option value="COMPLETE">Complete</option>
-                      </select>
-                      <label className="admin-checkbox">
-                        <input
-                          type="checkbox"
-                          name="approvedForPublicDisplay"
-                          defaultChecked={purchase.approvedForPublicDisplay}
-                        />
-                        Public
-                      </label>
-                      <button className="btn-secondary" type="submit">
-                        Save
-                      </button>
-                    </form>
-                    <div className="admin-purchase-secondary-actions">
-                      <form action={resendGolfCompletionLinkAction}>
-                        <input type="hidden" name="purchaseId" value={purchase.id} />
-                        <button className="btn-secondary" type="submit">
-                          Resend link
-                        </button>
-                      </form>
-                      {purchase.paymentStatus === "PAID" ? (
-                        <form action={resendGolfConfirmationAction}>
-                          <input type="hidden" name="purchaseId" value={purchase.id} />
-                          <button
-                            className="btn-secondary"
-                            type="submit"
-                            disabled={!purchase.buyerEmail}
-                          >
-                            Send confirmation
-                          </button>
-                        </form>
-                      ) : null}
-                      <form action={revokeGolfCompletionLinkAction}>
-                        <input type="hidden" name="purchaseId" value={purchase.id} />
-                        <button className="btn-ghost" type="submit">
-                          Revoke link
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
+                              <label>
+                                Details status
+                                <select
+                                  name="fulfillmentStatus"
+                                  defaultValue={purchase.fulfillmentStatus}
+                                >
+                                  <option value="PAID_NEEDS_DETAILS">
+                                    Needs details
+                                  </option>
+                                  <option value="DETAILS_SUBMITTED">
+                                    Details submitted
+                                  </option>
+                                  <option value="NEEDS_REVIEW">
+                                    Needs review
+                                  </option>
+                                  <option value="COMPLETE">Complete</option>
+                                </select>
+                              </label>
+                              <label className="admin-checkbox">
+                                <input
+                                  type="checkbox"
+                                  name="approvedForPublicDisplay"
+                                  defaultChecked={
+                                    purchase.approvedForPublicDisplay
+                                  }
+                                />
+                                Show publicly
+                              </label>
+                              <button type="submit">Save changes</button>
+                            </form>
+
+                            <div className="admin-row-menu-actions">
+                              <form action={resendGolfCompletionLinkAction}>
+                                <input
+                                  type="hidden"
+                                  name="purchaseId"
+                                  value={purchase.id}
+                                />
+                                <button
+                                  type="submit"
+                                  disabled={!purchase.buyerEmail}
+                                >
+                                  Send details link
+                                </button>
+                              </form>
+                              {purchase.paymentStatus === "PAID" ? (
+                                <form action={resendGolfConfirmationAction}>
+                                  <input
+                                    type="hidden"
+                                    name="purchaseId"
+                                    value={purchase.id}
+                                  />
+                                  <button
+                                    type="submit"
+                                    disabled={!purchase.buyerEmail}
+                                  >
+                                    Send confirmation
+                                  </button>
+                                </form>
+                              ) : null}
+                              <form action={revokeGolfCompletionLinkAction}>
+                                <input
+                                  type="hidden"
+                                  name="purchaseId"
+                                  value={purchase.id}
+                                />
+                                <button type="submit">Revoke details link</button>
+                              </form>
+                            </div>
+
+                            <div className="admin-row-menu-meta">
+                              {purchase.buyerPhone ? (
+                                <span>Phone: {purchase.buyerPhone}</span>
+                              ) : null}
+                              <span>
+                                Email:{" "}
+                                {purchase.confirmationEmailStatus.toLowerCase()}
+                                {purchase.confirmationEmailSentAt
+                                  ? ` · ${formatAdminDate(
+                                      purchase.confirmationEmailSentAt,
+                                    )}`
+                                  : ""}
+                              </span>
+                              {purchase.confirmationEmailError ? (
+                                <span className="text-red-700">
+                                  {purchase.confirmationEmailError}
+                                </span>
+                              ) : null}
+                            </div>
+
+                            {purchaseAssets.length > 0 ? (
+                              <div className="admin-menu-assets">
+                                <strong>Files</strong>
+                                {purchaseAssets.map((asset) => (
+                                  <form
+                                    key={asset.id}
+                                    action={updateGolfAssetAdminAction}
+                                    className="admin-menu-asset"
+                                  >
+                                    <input
+                                      type="hidden"
+                                      name="assetId"
+                                      value={asset.id}
+                                    />
+                                    <Link
+                                      href={`/settings/golf-tournament/assets/${asset.id}`}
+                                    >
+                                      {asset.originalFilename}
+                                    </Link>
+                                    <label className="admin-checkbox">
+                                      <input
+                                        type="checkbox"
+                                        name="approvedForPublicDisplay"
+                                        defaultChecked={
+                                          asset.approvedForPublicDisplay
+                                        }
+                                      />
+                                      Public
+                                    </label>
+                                    <button type="submit">Save</button>
+                                  </form>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        </details>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           ) : (
-            <div className="empty-state">
-              No golf tournament purchases in this view.
+            <div className="admin-table-empty">
+              No purchases match this filter.
             </div>
           )}
         </div>
       </section>
 
-      <section className="shell-panel list-panel">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Raffle</p>
-            <h2>In-kind submissions</h2>
-          </div>
-        </div>
-        <div className="linked-list">
+      <details
+        className="golf-admin-secondary-ledger"
+        open={inKindSubmissions.length > 0}
+      >
+        <summary>
+          <span>
+            <span className="eyebrow">Raffle</span>
+            <strong>In-kind submissions</strong>
+          </span>
+          <span>{inKindSubmissions.length}</span>
+        </summary>
+        <div className="admin-secondary-content">
           {inKindSubmissions.length > 0 ? (
             inKindSubmissions.map((submission) => (
-              <div key={submission.id} className="row">
-                <div className="row-grow">
-                  <div className="row-title">{submission.donorName}</div>
-                  <div className="row-sub">
-                    {submission.itemDescription} · {submission.status.replaceAll("_", " ")}
-                  </div>
+              <div key={submission.id} className="admin-secondary-row">
+                <div>
+                  <strong>{submission.donorName}</strong>
+                  <span>
+                    {submission.itemDescription} ·{" "}
+                    {submission.status.replaceAll("_", " ")}
+                  </span>
                 </div>
                 <form
                   action={updateGolfInKindStatusAction}
@@ -347,26 +502,135 @@ export default async function GolfTournamentAdminPage({
                     <option value="NEEDS_FOLLOW_UP">Needs follow-up</option>
                     <option value="DECLINED">Declined</option>
                   </select>
-                  <button className="btn-secondary" type="submit">
-                    Save
-                  </button>
+                  <button type="submit">Save</button>
                 </form>
               </div>
             ))
           ) : (
-            <div className="empty-state">No raffle or in-kind submissions yet.</div>
+            <p>No raffle or in-kind submissions yet.</p>
           )}
         </div>
-      </section>
+      </details>
     </div>
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
+function SummaryMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="stat-pill">
-      <div className="row-sub">{label}</div>
-      <div className="text-2xl font-black text-navy-strong">{value}</div>
+    <div>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
+}
+
+function isPurchaseView(value?: string): value is PurchaseView {
+  return purchaseViewOrder.includes(value as PurchaseView);
+}
+
+function purchaseMatchesView(
+  purchase: GolfPurchase,
+  view: PurchaseView,
+) {
+  switch (view) {
+    case "paid":
+      return purchase.paymentStatus === "PAID";
+    case "needs-details":
+      return (
+        purchase.paymentStatus === "PAID" &&
+        purchase.fulfillmentStatus === "PAID_NEEDS_DETAILS"
+      );
+    case "needs-review":
+      return (
+        purchase.paymentStatus === "PAID" &&
+        purchase.fulfillmentStatus === "NEEDS_REVIEW"
+      );
+    case "pending":
+      return purchase.paymentStatus === "PENDING";
+    case "public":
+      return (
+        purchase.paymentStatus === "PAID" &&
+        purchase.approvedForPublicDisplay
+      );
+    case "all":
+      return true;
+  }
+}
+
+function paymentStatusLabel(status: GolfPaymentStatus) {
+  switch (status) {
+    case "PENDING":
+      return "Checkout started";
+    case "PAID":
+      return "Paid";
+    case "FAILED":
+      return "Failed";
+    case "CANCELED":
+      return "Canceled";
+    case "REFUNDED":
+      return "Refunded";
+  }
+}
+
+function fulfillmentStatusLabel(status: GolfFulfillmentStatus) {
+  switch (status) {
+    case "PAID_NEEDS_DETAILS":
+      return "Needs details";
+    case "DETAILS_SUBMITTED":
+      return "Details submitted";
+    case "NEEDS_REVIEW":
+      return "Needs review";
+    case "COMPLETE":
+      return "Complete";
+  }
+}
+
+function purchaseActivityLabel(status: GolfPaymentStatus) {
+  switch (status) {
+    case "PENDING":
+      return "Started";
+    case "PAID":
+      return "Paid";
+    case "FAILED":
+      return "Failed";
+    case "CANCELED":
+      return "Canceled";
+    case "REFUNDED":
+      return "Refunded";
+  }
+}
+
+function nonPaidStatusDetail(status: GolfPaymentStatus) {
+  switch (status) {
+    case "PAID":
+      return "Payment received";
+    case "PENDING":
+      return "No payment received";
+    case "FAILED":
+      return "Payment failed";
+    case "CANCELED":
+      return "Checkout canceled";
+    case "REFUNDED":
+      return "Payment returned";
+  }
+}
+
+function formatAdminDate(value: Date | null) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "America/New_York",
+  }).format(value);
+}
+
+function purchaseActivityDate(purchase: {
+  paymentStatus: GolfPaymentStatus;
+  paidAt: Date | null;
+  createdAt: Date;
+}) {
+  return purchase.paymentStatus === "PAID" && purchase.paidAt
+    ? purchase.paidAt
+    : purchase.createdAt;
 }

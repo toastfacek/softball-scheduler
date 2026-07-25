@@ -1138,39 +1138,17 @@ when Jesse/Michelle provide real golf/course/candid photos.
   width: auto;
 }
 
-.admin-asset-list {
-  display: grid;
-  gap: 0.45rem;
-  margin-top: 0.6rem;
-}
-
-.admin-asset-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.admin-asset-row a {
-  color: var(--navy-strong);
-  font-weight: 800;
-  text-decoration: underline;
-}
-
-.admin-filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.9rem;
-}
-
 /* ────────── Standalone golf administration ──────────
    This screen also renders outside AppShell at /golf-admin. Keep its layout
    self-contained so changes to the legacy coach app cannot collapse it. */
 .golf-admin-page {
   background:
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--orange) 10%, transparent), transparent 28rem),
-    var(--background);
+    radial-gradient(
+      circle at 100% 0%,
+      color-mix(in srgb, var(--orange) 10%, transparent),
+      transparent 28rem
+    ),
+    color-mix(in srgb, var(--background) 94%, var(--navy) 6%);
 }
 
 .golf-admin-dashboard {
@@ -1181,7 +1159,7 @@ when Jesse/Michelle provide real golf/course/candid photos.
   --admin-space-xl: 2rem;
   display: flex;
   flex-direction: column;
-  gap: var(--admin-space-lg);
+  gap: var(--admin-space-md);
   color: var(--navy-strong);
   font-family: var(--font-sora), sans-serif;
   font-kerning: normal;
@@ -1190,7 +1168,7 @@ when Jesse/Michelle provide real golf/course/candid photos.
 .golf-admin-dashboard .app-top-bar {
   position: static;
   height: auto;
-  padding: 0 0 var(--admin-space-lg);
+  padding: 0 0 var(--admin-space-md);
   margin: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   background: transparent;
@@ -1199,6 +1177,8 @@ when Jesse/Michelle provide real golf/course/candid photos.
 }
 
 .golf-admin-dashboard .app-top-bar-inner {
+  align-items: flex-start;
+  flex-direction: column;
   max-width: none;
   margin: 0;
   gap: var(--admin-space-md);
@@ -1207,250 +1187,820 @@ when Jesse/Michelle provide real golf/course/candid photos.
 .golf-admin-dashboard .app-top-bar-title {
   overflow: visible;
   font-family: var(--font-barlow-condensed), sans-serif;
-  font-size: 2.25rem;
+  font-size: 2rem;
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.02em;
   text-overflow: clip;
 }
 
-.golf-admin-header-actions,
-.admin-purchase-secondary-actions {
+.golf-admin-header-actions {
   display: flex;
-  flex-wrap: wrap;
+  width: 100%;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--admin-space-xs);
 }
 
-.golf-admin-dashboard .settings-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--admin-space-sm);
+.golf-admin-dashboard .app-top-bar-right {
+  width: 100%;
+  margin-left: 0;
 }
 
-.golf-admin-dashboard .stat-pill {
-  min-height: 6.5rem;
-  padding: var(--admin-space-md);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border-radius: 0.875rem;
+.golf-admin-header-actions form {
+  display: contents;
 }
 
-.golf-admin-dashboard .stat-pill .row-sub {
-  margin: 0;
+.golf-admin-dashboard .admin-primary-action,
+.golf-admin-dashboard .admin-header-link,
+.golf-admin-dashboard .admin-tools-menu > summary {
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 0.55rem;
+  background: var(--panel);
+  box-shadow: none;
+  color: var(--navy-strong);
+  font-family: var(--font-sora), sans-serif;
   font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.4;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  transform: none;
+  white-space: nowrap;
 }
 
-.golf-admin-dashboard .stat-pill .text-2xl {
+.golf-admin-dashboard .admin-header-link {
+  display: inline-flex;
+  align-items: center;
+}
+
+.golf-admin-dashboard .admin-primary-action {
+  border-color: var(--navy-strong);
+  background: var(--navy-strong);
+  color: var(--paper);
+}
+
+.golf-admin-dashboard .admin-primary-action:hover,
+.golf-admin-dashboard .admin-header-link:hover,
+.golf-admin-dashboard .admin-tools-menu > summary:hover {
+  border-color: color-mix(in srgb, var(--navy) 44%, var(--line));
+  box-shadow: none;
+  transform: none;
+}
+
+.admin-tools-menu {
+  position: relative;
+}
+
+.admin-tools-menu > summary,
+.admin-row-menu > summary,
+.golf-admin-secondary-ledger > summary {
+  list-style: none;
+}
+
+.admin-tools-menu > summary {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.admin-tools-menu > summary::-webkit-details-marker,
+.admin-row-menu > summary::-webkit-details-marker,
+.golf-admin-secondary-ledger > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-tools-menu-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  display: grid;
+  min-width: 10rem;
+  padding: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: var(--panel);
+  box-shadow: 0 14px 36px
+    color-mix(in srgb, var(--navy-strong) 14%, transparent);
+}
+
+.admin-tools-menu-panel a,
+.golf-admin-dashboard .admin-tools-menu-panel button {
+  display: flex;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0.5rem 0.65rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  box-shadow: none;
+  color: var(--navy-strong);
+  font-family: var(--font-sora), sans-serif;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  transform: none;
+}
+
+.admin-tools-menu-panel a:hover,
+.golf-admin-dashboard .admin-tools-menu-panel button:hover {
+  background: color-mix(in srgb, var(--navy) 6%, var(--panel));
+  transform: none;
+}
+
+.golf-admin-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 0.75rem;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--orange) 5%, var(--panel)),
+      var(--panel) 4.75rem
+    );
+}
+
+.golf-admin-summary > div {
+  display: grid;
+  gap: 0.15rem;
+  min-height: 4.75rem;
+  align-content: center;
+  padding: var(--admin-space-sm) var(--admin-space-md);
+  border-right: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+}
+
+.golf-admin-summary > div:last-child {
+  border-right: 0;
+}
+
+.golf-admin-summary > div:nth-child(2) {
+  border-right: 0;
+}
+
+.golf-admin-summary > div:nth-child(-n + 2) {
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+}
+
+.golf-admin-summary span {
+  color: color-mix(in srgb, var(--navy) 60%, white);
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.golf-admin-summary strong {
   font-family: var(--font-barlow-condensed), sans-serif;
-  font-size: 2rem;
+  font-size: 1.4rem;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
-.golf-admin-dashboard .list-panel {
-  overflow: hidden;
-  border-radius: 1rem;
+.golf-admin-ledger,
+.golf-admin-secondary-ledger {
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 0.75rem;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--orange) 4%, var(--panel)),
+      var(--panel) 5.5rem
+    );
 }
 
-.golf-admin-dashboard .panel-heading {
-  padding: var(--admin-space-lg) var(--admin-space-lg) var(--admin-space-sm);
+.admin-ledger-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--admin-space-md);
+  padding: var(--admin-space-md);
 }
 
-.golf-admin-dashboard .panel-heading h2 {
-  margin-top: 0.3rem;
+.admin-ledger-header h2 {
+  margin-top: 0.2rem;
   font-family: var(--font-barlow-condensed), sans-serif;
-  font-size: 1.65rem;
+  font-size: 1.45rem;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
 }
 
 .golf-admin-dashboard .eyebrow {
-  font-family: var(--font-sora), sans-serif;
-  font-size: 0.65rem;
-  line-height: 1;
-}
-
-.golf-admin-dashboard .admin-filter-row {
-  padding: 0 var(--admin-space-lg) var(--admin-space-md);
   margin: 0;
+  color: color-mix(in srgb, var(--navy) 56%, white);
+  font-family: var(--font-sora), sans-serif;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.golf-admin-dashboard .admin-filter-row .btn-secondary {
-  min-height: 2.5rem;
+.admin-ledger-header > span {
+  color: color-mix(in srgb, var(--navy) 58%, white);
+  font-size: 0.7rem;
+  font-weight: 650;
 }
 
-.golf-admin-dashboard .linked-list {
-  border-width: 1px 0 0;
-  border-radius: 0;
-  box-shadow: none;
+.admin-filter-tabs {
+  display: flex;
+  overflow-x: auto;
+  padding: 0 var(--admin-space-sm);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  scrollbar-width: none;
 }
 
-.golf-admin-dashboard .golf-admin-purchase-list .row {
+.admin-filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-filter-tabs a {
+  position: relative;
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.7rem;
+  color: color-mix(in srgb, var(--navy) 66%, white);
+  font-size: 0.75rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.admin-filter-tabs a span {
+  color: color-mix(in srgb, var(--navy) 46%, white);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-filter-tabs a::after {
+  position: absolute;
+  right: 0.7rem;
+  bottom: -1px;
+  left: 0.7rem;
+  height: 2px;
+  background: transparent;
+  content: "";
+}
+
+.admin-filter-tabs a.is-active {
+  color: var(--navy-strong);
+  font-weight: 750;
+}
+
+.admin-filter-tabs a.is-active::after {
+  background: var(--orange-strong);
+}
+
+.admin-table-wrap {
+  overflow: visible;
+}
+
+.admin-purchase-table {
+  display: block;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.admin-purchase-table tbody {
+  display: block;
+}
+
+.admin-purchase-table thead {
+  display: none;
+}
+
+.admin-purchase-table tr {
   display: grid;
-  grid-template-columns: minmax(15rem, 1fr) minmax(28rem, auto);
-  align-items: start;
-  gap: var(--admin-space-lg);
-  padding: var(--admin-space-lg);
-  cursor: default;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "customer action"
+    "purchase action"
+    "status amount";
+  gap: 0.18rem var(--admin-space-sm);
+  align-items: center;
+  padding: var(--admin-space-sm);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 66%, transparent);
 }
 
-.golf-admin-dashboard .row-title {
-  font-size: 1rem;
+.admin-purchase-table th {
+  padding: 0.55rem var(--admin-space-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  color: color-mix(in srgb, var(--navy) 54%, white);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.045em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.admin-purchase-table th:nth-child(1) {
+  width: 25%;
+}
+
+.admin-purchase-table th:nth-child(2) {
+  width: 28%;
+}
+
+.admin-purchase-table th:nth-child(3) {
+  width: 23%;
+}
+
+.admin-purchase-table th:nth-child(4) {
+  width: 16%;
+}
+
+.admin-purchase-table th:nth-child(5) {
+  width: 8%;
+}
+
+.admin-purchase-table td {
+  padding: 0;
+  border: 0;
+  vertical-align: middle;
+}
+
+.admin-purchase-table tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.admin-purchase-table tbody tr:hover {
+  background: color-mix(in srgb, var(--navy) 2.5%, var(--panel));
+}
+
+.admin-col-customer strong,
+.admin-col-purchase strong {
+  display: block;
+  overflow: hidden;
+  font-size: 0.8rem;
   font-weight: 700;
   line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.golf-admin-dashboard .row-sub {
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  line-height: 1.5;
+.admin-col-customer > span,
+.admin-col-purchase > span,
+.admin-col-status > span:last-child {
+  display: block;
+  overflow: hidden;
+  margin-top: 0.18rem;
+  color: color-mix(in srgb, var(--navy) 55%, white);
+  font-size: 0.7rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.admin-purchase-actions {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+.admin-payment-state {
+  display: inline-flex;
   align-items: center;
-  justify-items: end;
-  gap: var(--admin-space-sm) var(--admin-space-md);
+  gap: 0.35rem;
+  color: var(--navy-strong);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
-.admin-purchase-price {
-  align-self: center;
+.admin-payment-state i {
+  width: 0.42rem;
+  height: 0.42rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--harbor);
+}
+
+.admin-payment-state--paid i {
+  background: var(--success);
+}
+
+.admin-payment-state--pending i {
+  background: var(--warning);
+}
+
+.admin-payment-state--failed i,
+.admin-payment-state--canceled i,
+.admin-payment-state--refunded i {
+  background: var(--danger);
+}
+
+.admin-amount-heading,
+.admin-col-amount {
+  text-align: right;
+}
+
+.admin-col-amount {
+  grid-area: amount;
+  align-self: end;
+  padding-left: var(--admin-space-xs) !important;
   font-family: var(--font-barlow-condensed), sans-serif;
-  font-size: 1.65rem;
+  font-size: 1.1rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
+}
+
+.admin-col-action {
+  position: relative;
+  grid-area: action;
+  text-align: right;
+}
+
+.admin-col-customer {
+  grid-area: customer;
+}
+
+.admin-col-purchase {
+  grid-area: purchase;
+}
+
+.admin-col-status {
+  grid-area: status;
+  margin-top: 0.2rem;
+}
+
+.admin-col-customer strong,
+.admin-col-purchase strong {
+  max-width: 15rem;
+}
+
+.admin-row-menu {
+  position: relative;
+  display: inline-block;
+  text-align: left;
+}
+
+.admin-row-menu > summary {
+  display: inline-flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  color: color-mix(in srgb, var(--navy) 62%, white);
+  cursor: pointer;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+
+.admin-row-menu > summary:hover,
+.admin-row-menu[open] > summary {
+  border-color: var(--line);
+  background: color-mix(in srgb, var(--navy) 5%, var(--panel));
+  color: var(--navy-strong);
+}
+
+.admin-row-menu-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  display: grid;
+  width: min(21rem, calc(100vw - 2rem));
+  gap: var(--admin-space-sm);
+  padding: var(--admin-space-md);
+  border: 1px solid color-mix(in srgb, var(--line) 92%, transparent);
+  border-radius: 0.7rem;
+  background: var(--panel);
+  box-shadow: 0 18px 44px
+    color-mix(in srgb, var(--navy-strong) 16%, transparent);
+}
+
+.admin-row-menu-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--admin-space-sm);
+}
+
+.admin-row-menu-heading strong {
+  font-size: 0.78rem;
+}
+
+.admin-row-menu-heading span,
+.admin-row-menu-meta {
+  color: color-mix(in srgb, var(--navy) 54%, white);
+  font-size: 0.7rem;
+}
+
+.admin-manage-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--admin-space-sm);
+  align-items: end;
+  padding: var(--admin-space-sm) 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
+}
+
+.admin-manage-form > label:first-of-type {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.3rem;
+  color: color-mix(in srgb, var(--navy) 62%, white);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.admin-manage-form select,
+.golf-admin-secondary-ledger select {
+  min-height: 2.75rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: var(--panel);
+  color: var(--navy-strong);
+  font-family: var(--font-sora), sans-serif;
+  font-size: 0.75rem;
+}
+
+.golf-admin-dashboard .admin-checkbox {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--navy);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.admin-manage-form button,
+.admin-row-menu-actions button,
+.admin-menu-asset button,
+.golf-admin-secondary-ledger button {
+  min-height: 2.75rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--navy) 4%, var(--panel));
+  color: var(--navy-strong);
+  font-family: var(--font-sora), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.admin-manage-form button {
+  border-color: var(--navy-strong);
+  background: var(--navy-strong);
+  color: var(--paper);
+}
+
+.admin-row-menu-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.admin-row-menu-actions form {
+  display: contents;
+}
+
+.admin-row-menu-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.admin-row-menu-meta {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.admin-menu-assets {
+  display: grid;
+  gap: 0.4rem;
+  padding-top: var(--admin-space-xs);
+  border-top: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
+}
+
+.admin-menu-assets > strong {
+  font-size: 0.72rem;
+}
+
+.admin-menu-asset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.admin-menu-asset a {
+  display: flex;
+  overflow: hidden;
+  min-height: 2.75rem;
+  align-items: center;
+  color: var(--navy-strong);
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-table-empty {
+  padding: 2.5rem var(--admin-space-md);
+  color: color-mix(in srgb, var(--navy) 58%, white);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.golf-admin-secondary-ledger > summary {
+  display: flex;
+  min-height: 3.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-space-md);
+  padding: var(--admin-space-md);
+  cursor: pointer;
+}
+
+.golf-admin-secondary-ledger > summary > span:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.golf-admin-secondary-ledger > summary strong {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-size: 1.1rem;
+}
+
+.golf-admin-secondary-ledger > summary > span:last-child {
+  display: inline-flex;
+  min-width: 1.7rem;
+  height: 1.7rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--navy) 6%, var(--panel));
+  color: var(--navy);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-secondary-content {
+  display: grid;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.admin-secondary-content > p {
+  padding: var(--admin-space-md);
+  color: color-mix(in srgb, var(--navy) 58%, white);
+  font-size: 0.75rem;
+}
+
+.admin-secondary-row {
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--admin-space-md);
+  padding: var(--admin-space-sm) var(--admin-space-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 62%, transparent);
+}
+
+.admin-secondary-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-secondary-row > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.admin-secondary-row strong {
+  font-size: 0.78rem;
+}
+
+.admin-secondary-row span {
+  color: color-mix(in srgb, var(--navy) 58%, white);
+  font-size: 0.7rem;
 }
 
 .golf-admin-dashboard .admin-inline-form {
-  flex-wrap: nowrap;
+  display: flex;
+  gap: 0.4rem;
   margin: 0;
 }
 
 .golf-admin-dashboard .admin-inline-form select {
-  min-width: 11rem;
-  min-height: 2.75rem;
-  font-family: var(--font-sora), sans-serif;
+  flex: 1 1 auto;
 }
 
-.golf-admin-dashboard .admin-checkbox {
-  min-height: 2.75rem;
-  white-space: nowrap;
-}
-
-.golf-admin-dashboard .admin-purchase-secondary-actions {
-  grid-column: 1 / -1;
-  justify-content: flex-end;
-}
-
-.golf-admin-dashboard .btn-secondary,
-.golf-admin-dashboard .btn-ghost {
-  min-height: 2.75rem;
-  white-space: nowrap;
-  font-family: var(--font-sora), sans-serif;
-  font-size: 0.78rem;
-}
-
-.golf-admin-dashboard .empty-state {
-  padding: var(--admin-space-xl) var(--admin-space-lg);
-  color: color-mix(in srgb, var(--navy) 64%, white);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-@media (max-width: 1023px) {
-  .golf-admin-dashboard .settings-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (min-width: 420px) {
+  .golf-admin-summary strong {
+    font-size: 1.6rem;
   }
 
-  .golf-admin-dashboard .golf-admin-purchase-list .row {
-    grid-template-columns: 1fr;
+  .admin-purchase-table tr {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "customer amount action"
+      "purchase amount action"
+      "status amount action";
   }
 
-  .admin-purchase-actions {
-    grid-template-columns: auto minmax(0, 1fr);
-    justify-items: stretch;
+  .admin-col-amount {
+    align-self: auto;
   }
 }
 
-@media (max-width: 639px) {
-  .golf-admin-dashboard {
-    gap: var(--admin-space-md);
-  }
-
+@media (min-width: 760px) {
   .golf-admin-dashboard .app-top-bar-inner {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .golf-admin-dashboard .app-top-bar-title {
-    font-size: 2rem;
+    align-items: center;
+    flex-direction: row;
   }
 
   .golf-admin-dashboard .app-top-bar-right,
   .golf-admin-header-actions {
-    width: 100%;
-    margin-left: 0;
+    width: auto;
+    margin-left: auto;
   }
 
-  .golf-admin-dashboard .app-top-bar-right .btn-secondary,
-  .golf-admin-dashboard .app-top-bar-right form,
-  .golf-admin-dashboard .app-top-bar-right form button {
-    flex: 1 1 auto;
+  .golf-admin-header-actions {
+    flex-wrap: wrap;
   }
 
-  .golf-admin-dashboard .settings-grid {
-    gap: var(--admin-space-xs);
+  .golf-admin-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .golf-admin-dashboard .stat-pill {
-    min-height: 5.5rem;
-    padding: var(--admin-space-sm);
+  .golf-admin-summary > div:nth-child(2) {
+    border-right: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
   }
 
-  .golf-admin-dashboard .panel-heading,
-  .golf-admin-dashboard .golf-admin-purchase-list .row {
-    padding: var(--admin-space-md);
+  .golf-admin-summary > div:nth-child(-n + 2) {
+    border-bottom: 0;
   }
 
-  .golf-admin-dashboard .admin-filter-row {
-    padding: 0 var(--admin-space-md) var(--admin-space-md);
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+  .admin-ledger-header {
+    align-items: flex-end;
   }
 
-  .golf-admin-dashboard .admin-filter-row::-webkit-scrollbar {
-    display: none;
+  .admin-filter-tabs {
+    padding: 0 var(--admin-space-md);
   }
 
-  .admin-purchase-actions {
-    grid-template-columns: 1fr;
-    justify-items: stretch;
+  .admin-purchase-table {
+    display: table;
   }
 
-  .admin-purchase-price {
-    font-size: 1.5rem;
+  .admin-purchase-table tbody {
+    display: table-row-group;
   }
 
-  .golf-admin-dashboard .admin-inline-form {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+  .admin-purchase-table thead {
+    display: table-header-group;
+  }
+
+  .admin-purchase-table tr {
+    display: table-row;
+    padding: 0;
+    border: 0;
+  }
+
+  .admin-purchase-table td {
+    display: table-cell;
+    padding: 0.8rem var(--admin-space-md);
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 62%, transparent);
+  }
+
+  .admin-purchase-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .admin-col-customer,
+  .admin-col-purchase,
+  .admin-col-status,
+  .admin-col-amount,
+  .admin-col-action {
+    grid-area: auto;
+    margin-top: 0;
+  }
+
+  .admin-col-amount {
+    align-self: auto;
+    padding-left: var(--admin-space-md) !important;
+  }
+
+  .admin-col-customer strong,
+  .admin-col-purchase strong {
+    max-width: none;
+  }
+
+  .admin-secondary-row {
+    align-items: center;
+    flex-direction: row;
   }
 
   .golf-admin-dashboard .admin-inline-form select {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
-
-  .golf-admin-dashboard .admin-purchase-secondary-actions {
-    grid-column: auto;
-    justify-content: flex-start;
+    flex: 0 1 auto;
   }
 }
 
