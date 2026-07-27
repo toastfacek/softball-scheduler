@@ -58,7 +58,7 @@ SET
 	"sponsor_notes" = COALESCE("sponsor_notes", 'Payment committed by check; awaiting receipt.'),
 	"updated_at" = now()
 WHERE "package_id" = 'grab-go-lunch-sponsor'
-	AND lower(COALESCE("sponsor_display_name", "sponsor_recognition_name", '')) = 'cross insurance'
+	AND "id" = 'c2050000-0000-4000-8000-000000000001'
 	AND "payment_status" IN ('PENDING', 'PAID');--> statement-breakpoint
 INSERT INTO "golf_tournament_players" (
 	"id",
@@ -75,6 +75,5 @@ INSERT INTO "golf_tournament_players" (
 	slot."number"
 FROM "golf_tournament_purchases" purchase
 CROSS JOIN generate_series(1, 4) AS slot("number")
-WHERE purchase."package_id" = 'grab-go-lunch-sponsor'
-	AND lower(COALESCE(purchase."sponsor_display_name", purchase."sponsor_recognition_name", '')) = 'cross insurance'
+WHERE purchase."id" = 'c2050000-0000-4000-8000-000000000001'
 ON CONFLICT DO NOTHING;

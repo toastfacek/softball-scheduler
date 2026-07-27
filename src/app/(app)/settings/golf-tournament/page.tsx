@@ -99,10 +99,12 @@ export default async function GolfTournamentAdminPage({
     (total, purchase) => total + purchase.amountCents,
     0,
   );
-  const estimatedFees = paidPurchases.reduce(
+  const estimatedFees = paidPurchases
+    .filter((purchase) => purchase.paymentMethod === "STRIPE")
+    .reduce(
     (total, purchase) => total + estimatedStripeFeeCents(purchase.amountCents),
     0,
-  );
+    );
   const estimatedNet = paidPurchases.reduce(
     (total, purchase) => total + estimatedStripeNetCents(purchase.amountCents),
     0,
