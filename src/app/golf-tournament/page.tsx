@@ -20,6 +20,7 @@ import {
   GOLF_TOURNAMENT_VENUE,
   golfTournamentContactEmail,
 } from "@/lib/golf-tournament/event";
+import { golfInventoryCommitmentCondition } from "@/lib/golf-tournament/inventory";
 import {
   formatGolfPackagePrice,
   getGolfTournamentPackage,
@@ -265,7 +266,7 @@ export default async function GolfTournamentPage({
                           .join(" ")}
                       >
                       <div className="golf-package-topline">
-                        <span>{item.availability}</span>
+                        <span>{isSoldOut ? "Sold out" : item.availability}</span>
                       </div>
                       <div className="golf-package-identity">
                         {item.locationLabel ? (
@@ -595,7 +596,7 @@ async function listGolfPackageSoldCounts() {
         soldCount: count(),
       })
       .from(golfTournamentPurchases)
-      .where(eq(golfTournamentPurchases.paymentStatus, "PAID"))
+      .where(golfInventoryCommitmentCondition())
       .groupBy(golfTournamentPurchases.packageId);
 
     return new Map(rows.map((row) => [row.packageId, Number(row.soldCount)]));

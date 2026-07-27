@@ -23,6 +23,7 @@ import {
   golfTournamentAdminEmails,
   golfTournamentContactEmail,
 } from "@/lib/golf-tournament/event";
+import { golfInventoryCommitmentCondition } from "@/lib/golf-tournament/inventory";
 import {
   formatGolfPackagePrice,
   getGolfTournamentPackage,
@@ -104,6 +105,10 @@ const resendCompletionLinkSchema = z.object({
   purchaseId: z.string().uuid(),
 });
 
+const checkReceiptSchema = z.object({
+  purchaseId: z.string().uuid(),
+});
+
 export async function createGolfCheckoutSessionAction(formData: FormData) {
   const parsed = checkoutSchema.parse({
     packageId: formData.get("packageId"),
@@ -122,7 +127,7 @@ export async function createGolfCheckoutSessionAction(formData: FormData) {
     golfTournamentPurchases,
     and(
       eq(golfTournamentPurchases.packageId, packageConfig.id),
-      eq(golfTournamentPurchases.paymentStatus, "PAID"),
+      golfInventoryCommitmentCondition(),
     ),
   );
 
@@ -223,7 +228,7 @@ export async function startGolfPaymentLinkCheckoutAction(formData: FormData) {
     golfTournamentPurchases,
     and(
       eq(golfTournamentPurchases.packageId, packageConfig.id),
-      eq(golfTournamentPurchases.paymentStatus, "PAID"),
+      golfInventoryCommitmentCondition(),
     ),
   );
 
@@ -709,4 +714,35 @@ export async function resendGolfConfirmationAction(formData: FormData) {
 
   revalidatePath("/golf-admin");
   redirect(`/golf-admin?saved=confirmation-${result.status}`);
+}
+
+export async function markGolfCheckReceivedAction(formData: FormData) {
+  await requireGolfAdmin();
+  const parsed = checkReceiptSchema.parse({
+    purchaseId: formData.get("purchaseId"),
+  });
+
+  const [purchase] = await db
+    .update(golfTournamentPurchases)
+    .set({
+      paymentStatus: "PAID",
+      paidAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(golfTournamentPurchases.id, parsed.purchaseId),
+        eq(golfTournamentPurchases.paymentMethod, "CHECK"),
+        eq(golfTournamentPurchases.paymentStatus, "PENDING"),
+      ),
+    )
+    .returning({ id: golfTournamentPurchases.id });
+
+  if (!purchase) {
+    redirect("/golf-admin?saved=check-unavailable");
+  }
+
+  revalidatePath("/golf-admin");
+  revalidatePath("/golf-tournament");
+  redirect("/golf-admin?saved=check-received");
 }

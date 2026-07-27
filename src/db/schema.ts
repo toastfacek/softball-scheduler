@@ -74,6 +74,10 @@ export const golfPaymentStatusEnum = pgEnum("golf_payment_status", [
   "CANCELED",
   "REFUNDED",
 ]);
+export const golfPaymentMethodEnum = pgEnum("golf_payment_method", [
+  "STRIPE",
+  "CHECK",
+]);
 export const golfFulfillmentStatusEnum = pgEnum("golf_fulfillment_status", [
   "PAID_NEEDS_DETAILS",
   "DETAILS_SUBMITTED",
@@ -624,6 +628,9 @@ export const golfTournamentPurchases = pgTable(
     paymentStatus: golfPaymentStatusEnum("payment_status")
       .default("PENDING")
       .notNull(),
+    paymentMethod: golfPaymentMethodEnum("payment_method")
+      .default("STRIPE")
+      .notNull(),
     fulfillmentStatus: golfFulfillmentStatusEnum("fulfillment_status")
       .default("PAID_NEEDS_DETAILS")
       .notNull(),
@@ -757,6 +764,8 @@ export type EmailKind = (typeof emailKindEnum.enumValues)[number];
 export type GolfPurchaseType = (typeof golfPurchaseTypeEnum.enumValues)[number];
 export type GolfPaymentStatus =
   (typeof golfPaymentStatusEnum.enumValues)[number];
+export type GolfPaymentMethod =
+  (typeof golfPaymentMethodEnum.enumValues)[number];
 export type GolfFulfillmentStatus =
   (typeof golfFulfillmentStatusEnum.enumValues)[number];
 export type IncludedGolfIntent =

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import {
+  markGolfCheckReceivedAction,
   reconcileGolfStripePaymentsAction,
   resendGolfConfirmationAction,
   resendGolfCompletionLinkAction,
@@ -353,6 +354,19 @@ export default async function GolfTournamentAdminPage({
                             </form>
 
                             <div className="admin-row-menu-actions">
+                              {purchase.paymentMethod === "CHECK" &&
+                              purchase.paymentStatus === "PENDING" ? (
+                                <form action={markGolfCheckReceivedAction}>
+                                  <input
+                                    type="hidden"
+                                    name="purchaseId"
+                                    value={purchase.id}
+                                  />
+                                  <button type="submit">
+                                    Mark check received
+                                  </button>
+                                </form>
+                              ) : null}
                               <form action={resendGolfCompletionLinkAction}>
                                 <input
                                   type="hidden"
