@@ -78,6 +78,25 @@ type GolfTournamentPageProps = {
   }>;
 };
 
+const confirmedSponsors = [
+  {
+    name: "REV Kitchen",
+    logo: "/golf-tournament/sponsor-logos/rev-kitchen.png",
+  },
+  {
+    name: "REV Burger",
+    logo: "/golf-tournament/sponsor-logos/revburger.png",
+  },
+  {
+    name: "Ulrich Landscape",
+    logo: "/golf-tournament/sponsor-logos/ulrich-landscape.png",
+  },
+  {
+    name: "Port Lighting",
+    logo: "/golf-tournament/sponsor-logos/port-lighting.png",
+  },
+] as const;
+
 function formatGolfPackageDisplayName(
   item: (typeof golfTournamentPackages)[number],
 ) {
@@ -366,8 +385,7 @@ export default async function GolfTournamentPage({
         </div>
       </section>
 
-      {approvedSponsors.length > 0 ? (
-        <section className="golf-band golf-wrap">
+      <section className="golf-band golf-wrap">
           <div className="golf-section-head">
             <h2>Thank you to our tournament sponsors.</h2>
             <p>
@@ -375,6 +393,15 @@ export default async function GolfTournamentPage({
             </p>
           </div>
           <div className="golf-sponsor-wall">
+            {confirmedSponsors.map((sponsor) => (
+              <article
+                className="golf-sponsor-tile golf-sponsor-tile-confirmed"
+                key={sponsor.name}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={sponsor.logo} alt={`${sponsor.name} logo`} />
+              </article>
+            ))}
             {approvedSponsors.map(({ purchase, asset, packageConfig }) => {
               const name =
                 purchase.sponsorRecognitionName ||
@@ -411,7 +438,6 @@ export default async function GolfTournamentPage({
             })}
           </div>
         </section>
-      ) : null}
 
       <section className="golf-band golf-band-mint" id="raffle">
         <div className="golf-wrap golf-raffle-grid">
