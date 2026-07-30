@@ -80,12 +80,24 @@ type GolfTournamentPageProps = {
 
 const confirmedSponsors = [
   {
+    name: "Cross Insurance",
+    logo: "/golf-tournament/sponsor-logos/cross-insurance.jpg",
+  },
+  {
+    name: "Todd’s Sporting Goods",
+    logo: "/golf-tournament/sponsor-logos/todds.png",
+  },
+  {
     name: "REV Kitchen",
     logo: "/golf-tournament/sponsor-logos/rev-kitchen.png",
   },
   {
     name: "REV Burger",
     logo: "/golf-tournament/sponsor-logos/revburger.png",
+  },
+  {
+    name: "Corner Butcher",
+    logo: "/golf-tournament/sponsor-logos/corner-butcher.svg",
   },
   {
     name: "Ulrich Landscape",
