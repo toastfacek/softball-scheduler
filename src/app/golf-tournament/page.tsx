@@ -85,7 +85,7 @@ const confirmedSponsors = [
   },
   {
     name: "Todd’s Sporting Goods",
-    logo: "/golf-tournament/sponsor-logos/todds.png",
+    logo: "/golf-tournament/sponsor-logos/todds-upscaled.png",
   },
   {
     name: "REV Kitchen",
@@ -101,7 +101,8 @@ const confirmedSponsors = [
   },
   {
     name: "Ulrich Landscape",
-    logo: "/golf-tournament/sponsor-logos/ulrich-landscape.png",
+    logo: "/golf-tournament/sponsor-logos/ulrich-landscape-logo.png",
+    darkBackground: true,
   },
   {
     name: "Port Lighting",
@@ -407,7 +408,11 @@ export default async function GolfTournamentPage({
           <div className="golf-sponsor-wall">
             {confirmedSponsors.map((sponsor) => (
               <article
-                className="golf-sponsor-tile golf-sponsor-tile-confirmed"
+                className={`golf-sponsor-tile golf-sponsor-tile-confirmed${
+                  "darkBackground" in sponsor && sponsor.darkBackground
+                    ? " golf-sponsor-tile-dark"
+                    : ""
+                }`}
                 key={sponsor.name}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}

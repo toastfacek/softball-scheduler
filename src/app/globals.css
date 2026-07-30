@@ -1059,6 +1059,10 @@ when Jesse/Michelle provide real golf/course/candid photos.
   min-height: 170px;
 }
 
+.golf-sponsor-tile.golf-sponsor-tile-dark {
+  background: #373334;
+}
+
 .golf-sponsor-tile-confirmed img {
   width: 100%;
   height: 105px;
