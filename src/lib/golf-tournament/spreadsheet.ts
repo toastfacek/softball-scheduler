@@ -16,7 +16,14 @@ const RETRY_DELAYS_MS = [250, 750] as const;
 const MAX_SHEETS_REQUEST_ATTEMPTS = RETRY_DELAYS_MS.length + 1;
 
 type CellValue = string | number | boolean;
-type SheetTable = { title: string; headers: string[]; rows: CellValue[][] };
+type ExistingCellValue = CellValue | null;
+type SheetTable = {
+  title: string;
+  headers: string[];
+  rows: CellValue[][];
+  keyColumns: number[];
+};
+type SheetValuesResponse = { values?: ExistingCellValue[][] };
 type SheetMetadata = {
   sheets?: Array<{ properties?: { sheetId?: number; title?: string } }>;
 };
@@ -141,21 +148,30 @@ async function syncGolfTournamentSpreadsheetWithDatabase(
     headers,
   );
   const sheetIds = sheetIdsByTitle(refreshedMetadata);
-  const valueRanges = tables.map((table) => ({
+  const existingValueRanges = await Promise.all(
+    tables.map((table) =>
+      sheetsRequest<SheetValuesResponse>(
+        spreadsheetId,
+        `/values/${encodeURIComponent(`${sheetRange(table.title)}!A:Z`)}`,
+        headers,
+      ),
+    ),
+  );
+  const mergedTables = tables.map((table, index) =>
+    mergeSheetTable(table, existingValueRanges[index]?.values ?? []),
+  );
+  const valueRanges = mergedTables.map((table) => ({
     range: `${sheetRange(table.title)}!A1`,
     majorDimension: "ROWS" as const,
     values: [table.headers, ...table.rows],
   }));
 
-  await sheetsRequest(spreadsheetId, "/values:batchClear", headers, {
-    ranges: tables.map((table) => `${sheetRange(table.title)}!A:Z`),
-  });
   await sheetsRequest(spreadsheetId, "/values:batchUpdate", headers, {
     valueInputOption: "RAW",
     data: valueRanges,
   });
 
-  const formatRequests = tables.flatMap((table) => {
+  const formatRequests = mergedTables.flatMap((table) => {
     const sheetId = sheetIds.get(table.title);
     if (sheetId === undefined) return [];
 
@@ -193,19 +209,6 @@ async function syncGolfTournamentSpreadsheetWithDatabase(
             dimension: "COLUMNS",
             startIndex: 0,
             endIndex: table.headers.length,
-          },
-        },
-      },
-      {
-        setBasicFilter: {
-          filter: {
-            range: {
-              sheetId,
-              startRowIndex: 0,
-              endRowIndex: Math.max(2, table.rows.length + 1),
-              startColumnIndex: 0,
-              endColumnIndex: table.headers.length,
-            },
           },
         },
       },
@@ -303,6 +306,7 @@ async function buildGolfTournamentTables(
   return [
     {
       title: "Summary",
+      keyColumns: [0],
       headers: ["Metric", "Value"],
       rows: [
         ["Last synced", new Date().toISOString()],
@@ -323,6 +327,7 @@ async function buildGolfTournamentTables(
     },
     {
       title: "Purchases",
+      keyColumns: [0],
       headers: [
         "Purchase ID",
         "Created",
@@ -362,6 +367,7 @@ async function buildGolfTournamentTables(
     },
     {
       title: "Sponsors",
+      keyColumns: [0],
       headers: [
         "Purchase ID",
         "Package",
@@ -409,6 +415,7 @@ async function buildGolfTournamentTables(
     },
     {
       title: "Golfers",
+      keyColumns: [0, 1],
       headers: [
         "Purchase ID",
         "Slot",
@@ -442,6 +449,7 @@ async function buildGolfTournamentTables(
     },
     {
       title: "Assets",
+      keyColumns: [0],
       headers: [
         "Asset ID",
         "Purchase ID",
@@ -465,6 +473,7 @@ async function buildGolfTournamentTables(
     },
     {
       title: "In-Kind",
+      keyColumns: [0],
       headers: [
         "Submission ID",
         "Created",
@@ -495,6 +504,83 @@ async function buildGolfTournamentTables(
       ]),
     },
   ];
+}
+
+function mergeSheetTable(
+  table: SheetTable,
+  existingValues: ExistingCellValue[][],
+): { title: string; headers: ExistingCellValue[]; rows: ExistingCellValue[][] } {
+  const existingHeaders = existingValues[0] ?? [];
+  const headers = mergeHeaderValues(existingHeaders, table.headers);
+  const rows = existingValues.slice(1).map((row) => [...row]);
+  const existingRowsByKey = new Map<string, number>();
+
+  rows.forEach((row, index) => {
+    const key = getRowKey(row, table.keyColumns);
+    if (key && !existingRowsByKey.has(key)) {
+      existingRowsByKey.set(key, index);
+    }
+  });
+
+  for (const incomingRow of table.rows) {
+    const key = getRowKey(incomingRow, table.keyColumns);
+    const existingRowIndex = key ? existingRowsByKey.get(key) : undefined;
+
+    if (existingRowIndex !== undefined) {
+      rows[existingRowIndex] = mergeRowValues(
+        rows[existingRowIndex],
+        incomingRow,
+      );
+      continue;
+    }
+
+    const nextRowIndex = rows.length;
+    rows.push([...incomingRow]);
+    if (key) existingRowsByKey.set(key, nextRowIndex);
+  }
+
+  return { title: table.title, headers, rows };
+}
+
+function mergeHeaderValues(
+  existingHeaders: ExistingCellValue[],
+  incomingHeaders: string[],
+) {
+  const headers = [...existingHeaders];
+  incomingHeaders.forEach((header, index) => {
+    if (isBlankCell(headers[index])) headers[index] = header;
+  });
+  return headers;
+}
+
+function mergeRowValues(
+  existingRow: ExistingCellValue[],
+  incomingRow: CellValue[],
+) {
+  const row = [...existingRow];
+  incomingRow.forEach((value, index) => {
+    // A blank database value must never erase a value someone entered in the
+    // sheet. Nonblank database values still refresh the app-owned row.
+    if (isBlankCell(row[index]) || !isBlankCell(value)) {
+      row[index] = value;
+    }
+  });
+  return row;
+}
+
+function getRowKey(
+  row: Array<CellValue | null | undefined>,
+  keyColumns: number[],
+) {
+  const keyParts = keyColumns.map((columnIndex) => row[columnIndex]);
+  if (keyParts.some(isBlankCell)) return null;
+  return keyParts
+    .map((value) => String(value).trim().toLowerCase())
+    .join("\u001f");
+}
+
+function isBlankCell(value: CellValue | null | undefined) {
+  return value === null || value === undefined || value === "";
 }
 
 function getSpreadsheetConfiguration() {
