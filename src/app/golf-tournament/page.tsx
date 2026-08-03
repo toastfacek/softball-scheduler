@@ -101,8 +101,8 @@ const confirmedSponsors = [
   },
   {
     name: "Ulrich Landscape",
-    logo: "/golf-tournament/sponsor-logos/ulrich-landscape-logo.png",
-    darkBackground: true,
+    logo: "/golf-tournament/sponsor-logos/ulrich-landscape-logo-light.png",
+    outlineLogo: true,
   },
   {
     name: "Sudbay Automotive",
@@ -417,8 +417,8 @@ export default async function GolfTournamentPage({
             {confirmedSponsors.map((sponsor) => (
               <article
                 className={`golf-sponsor-tile golf-sponsor-tile-confirmed${
-                  "darkBackground" in sponsor && sponsor.darkBackground
-                    ? " golf-sponsor-tile-dark"
+                  "outlineLogo" in sponsor && sponsor.outlineLogo
+                    ? " golf-sponsor-tile-outline"
                     : ""
                 }`}
                 key={sponsor.name}

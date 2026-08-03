@@ -1034,19 +1034,19 @@ when Jesse/Michelle provide real golf/course/candid photos.
 
 .golf-sponsor-wall {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.9rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem 1rem;
+  align-items: center;
 }
 
 .golf-sponsor-tile {
   display: grid;
   place-items: center;
-  min-height: 150px;
-  border: 1px solid color-mix(in srgb, var(--golf-navy) 16%, white);
-  background: var(--golf-card);
-  padding: 1rem;
+  min-height: 130px;
+  border: 0;
+  background: transparent;
+  padding: 0.5rem 0.25rem;
   text-align: center;
-  box-shadow: 5px 5px 0 color-mix(in srgb, var(--golf-ink) 10%, transparent);
 }
 
 .golf-sponsor-tile img {
@@ -1056,28 +1056,27 @@ when Jesse/Michelle provide real golf/course/candid photos.
 }
 
 .golf-sponsor-tile-confirmed {
-  min-height: 170px;
+  min-height: 130px;
 }
 
-.golf-sponsor-tile.golf-sponsor-tile-dark {
-  background: #fff;
+.golf-sponsor-tile.golf-sponsor-tile-outline {
+  background: transparent;
 }
 
 .golf-sponsor-tile-confirmed img {
   width: 100%;
   height: 105px;
   box-sizing: border-box;
-  padding: 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--golf-navy) 10%, white);
-  border-radius: 0.55rem;
-  background: #fff;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
-.golf-sponsor-tile.golf-sponsor-tile-dark img {
-  padding: 0.35rem;
-  border: 0.35rem solid rgba(255, 255, 255, 0.92);
-  background: #373334;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--golf-navy) 10%, white);
+.golf-sponsor-tile.golf-sponsor-tile-outline img {
+  filter: drop-shadow(
+    0 0 0.75px color-mix(in srgb, var(--golf-navy) 38%, white)
+  );
 }
 
 .golf-sponsor-tile strong {
@@ -4777,7 +4776,6 @@ when Jesse/Michelle provide real golf/course/candid photos.
 .golf-scoreboard,
 .golf-poster-note,
 .golf-package,
-.golf-sponsor-tile,
 .golf-faq-item,
 .golf-form input,
 .golf-form textarea,
@@ -5022,8 +5020,7 @@ when Jesse/Michelle provide real golf/course/candid photos.
 }
 
 .golf-package,
-.golf-poster-note,
-.golf-sponsor-tile {
+.golf-poster-note {
   overflow: hidden;
   transition:
     transform 180ms ease,
@@ -5031,17 +5028,26 @@ when Jesse/Michelle provide real golf/course/candid photos.
     box-shadow 180ms ease;
 }
 
+.golf-sponsor-tile {
+  overflow: visible;
+  transition: none;
+}
+
 .golf-package:hover,
-.golf-poster-note:hover,
-.golf-sponsor-tile:hover {
+.golf-poster-note:hover {
   transform: translateY(-4px);
   border-color: rgba(155, 122, 40, 0.34);
   box-shadow: 0 24px 64px rgba(9, 32, 22, 0.11);
 }
 
+.golf-sponsor-tile:hover {
+  transform: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .golf-package::after,
-.golf-poster-note::after,
-.golf-sponsor-tile::after {
+.golf-poster-note::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -5052,9 +5058,12 @@ when Jesse/Michelle provide real golf/course/candid photos.
 }
 
 .golf-package:hover::after,
-.golf-poster-note:hover::after,
-.golf-sponsor-tile:hover::after {
+.golf-poster-note:hover::after {
   transform: translateX(120%);
+}
+
+.golf-sponsor-tile::after {
+  display: none;
 }
 
 .golf-nav a::after {
@@ -5075,7 +5084,8 @@ when Jesse/Michelle provide real golf/course/candid photos.
 }
 
 .golf-sponsor-wall {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem 1rem;
 }
 
 .golf-sponsor-wall > a,
@@ -5090,10 +5100,18 @@ when Jesse/Michelle provide real golf/course/candid photos.
 }
 
 .golf-sponsor-tile {
-  min-height: 170px;
-  border-color: rgba(9, 32, 22, 0.1);
-  border-radius: 0.75rem;
-  box-shadow: 0 18px 48px rgba(9, 32, 22, 0.06);
+  min-height: 130px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+@media (min-width: 760px) {
+  .golf-sponsor-wall {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.5rem 1.25rem;
+  }
 }
 
 .golf-sponsor-placeholder strong {
