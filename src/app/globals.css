@@ -1060,12 +1060,24 @@ when Jesse/Michelle provide real golf/course/candid photos.
 }
 
 .golf-sponsor-tile.golf-sponsor-tile-dark {
-  background: #373334;
+  background: #fff;
 }
 
 .golf-sponsor-tile-confirmed img {
   width: 100%;
   height: 105px;
+  box-sizing: border-box;
+  padding: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--golf-navy) 10%, white);
+  border-radius: 0.55rem;
+  background: #fff;
+}
+
+.golf-sponsor-tile.golf-sponsor-tile-dark img {
+  padding: 0.35rem;
+  border: 0.35rem solid rgba(255, 255, 255, 0.92);
+  background: #373334;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--golf-navy) 10%, white);
 }
 
 .golf-sponsor-tile strong {

@@ -105,13 +105,16 @@ const confirmedSponsors = [
     darkBackground: true,
   },
   {
+    name: "Sudbay Automotive",
+    logo: "/golf-tournament/sponsor-logos/sudbay-automotive.png",
+  },
+  {
     name: "Port Lighting",
     logo: "/golf-tournament/sponsor-logos/port-lighting.png",
   },
   {
-    name: "McDonald’s",
+    name: "King & Wallin Family McDonald’s",
     logo: "/golf-tournament/sponsor-logos/mcdonalds.png",
-    darkBackground: true,
   },
 ] as const;
 
