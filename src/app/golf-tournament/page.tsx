@@ -108,6 +108,11 @@ const confirmedSponsors = [
     name: "Port Lighting",
     logo: "/golf-tournament/sponsor-logos/port-lighting.png",
   },
+  {
+    name: "McDonald’s",
+    logo: "/golf-tournament/sponsor-logos/mcdonalds.png",
+    darkBackground: true,
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
