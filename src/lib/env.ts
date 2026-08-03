@@ -13,6 +13,9 @@ export const env = {
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ?? "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+  GOLF_GOOGLE_SHEET_ID: process.env.GOLF_GOOGLE_SHEET_ID ?? "",
+  GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON:
+    process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON ?? "",
   GOLF_TOURNAMENT_CONTACT_EMAIL:
     process.env.GOLF_TOURNAMENT_CONTACT_EMAIL ?? "mishlambert10@gmail.com",
   GOLF_TOURNAMENT_ADMIN_EMAILS:
@@ -43,6 +46,13 @@ export function isDatabaseConfigured() {
 
 export function isStripeConfigured() {
   return Boolean(env.STRIPE_SECRET_KEY);
+}
+
+export function isGolfSpreadsheetConfigured() {
+  return Boolean(
+    env.GOLF_GOOGLE_SHEET_ID &&
+      env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON,
+  );
 }
 
 export function isR2Configured() {

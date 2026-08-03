@@ -80,6 +80,10 @@ pnpm cron:reminders
 ### Vercel app
 
 - Set the same environment variables in Vercel.
+- For the golf tournament spreadsheet mirror, set `GOLF_GOOGLE_SHEET_ID` and
+  `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON`. Share the destination spreadsheet with
+  the service account's `client_email` as an Editor. The JSON value should be
+  the complete service-account key file contents.
 - Deploy the Next.js app normally.
 
 ### Railway Postgres

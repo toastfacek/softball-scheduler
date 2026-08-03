@@ -6,6 +6,7 @@ import {
   resendGolfConfirmationAction,
   resendGolfCompletionLinkAction,
   revokeGolfCompletionLinkAction,
+  syncGolfTournamentSpreadsheetAction,
   updateGolfAssetAdminAction,
   updateGolfInKindStatusAction,
   updateGolfPurchaseAdminAction,
@@ -19,6 +20,7 @@ import type {
   GolfPaymentStatus,
 } from "@/db/schema";
 import { golfTournamentPurchases } from "@/db/schema";
+import { env, isGolfSpreadsheetConfigured } from "@/lib/env";
 import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
 import {
   estimatedStripeFeeCents,
@@ -63,7 +65,26 @@ type GolfTournamentAdminPageProps = {
     links?: string;
     configuredLinks?: string;
     failed?: string;
+    sheetSync?: string;
+    rows?: string;
+    tabs?: string;
+    reason?: string;
   }>;
+};
+
+const spreadsheetSyncMessages: Record<string, string> = {
+  "not-configured":
+    "Spreadsheet sync is not configured. Add the Google Sheet ID and service-account JSON in Vercel.",
+  "invalid-config":
+    "Spreadsheet sync configuration is invalid. Check the service-account JSON.",
+  auth: "Google authentication failed. Check the service-account key.",
+  "permission-denied":
+    "Google rejected the request. Share the spreadsheet with the service account's client_email as an Editor.",
+  "sheet-not-found":
+    "The configured spreadsheet was not found. Check GOLF_GOOGLE_SHEET_ID.",
+  network: "Google Sheets could not be reached. Try the sync again.",
+  api: "Google Sheets rejected the sync. Check the Vercel runtime log for details.",
+  unknown: "Spreadsheet sync failed. Check the Vercel runtime log for details.",
 };
 
 export default async function GolfTournamentAdminPage({
@@ -124,6 +145,12 @@ export default async function GolfTournamentAdminPage({
         title="Golf tournament"
         action={
           <div className="golf-admin-header-actions">
+            <form action={syncGolfTournamentSpreadsheetAction}>
+              <SubmitButton
+                label="Sync spreadsheet"
+                className="admin-primary-action"
+              />
+            </form>
             <form action={reconcileGolfStripePaymentsAction}>
               <SubmitButton
                 label="Sync Stripe"
@@ -136,6 +163,15 @@ export default async function GolfTournamentAdminPage({
             >
               Export
             </Link>
+            {isGolfSpreadsheetConfigured() ? (
+              <Link
+                className="admin-header-link"
+                href={`https://docs.google.com/spreadsheets/d/${env.GOLF_GOOGLE_SHEET_ID}/edit`}
+                target="_blank"
+              >
+                Spreadsheet
+              </Link>
+            ) : null}
             <details className="admin-tools-menu">
               <summary>More</summary>
               <div className="admin-tools-menu-panel">
@@ -174,6 +210,18 @@ export default async function GolfTournamentAdminPage({
       {params.sync === "not-configured" ? (
         <div className="saved-flash">
           Stripe is not configured for this deployment.
+        </div>
+      ) : null}
+      {params.sheetSync === "success" ? (
+        <div className="saved-flash">
+          Spreadsheet sync complete: {params.rows ?? "0"} rows across{" "}
+          {params.tabs ?? "0"} tabs.
+        </div>
+      ) : null}
+      {params.sheetSync === "failed" ? (
+        <div className="saved-flash">
+          {spreadsheetSyncMessages[params.reason ?? ""] ??
+            spreadsheetSyncMessages.unknown}
         </div>
       ) : null}
 

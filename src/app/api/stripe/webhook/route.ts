@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
 import { env } from "@/lib/env";
+import { scheduleGolfTournamentSpreadsheetSync } from "@/lib/golf-tournament/spreadsheet";
 import { recordGolfCheckoutSession } from "@/lib/golf-tournament/stripe-payments";
 
 export async function POST(request: NextRequest) {
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
       sessionId: session.id,
       result: result.status,
     });
+    scheduleGolfTournamentSpreadsheetSync();
   }
 
   return NextResponse.json({ received: true });

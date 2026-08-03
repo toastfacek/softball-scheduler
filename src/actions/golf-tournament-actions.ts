@@ -41,6 +41,11 @@ import {
   createCompletionToken,
   hashCompletionToken,
 } from "@/lib/golf-tournament/tokens";
+import {
+  getGolfSpreadsheetSyncErrorInfo,
+  scheduleGolfTournamentSpreadsheetSync,
+  syncGolfTournamentSpreadsheet,
+} from "@/lib/golf-tournament/spreadsheet";
 
 const checkoutSchema = z.object({
   packageId: z.string().trim().min(1),
@@ -184,6 +189,8 @@ export async function createGolfCheckoutSessionAction(formData: FormData) {
     })
     .where(eq(golfTournamentPurchases.id, purchase.id));
 
+  scheduleGolfTournamentSpreadsheetSync();
+
   if (!session.url) {
     redirect("/golf-tournament?checkout=setup-pending");
   }
@@ -267,6 +274,8 @@ export async function startGolfPaymentLinkCheckoutAction(formData: FormData) {
     return createdPurchase;
   });
 
+  scheduleGolfTournamentSpreadsheetSync();
+
   const checkoutUrl = new URL(packageConfig.checkoutUrl);
   checkoutUrl.searchParams.set("client_reference_id", purchase.id);
   if (parsed.email) {
@@ -288,6 +297,8 @@ export async function submitGolfInKindDonationAction(formData: FormData) {
     email: parsed.email,
     itemDescription: parsed.description,
   });
+
+  scheduleGolfTournamentSpreadsheetSync();
 
   await sendGolfTournamentEmail({
     to: [parsed.email],
@@ -412,6 +423,8 @@ export async function updateGolfCompletionAction(formData: FormData) {
     ),
   );
 
+  scheduleGolfTournamentSpreadsheetSync();
+
   revalidatePath(`/golf-tournament/complete/${parsed.token}`);
 
   await sendGolfTournamentEmail({
@@ -506,6 +519,8 @@ export async function uploadGolfLogoAction(formData: FormData) {
     })
     .where(eq(golfTournamentPurchases.id, purchase.id));
 
+  scheduleGolfTournamentSpreadsheetSync();
+
   await sendGolfTournamentEmail({
     to: golfTournamentAdminEmails(),
     subject: "BGSL golf sponsor logo uploaded",
@@ -544,6 +559,8 @@ export async function updateGolfPurchaseAdminAction(formData: FormData) {
     })
     .where(eq(golfTournamentPurchases.id, parsed.purchaseId));
 
+  scheduleGolfTournamentSpreadsheetSync();
+
   revalidatePath("/golf-admin");
   revalidatePath("/golf-tournament");
   redirect("/golf-admin?saved=purchase");
@@ -567,6 +584,8 @@ export async function reconcileGolfStripePaymentsAction() {
     });
     redirect("/golf-admin?sync=failed");
   }
+
+  scheduleGolfTournamentSpreadsheetSync();
 
   revalidatePath("/golf-admin");
   revalidatePath("/golf-tournament");
@@ -599,6 +618,8 @@ export async function updateGolfInKindStatusAction(formData: FormData) {
     })
     .where(eq(golfTournamentInKindSubmissions.id, parsed.submissionId));
 
+  scheduleGolfTournamentSpreadsheetSync();
+
   revalidatePath("/golf-admin");
   redirect("/golf-admin?saved=in-kind");
 }
@@ -619,6 +640,8 @@ export async function updateGolfAssetAdminAction(formData: FormData) {
       updatedAt: now,
     })
     .where(eq(golfTournamentAssets.id, parsed.assetId));
+
+  scheduleGolfTournamentSpreadsheetSync();
 
   revalidatePath("/golf-admin");
   revalidatePath("/golf-tournament");
@@ -708,12 +731,37 @@ export async function resendGolfConfirmationAction(formData: FormData) {
   const parsed = resendCompletionLinkSchema.parse({
     purchaseId: formData.get("purchaseId"),
   });
-  const result = await sendGolfPurchaseConfirmation(parsed.purchaseId, {
-    force: true,
-  });
 
-  revalidatePath("/golf-admin");
-  redirect(`/golf-admin?saved=confirmation-${result.status}`);
+  try {
+    const result = await sendGolfPurchaseConfirmation(parsed.purchaseId, {
+      force: true,
+    });
+
+    revalidatePath("/golf-admin");
+    redirect(`/golf-admin?saved=confirmation-${result.status}`);
+  } finally {
+    scheduleGolfTournamentSpreadsheetSync();
+  }
+}
+
+export async function syncGolfTournamentSpreadsheetAction() {
+  await requireGolfAdmin();
+
+  let result;
+  try {
+    result = await syncGolfTournamentSpreadsheet();
+  } catch (error) {
+    const errorInfo = getGolfSpreadsheetSyncErrorInfo(error);
+    console.error("[golf-sheet] manual sync failed", errorInfo);
+    redirect(`/golf-admin?sheetSync=failed&reason=${errorInfo.code}`);
+  }
+
+  const query = new URLSearchParams({
+    sheetSync: "success",
+    rows: String(result.rowCount),
+    tabs: String(result.sheetCount),
+  });
+  redirect(`/golf-admin?${query.toString()}`);
 }
 
 export async function markGolfCheckReceivedAction(formData: FormData) {
@@ -741,6 +789,8 @@ export async function markGolfCheckReceivedAction(formData: FormData) {
   if (!purchase) {
     redirect("/golf-admin?saved=check-unavailable");
   }
+
+  scheduleGolfTournamentSpreadsheetSync();
 
   revalidatePath("/golf-admin");
   revalidatePath("/golf-tournament");
