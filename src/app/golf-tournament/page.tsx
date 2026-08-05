@@ -116,6 +116,22 @@ const confirmedSponsors = [
     name: "King & Wallin Family McDonald’s",
     logo: "/golf-tournament/sponsor-logos/mcdonalds.png",
   },
+  {
+    name: "Greater Beverly YMCA",
+    logo: "/golf-tournament/sponsor-logos/greater-beverly-ymca.png",
+  },
+  {
+    name: "Boston Crawling",
+    logo: "/golf-tournament/sponsor-logos/boston-crawling.png",
+  },
+  {
+    name: "Cabot Wealth Management",
+    logo: "/golf-tournament/sponsor-logos/cabot-wealth-management.jpg",
+  },
+  {
+    name: "At Home With Diantha",
+    logo: "/golf-tournament/sponsor-logos/at-home-with-diantha.png",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
