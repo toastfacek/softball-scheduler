@@ -1,3 +1,5 @@
+import { GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED } from "./event";
+
 export type GolfPackageCategory =
   | "PLAY_GOLF"
   | "HOLE_OR_CONTEST"
@@ -294,6 +296,16 @@ export function requiresGolfPlayerNames(
   return (
     (packageConfig.kind === "GOLF" && includedPlayerCount > 0) ||
     includedPlayerCount === 4
+  );
+}
+
+export function isGolfEntryClosedForPackage(
+  packageConfig: GolfTournamentPackage,
+) {
+  return (
+    GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED &&
+    (packageConfig.kind === "GOLF" ||
+      includedGolfSlotCount(packageConfig.includedGolf) > 0)
   );
 }
 

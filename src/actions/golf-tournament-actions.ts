@@ -28,6 +28,7 @@ import {
   formatGolfPackagePrice,
   getGolfTournamentPackage,
   includedGolfSlotCount,
+  isGolfEntryClosedForPackage,
   requiresGolfPlayerNames,
 } from "@/lib/golf-tournament/packages";
 import { reconcileGolfStripePayments } from "@/lib/golf-tournament/stripe-payments";
@@ -122,6 +123,10 @@ export async function createGolfCheckoutSessionAction(formData: FormData) {
 
   if (!packageConfig) {
     redirect("/golf-tournament?checkout=unavailable");
+  }
+
+  if (isGolfEntryClosedForPackage(packageConfig)) {
+    redirect("/golf-tournament?checkout=registration-closed");
   }
 
   if (!isStripeConfigured()) {
@@ -219,6 +224,10 @@ export async function startGolfPaymentLinkCheckoutAction(formData: FormData) {
     (packageConfig.kind !== "SPONSORSHIP" && includedPlayerCount === 0)
   ) {
     redirect("/golf-tournament?checkout=unavailable");
+  }
+
+  if (isGolfEntryClosedForPackage(packageConfig)) {
+    redirect("/golf-tournament?checkout=registration-closed");
   }
 
   const requiresPlayerNames = requiresGolfPlayerNames(packageConfig);

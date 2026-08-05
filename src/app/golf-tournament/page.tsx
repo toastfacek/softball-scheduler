@@ -15,6 +15,7 @@ import {
 import { isDatabaseConfigured } from "@/lib/env";
 import {
   GOLF_TOURNAMENT_ADDRESS,
+  GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED,
   GOLF_TOURNAMENT_SAFE_PROCEEDS,
   GOLF_TOURNAMENT_TITLE,
   GOLF_TOURNAMENT_VENUE,
@@ -27,6 +28,7 @@ import {
   golfPackageCategories,
   golfTournamentPackages,
   includedGolfSlotCount,
+  isGolfEntryClosedForPackage,
   requiresGolfPlayerNames,
 } from "@/lib/golf-tournament/packages";
 import { GolfCheckoutButton } from "./golf-checkout-button";
@@ -34,7 +36,9 @@ import { GolfCheckoutButton } from "./golf-checkout-button";
 export const metadata: Metadata = {
   title: GOLF_TOURNAMENT_TITLE,
   description:
-    "Register or sponsor the inaugural Beverly Girls Softball League golf tournament at Beverly Golf & Tennis Club on Monday, September 28, 2026.",
+    GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED
+      ? "Support the inaugural Beverly Girls Softball League golf tournament through sponsorships and raffle donations."
+      : "Register or sponsor the inaugural Beverly Girls Softball League golf tournament at Beverly Golf & Tennis Club on Monday, September 28, 2026.",
   formatDetection: {
     address: false,
     email: false,
@@ -170,7 +174,12 @@ export default async function GolfTournamentPage({
           <a href="#sponsorships">Sponsorships</a>
           <a href="#raffle">Raffle</a>
           <a href="#faq">FAQ</a>
-          <a className="golf-nav-cta" href="#packages">Register</a>
+          <a
+            className="golf-nav-cta"
+            href={GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "#sponsorships" : "#packages"}
+          >
+            {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "Sponsor" : "Register"}
+          </a>
         </nav>
       </header>
 
@@ -179,6 +188,12 @@ export default async function GolfTournamentPage({
         inKind={params.inKind}
         contactEmail={contactEmail}
       />
+      {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? (
+        <div className="golf-wrap golf-alert" role="status">
+          Tournament entry is full. Golfer registration is closed. Sponsor-only
+          packages and raffle donations remain available.
+        </div>
+      ) : null}
 
       <section className="golf-hero golf-wrap">
         <div className="golf-hero-copy">
@@ -188,8 +203,11 @@ export default async function GolfTournamentPage({
             and help create more opportunities for girls across Beverly.
           </p>
           <div className="golf-actions">
-            <a className="golf-button golf-button-primary" href="#packages">
-              Register or Sponsor
+            <a
+              className="golf-button golf-button-primary"
+              href={GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "#sponsorships" : "#packages"}
+            >
+              {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "View Sponsorships" : "Register or Sponsor"}
             </a>
             <a className="golf-button golf-button-secondary" href="#raffle">
               Donate a Raffle Prize
@@ -226,14 +244,12 @@ export default async function GolfTournamentPage({
       <section className="golf-band golf-wrap" id="event">
         <div className="golf-event-story">
           <div className="golf-event-copy">
-            <h2>Golf, community, and giving back.</h2>
+          <h2>Golf, community, and giving back.</h2>
             <div className="golf-doc-copy">
               <p>
-                Whether you’re sponsoring a contest hole, registering a
-                foursome, or partnering as a premier event sponsor, your support
-                directly impacts hundreds of players and families in our
-                community while putting your business in front of a highly
-                engaged local audience.
+                {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED
+                  ? "The golfer field is full, but you can still support hundreds of players and families by sponsoring the tournament or donating a raffle prize."
+                  : "Whether you’re sponsoring a contest hole, registering a foursome, or partnering as a premier event sponsor, your support directly impacts hundreds of players and families in our community while putting your business in front of a highly engaged local audience."}
               </p>
               <p>
                 We are proud to celebrate the businesses and community partners
@@ -247,8 +263,12 @@ export default async function GolfTournamentPage({
         </div>
         <div className="golf-poster-strip" aria-label="Tournament highlights">
           <div className="golf-poster-note">
-            <strong>Play as a team</strong>
-            <span>Register a foursome or twosome.</span>
+            <strong>{GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "The field is full" : "Play as a team"}</strong>
+            <span>
+              {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED
+                ? "Golfer registration is closed; sponsorships and raffle donations remain open."
+                : "Register a foursome or twosome."}
+            </span>
           </div>
           <div className="golf-poster-note">
             <strong>Support the league</strong>
@@ -278,7 +298,11 @@ export default async function GolfTournamentPage({
       >
         <div className="golf-wrap golf-photo-banner-inner">
           <div>
-            <h2>Secure your place on the course.</h2>
+            <h2>
+              {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED
+                ? "Support the tournament."
+                : "Secure your place on the course."}
+            </h2>
           </div>
         </div>
       </section>
@@ -299,7 +323,12 @@ export default async function GolfTournamentPage({
               >
                 <div className="golf-package-group-head">
                   <h3>{category.label}</h3>
-                  <p>{category.description}</p>
+                  <p>
+                    {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED &&
+                    category.id === "PLAY_GOLF"
+                      ? "Tournament entry is full. Golfer registration is closed."
+                      : category.description}
+                  </p>
                 </div>
                 <div className="golf-package-grid">
                   {packages.map((item) => {
@@ -309,6 +338,7 @@ export default async function GolfTournamentPage({
                         ? null
                         : Math.max(item.capacity - soldCount, 0);
                     const isSoldOut = remaining === 0;
+                    const isEntryClosed = isGolfEntryClosedForPackage(item);
 
                     return (
                       <article
@@ -316,13 +346,21 @@ export default async function GolfTournamentPage({
                         className={[
                           "golf-package",
                           item.featured ? "golf-package-featured" : null,
-                          isSoldOut ? "golf-package-sold-out" : null,
+                          isSoldOut || isEntryClosed
+                            ? "golf-package-sold-out"
+                            : null,
                         ]
                           .filter(Boolean)
                           .join(" ")}
                       >
                       <div className="golf-package-topline">
-                        <span>{isSoldOut ? "Sold out" : item.availability}</span>
+                        <span>
+                          {isSoldOut
+                            ? "Sold out"
+                            : isEntryClosed
+                              ? "Registration closed"
+                              : item.availability}
+                        </span>
                       </div>
                       <div className="golf-package-identity">
                         {item.locationLabel ? (
@@ -359,7 +397,17 @@ export default async function GolfTournamentPage({
                           <li key={benefit}>{benefit}</li>
                         ))}
                       </ul>
-                      {item.checkoutUrl &&
+                      {isEntryClosed ? (
+                        <button
+                          className="golf-package-action"
+                          type="button"
+                          disabled
+                          aria-label={`${formatGolfPackageDisplayName(item)} registration is closed`}
+                        >
+                          <span>Registration closed</span>
+                          <i aria-hidden="true" />
+                        </button>
+                      ) : item.checkoutUrl &&
                       !isSoldOut &&
                       (item.kind === "SPONSORSHIP" ||
                         includedGolfSlotCount(item.includedGolf) > 0) ? (
@@ -530,8 +578,16 @@ export default async function GolfTournamentPage({
         </div>
         <div className="golf-faq">
           <FaqItem
-            question="When do I provide player names?"
-            answer="Before continuing to Stripe, the organizer enters both twosome names or all four foursome names in the registration popup. BGSL can help update a name later if plans change."
+            question={
+              GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED
+                ? "Already registered? When do I provide player names?"
+                : "When do I provide player names?"
+            }
+            answer={
+              GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED
+                ? "Use the completion link BGSL sent after registration to add player names. BGSL can help update a name later if plans change."
+                : "Before continuing to Stripe, the organizer enters both twosome names or all four foursome names in the registration popup. BGSL can help update a name later if plans change."
+            }
           />
           <FaqItem
             question="Can sponsors provide included golfer names later?"
@@ -712,6 +768,8 @@ function GolfNotice({
   const message =
     {
       "sold-out": "That package is sold out. Pick another option or contact BGSL.",
+      "registration-closed":
+        "Tournament entry is full. Golfer registration is closed. Sponsor-only packages and raffle donations remain available.",
       unavailable:
         "That package is not available right now. Pick another option or contact BGSL.",
       cancelled: "Checkout was cancelled. Your card was not charged.",
