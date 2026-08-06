@@ -180,30 +180,14 @@ export async function addGuardianAction(formData: FormData) {
     throw new Error("Version 1 supports up to two guardians per player.");
   }
 
-  const existingMembership = await db.query.teamMemberships.findFirst({
-    where: and(
-      eq(teamMemberships.teamId, viewer.teamId),
-      eq(teamMemberships.userId, guardianUserId),
-      eq(teamMemberships.role, "PARENT"),
-    ),
-  });
-
-  if (!existingMembership) {
-    await db.insert(teamMemberships).values({
+  await db
+    .insert(teamMemberships)
+    .values({
       teamId: viewer.teamId,
       userId: guardianUserId,
       role: "PARENT",
-    });
-  } else {
-    await db
-      .insert(teamMemberships)
-      .values({
-        teamId: viewer.teamId,
-        userId: guardianUserId,
-        role: "PARENT",
-      })
-      .onConflictDoNothing();
-  }
+    })
+    .onConflictDoNothing();
 
   if (alreadyLinked) {
     const guardianRecord = existingGuardians.find(

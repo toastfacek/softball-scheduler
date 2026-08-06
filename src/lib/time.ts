@@ -1,4 +1,3 @@
-import { differenceInHours } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 import { APP_TIMEZONE } from "@/lib/constants";
@@ -34,9 +33,5 @@ export function formatEventDateTimeRange(
   const end = formatInTimeZone(endsAt, timezone, "h:mm a");
 
   return `${day} · ${start} to ${end}`;
-}
-
-export function hoursUntil(date: Date) {
-  return differenceInHours(date, new Date());
 }
 
