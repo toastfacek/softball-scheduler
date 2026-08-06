@@ -190,8 +190,8 @@ export default async function GolfTournamentPage({
       />
       {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? (
         <div className="golf-wrap golf-alert" role="status">
-          Tournament entry is full. Golfer registration is closed. Sponsor-only
-          packages and raffle donations remain available.
+          Tournament entry is full. Foursome and twosome registration is
+          closed. Sponsorships and raffle donations remain available.
         </div>
       ) : null}
 
@@ -769,7 +769,7 @@ function GolfNotice({
     {
       "sold-out": "That package is sold out. Pick another option or contact BGSL.",
       "registration-closed":
-        "Tournament entry is full. Golfer registration is closed. Sponsor-only packages and raffle donations remain available.",
+        "Tournament entry is full. Foursome and twosome registration is closed. Sponsorships and raffle donations remain available.",
       unavailable:
         "That package is not available right now. Pick another option or contact BGSL.",
       cancelled: "Checkout was cancelled. Your card was not charged.",

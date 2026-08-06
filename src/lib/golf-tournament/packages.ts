@@ -26,6 +26,11 @@ export type GolfTournamentPackage = {
 
 export const GOLF_TOURNAMENT_YEAR = 2026;
 
+const CLOSED_GOLF_PACKAGE_IDS = new Set([
+  "foursome-registration",
+  "twosome-registration",
+]);
+
 export const golfTournamentPackages: GolfTournamentPackage[] = [
   {
     id: "foursome-registration",
@@ -304,8 +309,7 @@ export function isGolfEntryClosedForPackage(
 ) {
   return (
     GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED &&
-    (packageConfig.kind === "GOLF" ||
-      includedGolfSlotCount(packageConfig.includedGolf) > 0)
+    CLOSED_GOLF_PACKAGE_IDS.has(packageConfig.id)
   );
 }
 
