@@ -33,6 +33,9 @@ import {
 } from "@/lib/golf-tournament/packages";
 import { GolfCheckoutButton } from "./golf-checkout-button";
 
+const GOLF_REGISTRATION_CLOSED_MESSAGE =
+  "We’ve filled every registration spot for this year’s tournament—thank you for the incredible support! Sponsorship opportunities remain available for businesses and community partners who’d still like to be part of the day.";
+
 export const metadata: Metadata = {
   title: GOLF_TOURNAMENT_TITLE,
   description:
@@ -190,8 +193,7 @@ export default async function GolfTournamentPage({
       />
       {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? (
         <div className="golf-wrap golf-alert" role="status">
-          Tournament entry is full. Foursome and twosome registration is
-          closed. Sponsorships and raffle donations remain available.
+          {GOLF_REGISTRATION_CLOSED_MESSAGE}
         </div>
       ) : null}
 
@@ -248,7 +250,7 @@ export default async function GolfTournamentPage({
             <div className="golf-doc-copy">
               <p>
                 {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED
-                  ? "The golfer field is full, but you can still support hundreds of players and families by sponsoring the tournament or donating a raffle prize."
+                  ? "We’ve filled every registration spot for this year’s tournament—thank you for the incredible support! You can still support hundreds of players and families by sponsoring the tournament or donating a raffle prize."
                   : "Whether you’re sponsoring a contest hole, registering a foursome, or partnering as a premier event sponsor, your support directly impacts hundreds of players and families in our community while putting your business in front of a highly engaged local audience."}
               </p>
               <p>
@@ -263,10 +265,10 @@ export default async function GolfTournamentPage({
         </div>
         <div className="golf-poster-strip" aria-label="Tournament highlights">
           <div className="golf-poster-note">
-            <strong>{GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "The field is full" : "Play as a team"}</strong>
+            <strong>{GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "Thank you for your support" : "Play as a team"}</strong>
             <span>
               {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED
-                ? "Golfer registration is closed; sponsorships and raffle donations remain open."
+                ? "We’ve filled every registration spot; sponsorships and raffle donations remain open."
                 : "Register a foursome or twosome."}
             </span>
           </div>
@@ -326,7 +328,7 @@ export default async function GolfTournamentPage({
                   <p>
                     {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED &&
                     category.id === "PLAY_GOLF"
-                      ? "Tournament entry is full. Golfer registration is closed."
+                      ? "We’ve filled every registration spot for this year’s tournament. Sponsorship opportunities remain available."
                       : category.description}
                   </p>
                 </div>
@@ -769,7 +771,7 @@ function GolfNotice({
     {
       "sold-out": "That package is sold out. Pick another option or contact BGSL.",
       "registration-closed":
-        "Tournament entry is full. Foursome and twosome registration is closed. Sponsorships and raffle donations remain available.",
+        GOLF_REGISTRATION_CLOSED_MESSAGE,
       unavailable:
         "That package is not available right now. Pick another option or contact BGSL.",
       cancelled: "Checkout was cancelled. Your card was not charged.",
