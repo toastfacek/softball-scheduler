@@ -4795,6 +4795,25 @@ when Jesse/Michelle provide real golf/course/candid photos.
 }
 
 /* Simplify the hero event panel: avoid repeating the hero texture as a fake image. */
+.golf-page::before {
+  display: none;
+}
+
+.golf-hero-stage {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 72% 24%, rgba(216, 184, 79, 0.15), transparent 18rem),
+    linear-gradient(90deg, rgba(4, 24, 16, 0.97), rgba(5, 45, 29, 0.9) 58%, rgba(5, 34, 23, 0.86)),
+    var(--bgsl-texture);
+  background-position: center;
+  background-size: cover;
+}
+
+.golf-hero > * {
+  min-width: 0;
+}
+
 .golf-hero-art {
   align-self: center;
   min-height: auto;
@@ -4866,6 +4885,12 @@ when Jesse/Michelle provide real golf/course/candid photos.
 @media (max-width: 620px) {
   .golf-page .golf-tournament-card .golf-tournament-date {
     font-size: 3.25rem;
+  }
+}
+
+@media (max-width: 340px) {
+  .golf-page .golf-tournament-card .golf-tournament-date {
+    font-size: 2.75rem;
   }
 }
 

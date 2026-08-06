@@ -162,67 +162,69 @@ export default async function GolfTournamentPage({
 
   return (
     <main className="golf-page">
-      <header className="golf-topbar golf-wrap">
-        <Link href="/" className="golf-brand" aria-label="BGSL home">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className="golf-brand-logo"
-            src="/golf-tournament/league-images/bgsl-logo.png"
-            alt=""
-          />
-          <span>Beverly Girls Softball League</span>
-        </Link>
-        <nav className="golf-nav" aria-label="Golf tournament navigation">
-          <a href="#event">Event</a>
-          <a href="#sponsorships">Sponsorships</a>
-          <a href="#raffle">Raffle</a>
-          <a href="#faq">FAQ</a>
-          <a
-            className="golf-nav-cta"
-            href={GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "#sponsorships" : "#packages"}
-          >
-            {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "Sponsor" : "Register"}
-          </a>
-        </nav>
-      </header>
-
-      <GolfNotice
-        checkout={params.checkout}
-        inKind={params.inKind}
-        contactEmail={contactEmail}
-      />
-      {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? (
-        <div className="golf-wrap golf-alert" role="status">
-          {GOLF_REGISTRATION_CLOSED_MESSAGE}
-        </div>
-      ) : null}
-
-      <section className="golf-hero golf-wrap">
-        <div className="golf-hero-copy">
-          <h1>{GOLF_TOURNAMENT_TITLE}</h1>
-          <p className="golf-lead">
-            Join us for Beverly’s inaugural BGSL golf tournament. Play, sponsor,
-            and help create more opportunities for girls across Beverly.
-          </p>
-          <div className="golf-actions">
+      <div className="golf-hero-stage">
+        <header className="golf-topbar golf-wrap">
+          <Link href="/" className="golf-brand" aria-label="BGSL home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="golf-brand-logo"
+              src="/golf-tournament/league-images/bgsl-logo.png"
+              alt=""
+            />
+            <span>Beverly Girls Softball League</span>
+          </Link>
+          <nav className="golf-nav" aria-label="Golf tournament navigation">
+            <a href="#event">Event</a>
+            <a href="#sponsorships">Sponsorships</a>
+            <a href="#raffle">Raffle</a>
+            <a href="#faq">FAQ</a>
             <a
-              className="golf-button golf-button-primary"
+              className="golf-nav-cta"
               href={GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "#sponsorships" : "#packages"}
             >
-              {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "View Sponsorships" : "Register or Sponsor"}
+              {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "Sponsor" : "Register"}
             </a>
-            <a className="golf-button golf-button-secondary" href="#raffle">
-              Donate a Raffle Prize
-            </a>
+          </nav>
+        </header>
+
+        <GolfNotice
+          checkout={params.checkout}
+          inKind={params.inKind}
+          contactEmail={contactEmail}
+        />
+        {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? (
+          <div className="golf-wrap golf-alert" role="status">
+            {GOLF_REGISTRATION_CLOSED_MESSAGE}
           </div>
-        </div>
-        <div className="golf-hero-art" aria-hidden="true">
-          <div className="golf-tournament-card">
-            <strong className="golf-tournament-date">September 28</strong>
-            <em>Registration 9 AM · Tee off 10 AM</em>
+        ) : null}
+
+        <section className="golf-hero golf-wrap">
+          <div className="golf-hero-copy">
+            <h1>{GOLF_TOURNAMENT_TITLE}</h1>
+            <p className="golf-lead">
+              Join us for Beverly’s inaugural BGSL golf tournament. Play, sponsor,
+              and help create more opportunities for girls across Beverly.
+            </p>
+            <div className="golf-actions">
+              <a
+                className="golf-button golf-button-primary"
+                href={GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "#sponsorships" : "#packages"}
+              >
+                {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? "View Sponsorships" : "Register or Sponsor"}
+              </a>
+              <a className="golf-button golf-button-secondary" href="#raffle">
+                Donate a Raffle Prize
+              </a>
+            </div>
           </div>
-        </div>
-      </section>
+          <div className="golf-hero-art" aria-hidden="true">
+            <div className="golf-tournament-card">
+              <strong className="golf-tournament-date">September 28</strong>
+              <em>Registration 9 AM · Tee off 10 AM</em>
+            </div>
+          </div>
+        </section>
+      </div>
 
       <section className="golf-scoreboard golf-wrap" aria-label="Tournament details">
         <div className="golf-fact">
