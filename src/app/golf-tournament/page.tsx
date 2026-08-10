@@ -139,6 +139,22 @@ const confirmedSponsors = [
     name: "At Home With Diantha",
     logo: "/golf-tournament/sponsor-logos/at-home-with-diantha.png",
   },
+  {
+    name: "Anchor Pub & Grille",
+    logo: "/golf-tournament/sponsor-logos/anchor-pub-grille.png",
+  },
+  {
+    name: "Axcelis Technologies",
+    logo: "/golf-tournament/sponsor-logos/axcelis.png",
+  },
+  {
+    name: "Full Count Fastpitch",
+    logo: "/golf-tournament/sponsor-logos/full-count-fastpitch.png",
+  },
+  {
+    name: "Cornerstone Financial Partners",
+    logo: "/golf-tournament/sponsor-logos/cornerstone-financial-partners.jpg",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
