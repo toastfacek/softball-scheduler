@@ -155,6 +155,10 @@ const confirmedSponsors = [
     name: "Cornerstone Financial Partners",
     logo: "/golf-tournament/sponsor-logos/cornerstone-financial-partners.jpg",
   },
+  {
+    name: "Witch City Plumbing & Heating",
+    logo: "/golf-tournament/sponsor-logos/witch-city-plumbing-heating.jpg",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
