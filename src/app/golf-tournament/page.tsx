@@ -159,6 +159,10 @@ const confirmedSponsors = [
     name: "Witch City Plumbing & Heating",
     logo: "/golf-tournament/sponsor-logos/witch-city-plumbing-heating.jpg",
   },
+  {
+    name: "LeClair Dental",
+    logo: "/golf-tournament/sponsor-logos/leclair-dental.png",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
