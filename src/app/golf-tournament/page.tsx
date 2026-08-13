@@ -163,6 +163,10 @@ const confirmedSponsors = [
     name: "LeClair Dental",
     logo: "/golf-tournament/sponsor-logos/leclair-dental.png",
   },
+  {
+    name: "Rossetti Beverly",
+    logo: "/golf-tournament/sponsor-logos/rossetti-beverly.png",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
