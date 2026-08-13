@@ -167,6 +167,10 @@ const confirmedSponsors = [
     name: "Rossetti Beverly",
     logo: "/golf-tournament/sponsor-logos/rossetti-beverly.png",
   },
+  {
+    name: "MyStryde Athletic Club",
+    logo: "/golf-tournament/sponsor-logos/mystryde-athletic-club.png",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
