@@ -913,6 +913,21 @@ when Jesse/Michelle provide real golf/course/candid photos.
   max-width: 640px;
 }
 
+.golf-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.golf-form-help {
+  margin: -0.2rem 0 0;
+  color: color-mix(in srgb, var(--golf-ink) 64%, transparent);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
 .golf-form label {
   display: grid;
   gap: 0.35rem;
@@ -1336,6 +1351,124 @@ when Jesse/Michelle provide real golf/course/candid photos.
 .golf-admin-dashboard .admin-tools-menu-panel button:hover {
   background: color-mix(in srgb, var(--navy) 6%, var(--panel));
   transform: none;
+}
+
+.golf-admin-spam-review {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--orange-strong) 48%, var(--line));
+  border-radius: 0.75rem;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--orange) 8%, var(--panel)),
+      var(--panel) 7rem
+    );
+}
+
+.admin-spam-review-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-md);
+  padding: var(--admin-space-md);
+}
+
+.admin-spam-review-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.admin-spam-review-copy h2 {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.admin-spam-review-copy p:last-child {
+  max-width: 44rem;
+  margin-top: 0.35rem;
+  color: color-mix(in srgb, var(--navy) 62%, white);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.admin-spam-review-header form {
+  display: contents;
+}
+
+.admin-spam-list {
+  display: grid;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.admin-spam-row {
+  display: grid;
+  gap: var(--admin-space-sm);
+  padding: var(--admin-space-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 62%, transparent);
+}
+
+.admin-spam-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-spam-submission {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.admin-spam-submission strong {
+  font-size: 0.82rem;
+}
+
+.admin-spam-submission span {
+  overflow-wrap: anywhere;
+  color: color-mix(in srgb, var(--navy) 62%, white);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.admin-spam-meta {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+}
+
+.admin-spam-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.admin-spam-reason,
+.admin-spam-state {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.45rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-spam-reason {
+  background: color-mix(in srgb, var(--orange) 17%, var(--panel));
+  color: color-mix(in srgb, var(--navy-strong) 88%, var(--orange-strong));
+}
+
+.admin-spam-state {
+  background: color-mix(in srgb, var(--navy) 8%, var(--panel));
+  color: color-mix(in srgb, var(--navy) 66%, white);
+}
+
+.admin-spam-empty {
+  padding: var(--admin-space-md);
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  color: color-mix(in srgb, var(--navy) 62%, white);
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
 .golf-admin-summary {
@@ -4004,7 +4137,7 @@ when Jesse/Michelle provide real golf/course/candid photos.
   --golf-sky: #dce7dd;
   --golf-display: var(--font-cormorant-garamond), Georgia, serif;
   --golf-body: var(--font-hanken-grotesk), system-ui, sans-serif;
-  --golf-label: var(--font-libre-franklin), system-ui, sans-serif;
+  --golf-label: var(--font-hanken-grotesk), system-ui, sans-serif;
   --golf-radius: 0.45rem;
   --golf-soft-shadow: 0 24px 70px rgba(5, 30, 20, 0.16);
   background:

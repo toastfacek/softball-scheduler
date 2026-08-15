@@ -99,6 +99,13 @@
       "when": 1785165795745,
       "tag": "0013_wooden_yellowjacket",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786818779930,
+      "tag": "0014_funny_baron_strucker",
+      "breakpoints": true
     }
   ]
 }

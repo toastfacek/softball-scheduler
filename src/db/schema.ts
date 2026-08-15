@@ -750,6 +750,24 @@ export const golfTournamentInKindSubmissions = pgTable(
     pickupNotes: text("pickup_notes"),
     status: inKindStatusEnum("status").default("NEW").notNull(),
     adminNotes: text("admin_notes"),
+    acceptedEmailSentAt: timestamp("accepted_email_sent_at", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    createdAt,
+    updatedAt,
+  },
+);
+
+export const golfTournamentInKindSubmissionRateLimits = pgTable(
+  "golf_tournament_in_kind_submission_rate_limits",
+  {
+    keyHash: text("key_hash").primaryKey(),
+    windowStartedAt: timestamp("window_started_at", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+    requestCount: integer("request_count").default(1).notNull(),
     createdAt,
     updatedAt,
   },

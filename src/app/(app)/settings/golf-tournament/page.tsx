@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import {
   markGolfCheckReceivedAction,
+  flagSuspiciousGolfInKindSubmissionsAction,
   reconcileGolfStripePaymentsAction,
   resendGolfConfirmationAction,
   resendGolfCompletionLinkAction,
@@ -22,6 +23,7 @@ import type {
 import { golfTournamentPurchases } from "@/db/schema";
 import { env, isGolfSpreadsheetConfigured } from "@/lib/env";
 import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
+import { scanInKindSubmissions } from "@/lib/golf-tournament/in-kind-spam";
 import {
   estimatedStripeFeeCents,
   estimatedStripeNetCents,
@@ -69,6 +71,9 @@ type GolfTournamentAdminPageProps = {
     rows?: string;
     tabs?: string;
     reason?: string;
+    scan?: string;
+    flagged?: string;
+    candidates?: string;
   }>;
 };
 
@@ -104,6 +109,10 @@ export default async function GolfTournamentAdminPage({
   const assets = await db.query.golfTournamentAssets.findMany({
     orderBy: (table, { desc }) => [desc(table.createdAt)],
   });
+  const spamCandidates = scanInKindSubmissions(inKindSubmissions);
+  const flaggableSpamCandidates = spamCandidates.filter(
+    (candidate) => candidate.eligibleForFlag,
+  );
 
   const paidPurchases = purchases.filter(
     (purchase) => purchase.paymentStatus === "PAID",
@@ -224,6 +233,81 @@ export default async function GolfTournamentAdminPage({
             spreadsheetSyncMessages.unknown}
         </div>
       ) : null}
+      {params.scan === "flagged" ? (
+        <div className="saved-flash">
+          Flagged {params.flagged ?? "0"} suspicious submission
+          {params.flagged === "1" ? "" : "s"} for cleanup review. No records
+          were deleted.
+        </div>
+      ) : null}
+      {params.scan === "none" ? (
+        <div className="saved-flash">
+          No new high-confidence spam matches were found. Existing entries were
+          left unchanged.
+        </div>
+      ) : null}
+
+      <section className="golf-admin-spam-review" aria-labelledby="spam-review-title">
+        <header className="admin-spam-review-header">
+          <div className="admin-spam-review-copy">
+            <p className="eyebrow">Cleanup review</p>
+            <h2 id="spam-review-title">Suspicious submissions</h2>
+            <p>
+              This conservative scan looks for obvious test data, spam links or
+              language, and repeated submissions. It never deletes records or
+              contacts donors.
+            </p>
+          </div>
+          <form action={flagSuspiciousGolfInKindSubmissionsAction}>
+            <SubmitButton
+              label={
+                flaggableSpamCandidates.length > 0
+                  ? `Flag ${flaggableSpamCandidates.length} for cleanup`
+                  : "Run scan again"
+              }
+              pendingLabel="Scanning..."
+              className="admin-primary-action"
+            />
+          </form>
+        </header>
+        {spamCandidates.length > 0 ? (
+          <div className="admin-spam-list">
+            {spamCandidates.map((candidate) => (
+              <div
+                key={candidate.submission.id}
+                className="admin-spam-row"
+              >
+                <div className="admin-spam-submission">
+                  <strong>{candidate.submission.donorName}</strong>
+                  <span>{candidate.submission.email}</span>
+                  <span>
+                    {candidate.submission.itemDescription} ·{" "}
+                    {formatAdminDate(candidate.submission.createdAt)}
+                  </span>
+                </div>
+                <div className="admin-spam-meta">
+                  <div className="admin-spam-reasons">
+                    {candidate.reasons.map((reason) => (
+                      <span key={reason} className="admin-spam-reason">
+                        {reason}
+                      </span>
+                    ))}
+                  </div>
+                  <span className="admin-spam-state">
+                    {candidate.eligibleForFlag
+                      ? "Ready to flag"
+                      : "Already needs follow-up"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="admin-spam-empty">
+            No high-confidence matches found in the current submissions.
+          </div>
+        )}
+      </section>
 
       <section className="golf-admin-summary" aria-label="Payment summary">
         <SummaryMetric

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import type { ReactNode } from "react";
 import { and, count, eq } from "drizzle-orm";
 
@@ -12,7 +13,7 @@ import {
   golfTournamentAssets,
   golfTournamentPurchases,
 } from "@/db/schema";
-import { isDatabaseConfigured } from "@/lib/env";
+import { env, isDatabaseConfigured, isTurnstileConfigured } from "@/lib/env";
 import {
   GOLF_TOURNAMENT_ADDRESS,
   GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED,
@@ -204,12 +205,19 @@ export default async function GolfTournamentPage({
 }: GolfTournamentPageProps) {
   const params = (await searchParams) ?? {};
   const contactEmail = golfTournamentContactEmail();
+  const turnstileConfigured = isTurnstileConfigured();
   const [approvedSponsors, soldCounts] = isDatabaseConfigured()
     ? await Promise.all([listApprovedSponsors(), listGolfPackageSoldCounts()])
     : [[], new Map<string, number>()];
 
   return (
     <main className="golf-page">
+      {turnstileConfigured ? (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          strategy="afterInteractive"
+        />
+      ) : null}
       <div className="golf-hero-stage">
         <header className="golf-topbar golf-wrap">
           <Link href="/" className="golf-brand" aria-label="BGSL home">
@@ -598,29 +606,67 @@ export default async function GolfTournamentPage({
               .
             </p>
           </div>
-          <form
-            className="golf-form"
-            action={submitGolfInKindDonationAction}
-          >
-            <label>
-              Donor or business name
-              <input name="donorName" placeholder="Business or family name" />
-            </label>
-            <label>
-              Contact email
-              <input name="email" type="email" placeholder="name@example.com" />
-            </label>
-            <label>
-              Item or service
-              <textarea
-                name="description"
-                placeholder="Gift card, basket, service, product, or promotional item"
+          {turnstileConfigured ? (
+            <form
+              className="golf-form"
+              action={submitGolfInKindDonationAction}
+            >
+              <div className="golf-honeypot" aria-hidden="true">
+                <label htmlFor="website">Website</label>
+                <input
+                  id="website"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </div>
+              <label>
+                Donor or business name
+                <input
+                  name="donorName"
+                  placeholder="Business or family name"
+                  maxLength={120}
+                  required
+                />
+              </label>
+              <label>
+                Contact email
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  maxLength={254}
+                  autoComplete="email"
+                  required
+                />
+              </label>
+              <label>
+                Item or service
+                <textarea
+                  name="description"
+                  placeholder="Gift card, basket, service, product, or promotional item"
+                  maxLength={2_000}
+                  required
+                />
+              </label>
+              <div
+                className="cf-turnstile"
+                data-sitekey={env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                data-action="in_kind_donation"
               />
-            </label>
-            <button className="golf-button golf-button-primary">
-              Submit Donation
-            </button>
-          </form>
+              <p className="golf-form-help">
+                A quick verification helps us keep this form open to real donors.
+              </p>
+              <button className="golf-button golf-button-primary" type="submit">
+                Submit Donation
+              </button>
+            </form>
+          ) : (
+            <p className="golf-alert" role="status">
+              The online donation form is temporarily being connected. Please
+              email {contactEmail} with your raffle or in-kind donation idea.
+            </p>
+          )}
         </div>
       </section>
 
@@ -795,6 +841,32 @@ function GolfNotice({
       <div className="golf-wrap golf-alert" role="status">
         Thanks. Your raffle or in-kind donation idea was submitted for BGSL to
         review.
+      </div>
+    );
+  }
+
+  if (inKind === "verification-failed") {
+    return (
+      <div className="golf-wrap golf-alert" role="alert">
+        Please complete the quick verification and try again.
+      </div>
+    );
+  }
+
+  if (inKind === "rate-limited") {
+    return (
+      <div className="golf-wrap golf-alert" role="alert">
+        We received several recent attempts from this address. Please wait a
+        little while and try again, or email {contactEmail} directly.
+      </div>
+    );
+  }
+
+  if (inKind === "verification-unavailable") {
+    return (
+      <div className="golf-wrap golf-alert" role="alert">
+        The online donation form is temporarily unavailable. Please email {contactEmail}
+        directly.
       </div>
     );
   }

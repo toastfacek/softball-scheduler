@@ -5,7 +5,6 @@ import {
   Fraunces,
   Hanken_Grotesk,
   Libre_Baskerville,
-  Libre_Franklin,
   Sora,
 } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
@@ -44,12 +43,6 @@ const hankenGrotesk = Hanken_Grotesk({
   subsets: ["latin"],
 });
 
-const libreFranklin = Libre_Franklin({
-  variable: "--font-libre-franklin",
-  weight: ["500", "600", "700", "800"],
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "BGSL",
   description:
@@ -64,7 +57,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${barlowCondensed.variable} ${sora.variable} ${cormorantGaramond.variable} ${libreBaskerville.variable} ${fraunces.variable} ${hankenGrotesk.variable} ${libreFranklin.variable} h-full antialiased`}
+      className={`${barlowCondensed.variable} ${sora.variable} ${cormorantGaramond.variable} ${libreBaskerville.variable} ${fraunces.variable} ${hankenGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

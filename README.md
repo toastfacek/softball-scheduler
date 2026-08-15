@@ -42,6 +42,8 @@ cp .env.example .env.local
 - `DATABASE_URL`: your Railway Postgres connection string
 - `AUTH_SECRET`: a long random secret
 - `NEXT_PUBLIC_APP_URL`: your local or deployed app URL
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: Cloudflare Turnstile site key for the public in-kind form
+- `TURNSTILE_SECRET_KEY`: Cloudflare Turnstile secret key; keep this server-only
 - `AUTH_RESEND_FROM`: a verified sender in Resend
 - `RESEND_API_KEY`: your Resend API key
 
@@ -80,6 +82,13 @@ pnpm cron:reminders
 ### Vercel app
 
 - Set the same environment variables in Vercel.
+- Create a Cloudflare Turnstile widget for the production hostname, then set
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in Vercel. The
+  server validates the token before writing the submission or sending email.
+- In Vercel Firewall, add a rate-limit rule for the in-kind form's `POST`
+  request, keyed by IP. Start in log mode, then challenge or deny after about
+  5 requests per 10 minutes. Confirm the exact request path in Firewall logs;
+  it should be `/golf-tournament` for the current Server Action form.
 - For the golf tournament spreadsheet mirror, set `GOLF_GOOGLE_SHEET_ID` and
   `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON`. Share the destination spreadsheet with
   the service account's `client_email` as an Editor. The JSON value should be

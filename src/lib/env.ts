@@ -6,6 +6,9 @@ export const env = {
     process.env.AUTH_SECRET ?? "development-secret-change-before-production",
   NEXT_PUBLIC_APP_URL:
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY:
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "",
+  TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY?.trim() ?? "",
   AUTH_RESEND_FROM:
     process.env.AUTH_RESEND_FROM ?? "BGSL <hello@example.com>",
   AUTH_RESEND_FROM_NAME:
@@ -46,6 +49,12 @@ export function isDatabaseConfigured() {
 
 export function isStripeConfigured() {
   return Boolean(env.STRIPE_SECRET_KEY);
+}
+
+export function isTurnstileConfigured() {
+  return Boolean(
+    env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY,
+  );
 }
 
 export function isGolfSpreadsheetConfigured() {

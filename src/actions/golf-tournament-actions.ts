@@ -2,6 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -13,7 +14,12 @@ import {
   golfTournamentPlayers,
   golfTournamentPurchases,
 } from "@/db/schema";
-import { env, isR2Configured, isStripeConfigured } from "@/lib/env";
+import {
+  env,
+  isR2Configured,
+  isStripeConfigured,
+  isTurnstileConfigured,
+} from "@/lib/env";
 import { sendGolfTournamentEmail } from "@/lib/golf-tournament/email";
 import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
 import { sendGolfPurchaseConfirmation } from "@/lib/golf-tournament/confirmation-email";
@@ -23,7 +29,12 @@ import {
   golfTournamentAdminEmails,
   golfTournamentContactEmail,
 } from "@/lib/golf-tournament/event";
+import {
+  consumeInKindSubmissionRateLimit,
+  getClientIp,
+} from "@/lib/golf-tournament/in-kind-protection";
 import { golfInventoryCommitmentCondition } from "@/lib/golf-tournament/inventory";
+import { scanInKindSubmissions } from "@/lib/golf-tournament/in-kind-spam";
 import {
   formatGolfPackagePrice,
   getGolfTournamentPackage,
@@ -47,6 +58,8 @@ import {
   scheduleGolfTournamentSpreadsheetSync,
   syncGolfTournamentSpreadsheet,
 } from "@/lib/golf-tournament/spreadsheet";
+import { verifyInKindTurnstileToken } from "@/lib/golf-tournament/turnstile";
+import { normalizeEmail } from "@/lib/utils";
 
 const checkoutSchema = z.object({
   packageId: z.string().trim().min(1),
@@ -62,9 +75,23 @@ const paymentLinkCheckoutSchema = z.object({
 });
 
 const inKindSchema = z.object({
-  donorName: z.string().trim().min(1, "Donor name is required."),
-  email: z.string().email(),
-  description: z.string().trim().min(3, "Item description is required."),
+  donorName: z
+    .string()
+    .trim()
+    .min(1, "Donor name is required.")
+    .max(120, "Donor name is too long."),
+  email: z
+    .string()
+    .trim()
+    .email()
+    .max(254, "Please enter a valid email address."),
+  description: z
+    .string()
+    .trim()
+    .min(3, "Item description is required.")
+    .max(2_000, "Please keep the item description under 2,000 characters."),
+  website: z.string().trim().max(200).optional(),
+  turnstileToken: z.string().trim().max(2_048).optional(),
 });
 
 const completionSchema = z.object({
@@ -298,30 +325,50 @@ export async function submitGolfInKindDonationAction(formData: FormData) {
     donorName: formData.get("donorName"),
     email: formData.get("email"),
     description: formData.get("description"),
+    website: formData.get("website") || undefined,
+    turnstileToken: formData.get("cf-turnstile-response") || undefined,
   });
+
+  // Honeypots are intentionally handled as a successful no-op so simple bots
+  // do not learn which field identified them.
+  if (parsed.website) {
+    redirect("/golf-tournament?inKind=thanks");
+  }
+
+  const normalizedEmail = normalizeEmail(parsed.email);
+  const requestHeaders = await headers();
+  const clientIp = getClientIp(requestHeaders);
+
+  if (!isTurnstileConfigured()) {
+    if (process.env.NODE_ENV === "production") {
+      redirect("/golf-tournament?inKind=verification-unavailable");
+    }
+  } else {
+    const verification = await verifyInKindTurnstileToken(
+      parsed.turnstileToken ?? "",
+      clientIp,
+    );
+    if (!verification.success) {
+      redirect("/golf-tournament?inKind=verification-failed");
+    }
+  }
+
+  const withinRateLimit = await consumeInKindSubmissionRateLimit({
+    email: normalizedEmail,
+    ip: clientIp,
+  });
+  if (!withinRateLimit) {
+    redirect("/golf-tournament?inKind=rate-limited");
+  }
 
   await db.insert(golfTournamentInKindSubmissions).values({
     donorName: parsed.donorName,
     contactName: parsed.donorName,
-    email: parsed.email,
+    email: normalizedEmail,
     itemDescription: parsed.description,
   });
 
   scheduleGolfTournamentSpreadsheetSync();
-
-  await sendGolfTournamentEmail({
-    to: [parsed.email],
-    subject: "BGSL received your raffle donation idea",
-    body: [
-      `Thanks for supporting ${GOLF_TOURNAMENT_TITLE}, ${parsed.donorName}.`,
-      "",
-      "We received your raffle or in-kind donation submission and will follow up about pickup or drop-off details.",
-      "",
-      `Submitted item: ${parsed.description}`,
-      "",
-      GOLF_TOURNAMENT_SAFE_PROCEEDS,
-    ].join("\n"),
-  });
 
   await sendGolfTournamentEmail({
     to: golfTournamentAdminEmails(),
@@ -330,7 +377,7 @@ export async function submitGolfInKindDonationAction(formData: FormData) {
       "A new raffle or in-kind donation was submitted.",
       "",
       `Donor: ${parsed.donorName}`,
-      `Email: ${parsed.email}`,
+      `Email: ${normalizedEmail}`,
       `Item: ${parsed.description}`,
       "",
       `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/golf-admin`,
@@ -619,6 +666,10 @@ export async function updateGolfInKindStatusAction(formData: FormData) {
     status: formData.get("status"),
   });
 
+  const submission = await db.query.golfTournamentInKindSubmissions.findFirst({
+    where: eq(golfTournamentInKindSubmissions.id, parsed.submissionId),
+  });
+
   await db
     .update(golfTournamentInKindSubmissions)
     .set({
@@ -627,10 +678,87 @@ export async function updateGolfInKindStatusAction(formData: FormData) {
     })
     .where(eq(golfTournamentInKindSubmissions.id, parsed.submissionId));
 
+  if (parsed.status === "ACCEPTED" && submission && !submission.acceptedEmailSentAt) {
+    const emailResult = await sendGolfTournamentEmail({
+      to: [submission.email],
+      subject: "BGSL accepted your raffle donation idea",
+      body: [
+        `Thanks for supporting ${GOLF_TOURNAMENT_TITLE}, ${submission.donorName}.`,
+        "",
+        "BGSL accepted your raffle or in-kind donation idea. We’ll follow up directly about pickup or drop-off details.",
+        "",
+        `Submitted item: ${submission.itemDescription}`,
+        "",
+        GOLF_TOURNAMENT_SAFE_PROCEEDS,
+      ].join("\n"),
+    });
+
+    const emailFailed =
+      emailResult && "error" in emailResult && Boolean(emailResult.error);
+    if (emailFailed) {
+      console.error("[golf-email] accepted in-kind email failed", {
+        submissionId: submission.id,
+        error: emailResult.error,
+      });
+    } else {
+      await db
+        .update(golfTournamentInKindSubmissions)
+        .set({ acceptedEmailSentAt: new Date(), updatedAt: new Date() })
+        .where(eq(golfTournamentInKindSubmissions.id, submission.id));
+    }
+  }
+
   scheduleGolfTournamentSpreadsheetSync();
 
   revalidatePath("/golf-admin");
   redirect("/golf-admin?saved=in-kind");
+}
+
+export async function flagSuspiciousGolfInKindSubmissionsAction() {
+  await requireGolfAdmin();
+
+  const submissions =
+    await db.query.golfTournamentInKindSubmissions.findMany({
+      orderBy: (table, { desc }) => [desc(table.createdAt)],
+    });
+  const candidates = scanInKindSubmissions(submissions);
+  const flaggableCandidates = candidates.filter(
+    (candidate) => candidate.eligibleForFlag,
+  );
+
+  if (flaggableCandidates.length > 0) {
+    await db.transaction(async (tx) => {
+      for (const candidate of flaggableCandidates) {
+        const existingNotes = candidate.submission.adminNotes?.trim();
+        const scanNote = `Automatic cleanup review: ${candidate.reasons.join(
+          "; ",
+        )}.`;
+
+        await tx
+          .update(golfTournamentInKindSubmissions)
+          .set({
+            status: "NEEDS_FOLLOW_UP",
+            adminNotes: [existingNotes, scanNote]
+              .filter(Boolean)
+              .join("\n"),
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(golfTournamentInKindSubmissions.id, candidate.submission.id),
+              eq(golfTournamentInKindSubmissions.status, "NEW"),
+            ),
+          );
+      }
+    });
+
+    scheduleGolfTournamentSpreadsheetSync();
+  }
+
+  revalidatePath("/golf-admin");
+  redirect(
+    `/golf-admin?scan=${flaggableCandidates.length > 0 ? "flagged" : "none"}&flagged=${flaggableCandidates.length}&candidates=${candidates.length}`,
+  );
 }
 
 export async function updateGolfAssetAdminAction(formData: FormData) {
