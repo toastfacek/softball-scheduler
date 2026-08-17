@@ -171,6 +171,10 @@ const confirmedSponsors = [
     name: "MyStryde Athletic Club",
     logo: "/golf-tournament/sponsor-logos/mystryde-athletic-club.png",
   },
+  {
+    name: "Beard & Mane",
+    logo: "/golf-tournament/sponsor-logos/beard-and-mane.jpg",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
