@@ -175,6 +175,10 @@ const confirmedSponsors = [
     name: "Beard & Mane",
     logo: "/golf-tournament/sponsor-logos/beard-and-mane.jpg",
   },
+  {
+    name: "Pallazola Brothers Landscaping",
+    logo: "/golf-tournament/sponsor-logos/pallazola-brothers-landscaping.png",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
