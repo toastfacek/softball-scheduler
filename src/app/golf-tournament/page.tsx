@@ -179,6 +179,10 @@ const confirmedSponsors = [
     name: "Pallazola Brothers Landscaping",
     logo: "/golf-tournament/sponsor-logos/pallazola-brothers-landscaping.png",
   },
+  {
+    name: "Beverly Firefighters Local 1669",
+    logo: "/golf-tournament/sponsor-logos/beverly-firefighters-local-1669.jpeg",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
