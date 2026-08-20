@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "tsx src/scripts/migrate-if-configured.ts && next build",
+    "build": "pnpm typecheck && pnpm lint && tsx src/scripts/migrate-if-configured.ts && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
