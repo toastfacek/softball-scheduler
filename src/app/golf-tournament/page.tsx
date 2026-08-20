@@ -183,6 +183,10 @@ const confirmedSponsors = [
     name: "Beverly Firefighters Local 1669",
     logo: "/golf-tournament/sponsor-logos/beverly-firefighters-local-1669.jpeg",
   },
+  {
+    name: "The Saints Academy",
+    logo: "/golf-tournament/sponsor-logos/saints-academy.png",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
