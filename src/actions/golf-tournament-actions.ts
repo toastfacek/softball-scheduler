@@ -421,9 +421,13 @@ export async function updateGolfCompletionAction(formData: FormData) {
   }
 
   const packageConfig = getGolfTournamentPackage(existingPurchase.packageId);
-  const includedPlayerCount = packageConfig
-    ? includedGolfSlotCount(packageConfig.includedGolf)
-    : 0;
+  const existingPlayers = await db.query.golfTournamentPlayers.findMany({
+    where: (table, { eq }) => eq(table.purchaseId, existingPurchase.id),
+  });
+  const includedPlayerCount = Math.max(
+    packageConfig ? includedGolfSlotCount(packageConfig.includedGolf) : 0,
+    existingPlayers.length,
+  );
   if (
     packageConfig?.kind === "GOLF" &&
     parsed.playerNames

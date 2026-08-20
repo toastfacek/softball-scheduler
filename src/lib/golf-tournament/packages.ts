@@ -202,10 +202,9 @@ export const golfTournamentPackages: GolfTournamentPackage[] = [
     priceCents: 160000,
     availability: "Available",
     capacity: null,
-    includedGolf: "FOURSOME",
+    includedGolf: "NONE",
     benefits: [
       "Company name and/or logo signage at three tee boxes or greens",
-      "One (1) foursome registration included",
       "Recognition on BGSL social media and website",
     ],
   },

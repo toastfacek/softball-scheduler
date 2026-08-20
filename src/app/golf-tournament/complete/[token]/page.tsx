@@ -58,9 +58,10 @@ export default async function GolfCompletionPage({
     where: eq(golfTournamentAssets.purchaseId, purchase.id),
     orderBy: (table, { desc }) => [desc(table.createdAt)],
   });
-  const slotCount = packageConfig
-    ? includedGolfSlotCount(packageConfig.includedGolf)
-    : 4;
+  const slotCount = Math.max(
+    packageConfig ? includedGolfSlotCount(packageConfig.includedGolf) : 4,
+    existingPlayers.length,
+  );
   const playerSlots = Array.from({ length: Math.max(slotCount, 0) }, (_, i) => {
     const slotNumber = i + 1;
     return {
