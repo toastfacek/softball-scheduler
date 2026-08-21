@@ -188,6 +188,10 @@ const confirmedSponsors = [
     name: "The Saints Academy",
     logo: "/golf-tournament/sponsor-logos/saints-academy.png",
   },
+  {
+    name: "DICK’S Sporting Goods",
+    logo: "/golf-tournament/sponsor-logos/dicks-house-of-sport.png",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
