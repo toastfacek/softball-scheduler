@@ -192,6 +192,10 @@ const confirmedSponsors = [
     name: "DICK’S Sporting Goods",
     logo: "/golf-tournament/sponsor-logos/dicks-house-of-sport.png",
   },
+  {
+    name: "Fibber McGee’s Bar + Kitchen",
+    logo: "/golf-tournament/sponsor-logos/fibber-mcgees.svg",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
