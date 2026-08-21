@@ -22,9 +22,12 @@ pnpm db:seed          # tsx src/scripts/seed.ts — seeds demo team + invited ad
 pnpm db:studio        # drizzle-kit studio
 
 pnpm cron:reminders   # tsx src/scripts/send-reminders.ts — one reminder sweep
+pnpm test:in-kind     # focused Node test for public raffle submission screening
 ```
 
-No test runner is configured. `pnpm typecheck && pnpm lint` is the verification bar.
+No full test suite is configured. `pnpm typecheck && pnpm lint` remains the
+verification bar; use the focused test command above when changing raffle
+submission screening.
 
 Path alias: `@/*` → `./src/*`.
 

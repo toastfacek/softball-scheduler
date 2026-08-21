@@ -34,7 +34,11 @@ import {
   getClientIp,
 } from "@/lib/golf-tournament/in-kind-protection";
 import { golfInventoryCommitmentCondition } from "@/lib/golf-tournament/inventory";
-import { scanInKindSubmissions } from "@/lib/golf-tournament/in-kind-spam";
+import {
+  assessInKindSubmission,
+  normalizeInKindText,
+  scanInKindSubmissions,
+} from "@/lib/golf-tournament/in-kind-spam";
 import {
   formatGolfPackagePrice,
   getGolfTournamentPackage,
@@ -361,30 +365,56 @@ export async function submitGolfInKindDonationAction(formData: FormData) {
     redirect("/golf-tournament?inKind=rate-limited");
   }
 
+  const priorSubmissions =
+    await db.query.golfTournamentInKindSubmissions.findMany({
+      where: eq(golfTournamentInKindSubmissions.email, normalizedEmail),
+      columns: { itemDescription: true },
+    });
+  const repeated = priorSubmissions.some(
+    ({ itemDescription }) =>
+      normalizeInKindText(itemDescription) ===
+      normalizeInKindText(parsed.description),
+  );
+
+  const assessment = assessInKindSubmission({
+    donorName: parsed.donorName,
+    email: normalizedEmail,
+    itemDescription: parsed.description,
+    repeated,
+  });
+  const shouldHold = assessment.shouldHold;
+
   await db.insert(golfTournamentInKindSubmissions).values({
     donorName: parsed.donorName,
     contactName: parsed.donorName,
     email: normalizedEmail,
     itemDescription: parsed.description,
+    status: shouldHold ? "NEEDS_FOLLOW_UP" : "NEW",
+    adminNotes: shouldHold
+      ? `Automatic review: ${assessment.reasons.join("; ")}.`
+      : null,
   });
 
   scheduleGolfTournamentSpreadsheetSync();
 
-  await sendGolfTournamentEmail({
-    to: golfTournamentAdminEmails(),
-    subject: "New BGSL golf raffle/in-kind submission",
-    body: [
-      "A new raffle or in-kind donation was submitted.",
-      "",
-      `Donor: ${parsed.donorName}`,
-      `Email: ${normalizedEmail}`,
-      `Item: ${parsed.description}`,
-      "",
-      `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/golf-admin`,
-    ].join("\n"),
-  });
+  if (!shouldHold) {
+    await sendGolfTournamentEmail({
+      to: golfTournamentAdminEmails(),
+      subject: "New BGSL golf raffle/in-kind submission",
+      body: [
+        "A new raffle or in-kind donation was submitted.",
+        "",
+        `Donor: ${parsed.donorName}`,
+        `Email: ${normalizedEmail}`,
+        `Item: ${parsed.description}`,
+        "",
+        `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/golf-admin`,
+      ].join("\n"),
+    });
+  }
 
   revalidatePath("/golf-tournament");
+  revalidatePath("/golf-admin");
   redirect("/golf-tournament?inKind=thanks");
 }
 
