@@ -35,10 +35,11 @@ import {
 } from "@/lib/golf-tournament/in-kind-protection";
 import { golfInventoryCommitmentCondition } from "@/lib/golf-tournament/inventory";
 import {
-  assessInKindSubmission,
+  classifyInKindSubmission,
   normalizeInKindText,
   scanInKindSubmissions,
 } from "@/lib/golf-tournament/in-kind-spam";
+import { sendLegitimateInKindSubmissionEmail } from "@/lib/golf-tournament/in-kind-notifications";
 import {
   formatGolfPackagePrice,
   getGolfTournamentPackage,
@@ -376,31 +377,35 @@ export async function submitGolfInKindDonationAction(formData: FormData) {
       normalizeInKindText(parsed.description),
   );
 
-  const assessment = assessInKindSubmission({
+  const decision = classifyInKindSubmission({
     donorName: parsed.donorName,
     email: normalizedEmail,
     itemDescription: parsed.description,
     repeated,
   });
-  const shouldHold = assessment.shouldHold;
+  const shouldFlagForDiscardReview =
+    decision.disposition === "FLAG_FOR_DISCARD";
 
   await db.insert(golfTournamentInKindSubmissions).values({
     donorName: parsed.donorName,
     contactName: parsed.donorName,
     email: normalizedEmail,
     itemDescription: parsed.description,
-    status: shouldHold ? "NEEDS_FOLLOW_UP" : "NEW",
-    adminNotes: shouldHold
-      ? `Automatic review: ${assessment.reasons.join("; ")}.`
+    status: shouldFlagForDiscardReview ? "NEEDS_FOLLOW_UP" : "NEW",
+    adminNotes: shouldFlagForDiscardReview
+      ? `Automatic discard review: ${decision.assessment.reasons.join("; ")}.`
       : null,
   });
 
   scheduleGolfTournamentSpreadsheetSync();
 
-  // This is a public, untrusted form. Turnstile and content screening reduce
-  // abuse, but neither is a guarantee that a submission is worth interrupting
-  // an admin's inbox for. Keep every submission in the review queue and send
-  // no immediate admin notification from this path.
+  if (decision.disposition === "FORWARD_TO_MICHELLE") {
+    await sendLegitimateInKindSubmissionEmail({
+      donorName: parsed.donorName,
+      email: normalizedEmail,
+      itemDescription: parsed.description,
+    });
+  }
 
   revalidatePath("/golf-tournament");
   revalidatePath("/golf-admin");

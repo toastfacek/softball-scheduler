@@ -255,7 +255,8 @@ export default async function GolfTournamentAdminPage({
             <p>
               This conservative scan looks for obvious test data, spam links or
               language, and repeated submissions. It never deletes records or
-              contacts donors.
+              contacts donors; it flags high-confidence matches for discard
+              review.
             </p>
           </div>
           <form action={flagSuspiciousGolfInKindSubmissionsAction}>
@@ -296,7 +297,7 @@ export default async function GolfTournamentAdminPage({
                   <span className="admin-spam-state">
                     {candidate.eligibleForFlag
                       ? "Ready to flag"
-                      : "Already needs follow-up"}
+                      : "Flagged for discard review"}
                   </span>
                 </div>
               </div>

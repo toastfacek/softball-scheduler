@@ -20,12 +20,21 @@ export type InKindSubmissionAssessment = {
   shouldHold: boolean;
 };
 
+export type InKindSubmissionDisposition =
+  | "FORWARD_TO_MICHELLE"
+  | "FLAG_FOR_DISCARD";
+
+export type InKindSubmissionDecision = {
+  assessment: InKindSubmissionAssessment;
+  disposition: InKindSubmissionDisposition;
+};
+
 type InKindAssessmentInput = InKindSubmissionContent & {
   repeated?: boolean;
 };
 
-// A single unusual field stays below this threshold; synthetic-looking donor
-// and item values together cross it.
+// High-confidence synthetic donor names cross this threshold on their own;
+// weaker signals still need to combine before a submission is held.
 const HOLD_SCORE = 5;
 
 const PLACEHOLDER_MARKERS = new Set([
@@ -76,6 +85,40 @@ const SPAM_PHRASES = [
   "weight loss",
 ];
 
+// Common three-consonant clusters in ordinary names. The donor-name signal
+// only treats an uncommon cluster as synthetic; this keeps names such as
+// McCarthy, Thompson, and Schmidt out of the quarantine path.
+const COMMON_NAME_CONSONANT_CLUSTERS = new Set([
+  "chr",
+  "krz",
+  "ght",
+  "lth",
+  "mcc",
+  "mck",
+  "mps",
+  "nch",
+  "nds",
+  "nth",
+  "nts",
+  "rch",
+  "rds",
+  "rth",
+  "rts",
+  "sch",
+  "scr",
+  "shr",
+  "sph",
+  "spl",
+  "spr",
+  "sts",
+  "str",
+  "szt",
+  "szc",
+  "tch",
+  "thr",
+  "tsv",
+]);
+
 export function assessInKindSubmission({
   donorName,
   email,
@@ -108,9 +151,9 @@ export function assessInKindSubmission({
     score += 3;
   }
 
-  if (looksLikeSyntheticToken(donorName, 5)) {
+  if (looksLikeSyntheticDonorName(donorName)) {
     reasons.push("Synthetic-looking donor name");
-    score += 2;
+    score += HOLD_SCORE;
   }
 
   if (looksLikeSyntheticToken(itemDescription, 12)) {
@@ -143,6 +186,19 @@ export function assessInKindSubmission({
     reasons,
     score,
     shouldHold: score >= HOLD_SCORE,
+  };
+}
+
+export function classifyInKindSubmission(
+  input: InKindAssessmentInput,
+): InKindSubmissionDecision {
+  const assessment = assessInKindSubmission(input);
+
+  return {
+    assessment,
+    disposition: assessment.shouldHold
+      ? "FLAG_FOR_DISCARD"
+      : "FORWARD_TO_MICHELLE",
   };
 }
 
@@ -226,6 +282,26 @@ function looksLikeSyntheticToken(value: string, minimumLength: number) {
   }
 
   return vowelCount / letters.length < 0.2;
+}
+
+function looksLikeSyntheticDonorName(value: string) {
+  const normalized = value.normalize("NFKC").trim();
+
+  if (!/^[A-Z][a-z]+$/.test(normalized) || normalized.length < 6) {
+    return false;
+  }
+
+  const letters = normalized.toLowerCase();
+  const vowelCount = letters.match(/[aeiouy]/g)?.length ?? 0;
+  const hasRareConsonantCluster = (letters.match(/[^aeiouy]+/g) ?? []).some(
+    (run) =>
+      run.length >= 3 &&
+      ![...COMMON_NAME_CONSONANT_CLUSTERS].some((cluster) =>
+        run.includes(cluster),
+      ),
+  );
+
+  return vowelCount / letters.length <= 0.3 && hasRareConsonantCluster;
 }
 
 function containsUrl(value: string) {

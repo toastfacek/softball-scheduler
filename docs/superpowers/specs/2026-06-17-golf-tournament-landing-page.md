@@ -584,12 +584,10 @@ Admin notifications:
   - Successful paid purchase
   - Completion/details form submitted or updated
   - Sponsor logo uploaded
-- Public raffle/in-kind submissions are currently review-first: save them to
-  the private admin queue and do not send an immediate admin email. This
-  operational override was added on 2026-08-22 after Turnstile-passing bot
-  submissions began triggering false-low-risk notifications. Revisit when the
-  abuse pattern is understood and the notification policy can be safely
-  narrowed again.
+- Public raffle/in-kind submissions pass through a deterministic abuse screen.
+  Low-risk submissions are saved as `NEW` and emailed to Michelle only;
+  high-confidence matches are saved as `NEEDS_FOLLOW_UP` with human-readable
+  discard-review reasons and do not generate an email.
 - The dashboard remains the source of truth; notifications are for awareness and follow-up speed
 
 Financial reporting rule:
@@ -716,7 +714,8 @@ Before implementation is considered complete:
 - Package CTAs create Stripe Checkout sessions in test mode during development
 - Successful Stripe payment creates a purchase record and sends buyer to the completion form
 - Buyer receives Stripe receipt and BGSL confirmation email
-- Admin notifications are sent for purchase/detail/logo/in-kind events
+- Admin notifications are sent for purchase/detail/logo events and for
+  in-kind submissions that pass the deterministic abuse screen
 - Admin dashboard supports purchase review, fulfillment statuses, logo approval, completion-link resend, CSV export, and estimated totals
 - Private logo upload stores files in Cloudflare R2 or an equivalent configured private storage bucket
 - Page metadata is set for sharing: title, description, and social preview if assets are available

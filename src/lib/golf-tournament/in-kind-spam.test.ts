@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { assessInKindSubmission } from "./in-kind-spam";
+import {
+  assessInKindSubmission,
+  classifyInKindSubmission,
+} from "./in-kind-spam";
 
 test("holds a synthetic-looking donor and item combination", () => {
   const assessment = assessInKindSubmission({
@@ -35,4 +38,47 @@ test("does not hold a legitimate compound item code", () => {
   });
 
   assert.equal(assessment.shouldHold, false);
+});
+
+test("does not hold ordinary names with common consonant clusters", () => {
+  for (const donorName of [
+    "McCarthy",
+    "Thompson",
+    "Schmidt",
+    "Krzysztof",
+    "Szczepan",
+    "Tsvetan",
+  ]) {
+    const decision = classifyInKindSubmission({
+      donorName,
+      email: "donor@beverlyhardware.com",
+      itemDescription: "$50 gift card for the raffle",
+    });
+
+    assert.equal(decision.disposition, "FORWARD_TO_MICHELLE", donorName);
+  }
+});
+
+test("flags rotating synthetic donor names for discard", () => {
+  const donorNames = ["Bzcoxin", "Dupalpxg", "Pbjobsd", "Cnhhpaagq"];
+
+  for (const donorName of donorNames) {
+    const decision = classifyInKindSubmission({
+      donorName,
+      email: "person@gray.tv",
+      itemDescription: "$50 gift card for the raffle",
+    });
+
+    assert.equal(decision.disposition, "FLAG_FOR_DISCARD", donorName);
+  }
+});
+
+test("forwards ordinary donation names", () => {
+  const decision = classifyInKindSubmission({
+    donorName: "Beverly Hardware",
+    email: "donor@beverlyhardware.com",
+    itemDescription: "$50 gift card for the raffle",
+  });
+
+  assert.equal(decision.disposition, "FORWARD_TO_MICHELLE");
 });

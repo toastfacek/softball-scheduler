@@ -80,12 +80,11 @@ The smallest elegant change is to run the risk assessment after the hard gates b
 
 The first graduated version reduced obvious spam but still allowed
 Turnstile-passing bots with ordinary-looking item text to score as low risk.
-The public form is therefore temporarily review-first for all submissions:
-records are still saved for admin review, but no immediate admin email is sent.
-This is a safety valve for the inbox, not a replacement for the layered
-Turnstile, rate-limit, honeypot, and content-screening controls. Restore a
-selective notification policy only after observing enough real submissions to
-set a safe false-positive threshold.
+The classifier now treats the observed synthetic donor-name pattern as a
+high-confidence signal. Low-risk submissions remain `NEW` and are forwarded to
+Michelle; suspicious submissions are saved as `NEEDS_FOLLOW_UP` with the
+deterministic reasons attached and are not emailed. Records remain recoverable
+until an admin explicitly discards or otherwise resolves them.
 
 ## Sources
 
