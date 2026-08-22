@@ -583,8 +583,13 @@ Admin notifications:
 - Send admin email notifications to Michelle and Jesse for:
   - Successful paid purchase
   - Completion/details form submitted or updated
-  - Raffle/in-kind donation form submitted
   - Sponsor logo uploaded
+- Public raffle/in-kind submissions are currently review-first: save them to
+  the private admin queue and do not send an immediate admin email. This
+  operational override was added on 2026-08-22 after Turnstile-passing bot
+  submissions began triggering false-low-risk notifications. Revisit when the
+  abuse pattern is understood and the notification policy can be safely
+  narrowed again.
 - The dashboard remains the source of truth; notifications are for awareness and follow-up speed
 
 Financial reporting rule:

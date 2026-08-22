@@ -76,6 +76,17 @@ The gap is ordering: [the submission action](../../../src/actions/golf-tournamen
 
 The smallest elegant change is to run the risk assessment after the hard gates but before the insert/notification side effect. Save suspicious submissions as `NEEDS_FOLLOW_UP` with structured reasons, return the same generic success page, and send the admin email only for low-risk `NEW` submissions. That preserves legitimate donations, removes inbox noise, and gives BGSL a review trail.
 
+## Operational update — 2026-08-22
+
+The first graduated version reduced obvious spam but still allowed
+Turnstile-passing bots with ordinary-looking item text to score as low risk.
+The public form is therefore temporarily review-first for all submissions:
+records are still saved for admin review, but no immediate admin email is sent.
+This is a safety valve for the inbox, not a replacement for the layered
+Turnstile, rate-limit, honeypot, and content-screening controls. Restore a
+selective notification policy only after observing enough real submissions to
+set a safe false-positive threshold.
+
 ## Sources
 
 - [Cloudflare Turnstile — Validate the token](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)
