@@ -397,21 +397,10 @@ export async function submitGolfInKindDonationAction(formData: FormData) {
 
   scheduleGolfTournamentSpreadsheetSync();
 
-  if (!shouldHold) {
-    await sendGolfTournamentEmail({
-      to: golfTournamentAdminEmails(),
-      subject: "New BGSL golf raffle/in-kind submission",
-      body: [
-        "A new raffle or in-kind donation was submitted.",
-        "",
-        `Donor: ${parsed.donorName}`,
-        `Email: ${normalizedEmail}`,
-        `Item: ${parsed.description}`,
-        "",
-        `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/golf-admin`,
-      ].join("\n"),
-    });
-  }
+  // This is a public, untrusted form. Turnstile and content screening reduce
+  // abuse, but neither is a guarantee that a submission is worth interrupting
+  // an admin's inbox for. Keep every submission in the review queue and send
+  // no immediate admin notification from this path.
 
   revalidatePath("/golf-tournament");
   revalidatePath("/golf-admin");

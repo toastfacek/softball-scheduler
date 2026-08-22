@@ -603,15 +603,8 @@ export default async function GolfTournamentPage({
             <p>
               Donate a gift card, product, service, or promotional item for the
               raffle. BGSL will recognize raffle and in-kind supporters during
-              raffle announcements, on social, and on the website. Responses go
-              to{" "}
-              <a
-                className="golf-email-link"
-                href={`mailto:${contactEmail}`}
-              >
-                {contactEmail}
-              </a>
-              .
+              raffle announcements, on social, and on the website. Submissions
+              are reviewed by BGSL before follow-up.
             </p>
           </div>
           {turnstileConfigured ? (
