@@ -96,6 +96,10 @@ pnpm cron:reminders
   description. A plausible result can be forwarded to Michelle; suspicious,
   uncertain, invalid, or timed-out reviews stay in the admin queue. If the key
   is absent, the deterministic screen remains the fallback.
+- Each configured AI review writes a compact audit row to
+  `golf_tournament_in_kind_ai_reviews` with the verdict, explanation, model,
+  request identifiers, latency, token counts, and failure code when applicable.
+  Raw prompts and model responses are not stored.
 - For the golf tournament spreadsheet mirror, set `GOLF_GOOGLE_SHEET_ID` and
   `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON`. Share the destination spreadsheet with
   the service account's `client_email` as an Editor. The JSON value should be

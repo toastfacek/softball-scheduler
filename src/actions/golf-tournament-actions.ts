@@ -10,6 +10,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import {
   golfTournamentAssets,
+  golfTournamentInKindAiReviews,
   golfTournamentInKindSubmissions,
   golfTournamentPlayers,
   golfTournamentPurchases,
@@ -404,15 +405,41 @@ export async function submitGolfInKindDonationAction(formData: FormData) {
       : []),
   ];
 
-  await db.insert(golfTournamentInKindSubmissions).values({
-    donorName: parsed.donorName,
-    contactName: parsed.donorName,
-    email: normalizedEmail,
-    itemDescription: parsed.description,
-    status: shouldFlagForDiscardReview ? "NEEDS_FOLLOW_UP" : "NEW",
-    adminNotes: shouldFlagForDiscardReview
-      ? `Automatic discard review: ${automaticReviewReasons.join("; ")}.`
-      : null,
+  await db.transaction(async (tx) => {
+    const [submission] = await tx
+      .insert(golfTournamentInKindSubmissions)
+      .values({
+        donorName: parsed.donorName,
+        contactName: parsed.donorName,
+        email: normalizedEmail,
+        itemDescription: parsed.description,
+        status: shouldFlagForDiscardReview ? "NEEDS_FOLLOW_UP" : "NEW",
+        adminNotes: shouldFlagForDiscardReview
+          ? `Automatic discard review: ${automaticReviewReasons.join("; ")}.`
+          : null,
+      })
+      .returning({ id: golfTournamentInKindSubmissions.id });
+
+    if (!submission) {
+      throw new Error("In-kind submission was not created.");
+    }
+
+    if (llmReview?.trace && llmReview.verdict !== "SKIPPED") {
+      await tx.insert(golfTournamentInKindAiReviews).values({
+        submissionId: submission.id,
+        verdict: llmReview.verdict,
+        reason: llmReview.reason,
+        model: llmReview.trace.model,
+        responseId: llmReview.trace.responseId,
+        requestId: llmReview.trace.requestId,
+        latencyMs: llmReview.trace.latencyMs,
+        inputTokens: llmReview.trace.inputTokens,
+        outputTokens: llmReview.trace.outputTokens,
+        totalTokens: llmReview.trace.totalTokens,
+        httpStatus: llmReview.trace.httpStatus,
+        errorCode: llmReview.trace.errorCode,
+      });
+    }
   });
 
   scheduleGolfTournamentSpreadsheetSync();

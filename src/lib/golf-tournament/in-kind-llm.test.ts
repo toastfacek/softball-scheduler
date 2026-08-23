@@ -1,7 +1,35 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { parseInKindLlmResponse } from "./in-kind-llm";
+import {
+  extractInKindLlmResponseMetadata,
+  parseInKindLlmResponse,
+} from "./in-kind-llm";
+
+test("extracts response metadata without retaining model content", () => {
+  assert.deepEqual(
+    extractInKindLlmResponseMetadata({
+      id: "resp_123",
+      model: "gpt-5.4-nano-2026-01-01",
+      output_text: JSON.stringify({
+        verdict: "PLAUSIBLE",
+        reason: "A coherent gift basket donation.",
+      }),
+      usage: {
+        input_tokens: 123,
+        output_tokens: 45,
+        total_tokens: 168,
+      },
+    }),
+    {
+      responseId: "resp_123",
+      model: "gpt-5.4-nano-2026-01-01",
+      inputTokens: 123,
+      outputTokens: 45,
+      totalTokens: 168,
+    },
+  );
+});
 
 test("parses a structured plausible review", () => {
   assert.deepEqual(

@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -94,6 +95,18 @@ export const inKindStatusEnum = pgEnum("in_kind_status", [
   "ACCEPTED",
   "NEEDS_FOLLOW_UP",
   "DECLINED",
+]);
+export const golfInKindAiVerdictEnum = pgEnum("golf_in_kind_ai_verdict", [
+  "PLAUSIBLE",
+  "SUSPICIOUS",
+  "UNCERTAIN",
+]);
+export const golfInKindAiErrorCodeEnum = pgEnum("golf_in_kind_ai_error_code", [
+  "HTTP_ERROR",
+  "INVALID_RESPONSE",
+  "INVALID_OUTPUT",
+  "TIMEOUT",
+  "REQUEST_FAILED",
 ]);
 
 export const adultUsers = pgTable(
@@ -757,6 +770,33 @@ export const golfTournamentInKindSubmissions = pgTable(
     createdAt,
     updatedAt,
   },
+);
+
+export const golfTournamentInKindAiReviews = pgTable(
+  "golf_tournament_in_kind_ai_reviews",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    submissionId: uuid("submission_id")
+      .notNull()
+      .references(() => golfTournamentInKindSubmissions.id, {
+        onDelete: "cascade",
+      }),
+    verdict: golfInKindAiVerdictEnum("verdict").notNull(),
+    reason: text("reason").notNull(),
+    model: text("model").notNull(),
+    responseId: text("response_id"),
+    requestId: text("request_id"),
+    latencyMs: integer("latency_ms"),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    totalTokens: integer("total_tokens"),
+    httpStatus: integer("http_status"),
+    errorCode: golfInKindAiErrorCodeEnum("error_code"),
+    createdAt,
+  },
+  (table) => [
+    index("golf_in_kind_ai_reviews_submission_id_idx").on(table.submissionId),
+  ],
 );
 
 export const golfTournamentInKindSubmissionRateLimits = pgTable(

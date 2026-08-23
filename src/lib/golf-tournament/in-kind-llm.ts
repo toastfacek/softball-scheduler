@@ -42,9 +42,37 @@ export type InKindLlmVerdict =
   | "UNCERTAIN"
   | "SKIPPED";
 
+export type InKindLlmErrorCode =
+  | "HTTP_ERROR"
+  | "INVALID_RESPONSE"
+  | "INVALID_OUTPUT"
+  | "TIMEOUT"
+  | "REQUEST_FAILED";
+
+export type InKindLlmResponseMetadata = {
+  responseId: string | null;
+  model: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+};
+
+export type InKindLlmReviewTrace = {
+  model: string;
+  responseId: string | null;
+  requestId: string | null;
+  latencyMs: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  totalTokens: number | null;
+  httpStatus: number | null;
+  errorCode: InKindLlmErrorCode | null;
+};
+
 export type InKindLlmReview = {
   verdict: InKindLlmVerdict;
   reason: string;
+  trace?: InKindLlmReviewTrace;
 };
 
 export async function reviewInKindSubmissionWithLlm(
@@ -53,6 +81,9 @@ export async function reviewInKindSubmissionWithLlm(
   if (!isOpenAIConfigured()) {
     return { verdict: "SKIPPED", reason: "" };
   }
+
+  const startedAt = Date.now();
+  const requestedModel = env.OPENAI_IN_KIND_MODEL;
 
   try {
     const response = await fetch(OPENAI_RESPONSES_URL, {
@@ -88,26 +119,84 @@ export async function reviewInKindSubmissionWithLlm(
       signal: AbortSignal.timeout(REVIEW_TIMEOUT_MS),
     });
 
+    const requestId = response.headers.get("x-request-id");
+
     if (!response.ok) {
       console.error("[golf-in-kind-llm] request failed", {
         status: response.status,
       });
-      return unavailableReview();
+      return unavailableReview(
+        createReviewTrace({
+          latencyMs: Date.now() - startedAt,
+          model: requestedModel,
+          requestId,
+          httpStatus: response.status,
+          errorCode: "HTTP_ERROR",
+        }),
+      );
     }
 
-    const parsed = parseInKindLlmResponse(await response.json());
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      console.error("[golf-in-kind-llm] response was not valid JSON");
+      return unavailableReview(
+        createReviewTrace({
+          latencyMs: Date.now() - startedAt,
+          model: requestedModel,
+          requestId,
+          httpStatus: response.status,
+          errorCode: "INVALID_RESPONSE",
+        }),
+      );
+    }
+
+    const responseMetadata = extractInKindLlmResponseMetadata(body);
+    const trace = createReviewTrace({
+      latencyMs: Date.now() - startedAt,
+      model: responseMetadata.model ?? requestedModel,
+      requestId,
+      responseMetadata,
+      httpStatus: response.status,
+    });
+    const parsed = parseInKindLlmResponse(body);
     if (!parsed) {
       console.error("[golf-in-kind-llm] response was not valid structured output");
-      return unavailableReview();
+      return unavailableReview({ ...trace, errorCode: "INVALID_OUTPUT" });
     }
 
-    return parsed;
+    return { ...parsed, trace };
   } catch (error) {
     console.error("[golf-in-kind-llm] review failed", {
       error: error instanceof Error ? error.message : "Unknown error",
     });
-    return unavailableReview();
+    return unavailableReview(
+      createReviewTrace({
+        latencyMs: Date.now() - startedAt,
+        model: requestedModel,
+        errorCode: isTimeoutError(error) ? "TIMEOUT" : "REQUEST_FAILED",
+      }),
+    );
   }
+}
+
+export function extractInKindLlmResponseMetadata(
+  body: unknown,
+): InKindLlmResponseMetadata {
+  if (!isRecord(body)) {
+    return emptyResponseMetadata();
+  }
+
+  const usage = isRecord(body.usage) ? body.usage : null;
+
+  return {
+    responseId: stringOrNull(body.id),
+    model: stringOrNull(body.model),
+    inputTokens: numberOrNull(usage?.input_tokens),
+    outputTokens: numberOrNull(usage?.output_tokens),
+    totalTokens: numberOrNull(usage?.total_tokens),
+  };
 }
 
 export function parseInKindLlmResponse(
@@ -127,11 +216,65 @@ export function parseInKindLlmResponse(
   return parsed.success ? parsed.data : null;
 }
 
-function unavailableReview(): InKindLlmReview {
+function unavailableReview(trace: InKindLlmReviewTrace): InKindLlmReview {
   return {
     verdict: "UNCERTAIN",
     reason: REVIEW_UNAVAILABLE_REASON,
+    trace,
   };
+}
+
+function createReviewTrace({
+  latencyMs,
+  model,
+  requestId = null,
+  responseMetadata = emptyResponseMetadata(),
+  httpStatus = null,
+  errorCode = null,
+}: {
+  latencyMs: number;
+  model: string;
+  requestId?: string | null;
+  responseMetadata?: InKindLlmResponseMetadata;
+  httpStatus?: number | null;
+  errorCode?: InKindLlmErrorCode | null;
+}): InKindLlmReviewTrace {
+  return {
+    model,
+    responseId: responseMetadata.responseId,
+    requestId,
+    latencyMs,
+    inputTokens: responseMetadata.inputTokens,
+    outputTokens: responseMetadata.outputTokens,
+    totalTokens: responseMetadata.totalTokens,
+    httpStatus,
+    errorCode,
+  };
+}
+
+function emptyResponseMetadata(): InKindLlmResponseMetadata {
+  return {
+    responseId: null,
+    model: null,
+    inputTokens: null,
+    outputTokens: null,
+    totalTokens: null,
+  };
+}
+
+function stringOrNull(value: unknown) {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function numberOrNull(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function isTimeoutError(error: unknown) {
+  return (
+    error instanceof Error &&
+    (error.name === "AbortError" || error.name === "TimeoutError")
+  );
 }
 
 function extractOutputText(body: unknown) {
