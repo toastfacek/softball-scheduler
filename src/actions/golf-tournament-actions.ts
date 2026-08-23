@@ -34,6 +34,7 @@ import {
   getClientIp,
 } from "@/lib/golf-tournament/in-kind-protection";
 import { golfInventoryCommitmentCondition } from "@/lib/golf-tournament/inventory";
+import { reviewInKindSubmissionWithLlm } from "@/lib/golf-tournament/in-kind-llm";
 import {
   classifyInKindSubmission,
   normalizeInKindText,
@@ -383,8 +384,25 @@ export async function submitGolfInKindDonationAction(formData: FormData) {
     itemDescription: parsed.description,
     repeated,
   });
+  const llmReview =
+    decision.disposition === "FORWARD_TO_MICHELLE"
+      ? await reviewInKindSubmissionWithLlm({
+          donorName: parsed.donorName,
+          email: normalizedEmail,
+          itemDescription: parsed.description,
+        })
+      : null;
+  const llmFlagsForReview =
+    llmReview?.verdict === "SUSPICIOUS" ||
+    llmReview?.verdict === "UNCERTAIN";
   const shouldFlagForDiscardReview =
-    decision.disposition === "FLAG_FOR_DISCARD";
+    decision.disposition === "FLAG_FOR_DISCARD" || llmFlagsForReview;
+  const automaticReviewReasons = [
+    ...decision.assessment.reasons,
+    ...(llmFlagsForReview && llmReview
+      ? [`AI review (${llmReview.verdict.toLowerCase()}): ${llmReview.reason}`]
+      : []),
+  ];
 
   await db.insert(golfTournamentInKindSubmissions).values({
     donorName: parsed.donorName,
@@ -393,13 +411,16 @@ export async function submitGolfInKindDonationAction(formData: FormData) {
     itemDescription: parsed.description,
     status: shouldFlagForDiscardReview ? "NEEDS_FOLLOW_UP" : "NEW",
     adminNotes: shouldFlagForDiscardReview
-      ? `Automatic discard review: ${decision.assessment.reasons.join("; ")}.`
+      ? `Automatic discard review: ${automaticReviewReasons.join("; ")}.`
       : null,
   });
 
   scheduleGolfTournamentSpreadsheetSync();
 
-  if (decision.disposition === "FORWARD_TO_MICHELLE") {
+  if (
+    decision.disposition === "FORWARD_TO_MICHELLE" &&
+    !llmFlagsForReview
+  ) {
     await sendLegitimateInKindSubmissionEmail({
       donorName: parsed.donorName,
       email: normalizedEmail,

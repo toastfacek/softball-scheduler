@@ -20,6 +20,26 @@ test("holds a synthetic-looking donor and item combination", () => {
   ]);
 });
 
+test("flags the latest synthetic submission pattern", () => {
+  const decision = classifyInKindSubmission({
+    donorName: "Dpzal",
+    email: "sth1574@nate.com",
+    itemDescription: "AQTcclauhPEnnZQWJnCIylx",
+  });
+
+  assert.equal(decision.disposition, "FLAG_FOR_DISCARD");
+});
+
+test("flags a gibberish item even with an ordinary donor", () => {
+  const decision = classifyInKindSubmission({
+    donorName: "Beverly Hardware",
+    email: "donor@beverlyhardware.com",
+    itemDescription: "AQTcclauhPEnnZQWJnCIylx",
+  });
+
+  assert.equal(decision.disposition, "FLAG_FOR_DISCARD");
+});
+
 test("does not hold an ordinary raffle donation", () => {
   const assessment = assessInKindSubmission({
     donorName: "Beverly Hardware",
@@ -60,7 +80,13 @@ test("does not hold ordinary names with common consonant clusters", () => {
 });
 
 test("flags rotating synthetic donor names for discard", () => {
-  const donorNames = ["Bzcoxin", "Dupalpxg", "Pbjobsd", "Cnhhpaagq"];
+  const donorNames = [
+    "Dpzal",
+    "Bzcoxin",
+    "Dupalpxg",
+    "Pbjobsd",
+    "Cnhhpaagq",
+  ];
 
   for (const donorName of donorNames) {
     const decision = classifyInKindSubmission({

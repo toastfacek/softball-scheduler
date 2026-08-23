@@ -584,10 +584,14 @@ Admin notifications:
   - Successful paid purchase
   - Completion/details form submitted or updated
   - Sponsor logo uploaded
-- Public raffle/in-kind submissions pass through a deterministic abuse screen.
-  Low-risk submissions are saved as `NEW` and emailed to Michelle only;
-  high-confidence matches are saved as `NEEDS_FOLLOW_UP` with human-readable
-  discard-review reasons and do not generate an email.
+- Public raffle/in-kind submissions pass through a deterministic abuse screen
+  and, when configured, a small second-stage LLM plausibility check using the
+  donor/business name, email address, and item description. Only submissions
+  that pass both stages are saved as `NEW` and emailed to Michelle;
+  high-confidence deterministic matches and suspicious/uncertain AI results
+  are saved as `NEEDS_FOLLOW_UP` with human-readable discard-review reasons and
+  do not generate an email. If the AI key is unavailable, the deterministic
+  screen remains the fallback.
 - The dashboard remains the source of truth; notifications are for awareness and follow-up speed
 
 Financial reporting rule:

@@ -14,6 +14,9 @@ export const env = {
   AUTH_RESEND_FROM_NAME:
     process.env.AUTH_RESEND_FROM_NAME ?? "Beverly Softball",
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY?.trim() ?? "",
+  OPENAI_IN_KIND_MODEL:
+    process.env.OPENAI_IN_KIND_MODEL?.trim() ?? "gpt-5.4-nano",
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ?? "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   GOLF_GOOGLE_SHEET_ID: process.env.GOLF_GOOGLE_SHEET_ID ?? "",
@@ -41,6 +44,10 @@ export const env = {
 
 export function isResendConfigured() {
   return Boolean(env.RESEND_API_KEY && env.AUTH_RESEND_FROM);
+}
+
+export function isOpenAIConfigured() {
+  return Boolean(env.OPENAI_API_KEY);
 }
 
 export function isDatabaseConfigured() {

@@ -46,6 +46,8 @@ cp .env.example .env.local
 - `TURNSTILE_SECRET_KEY`: Cloudflare Turnstile secret key; keep this server-only
 - `AUTH_RESEND_FROM`: a verified sender in Resend
 - `RESEND_API_KEY`: your Resend API key
+- `OPENAI_API_KEY`: server-only key for the optional low-cost in-kind submission review
+- `OPENAI_IN_KIND_MODEL`: optional model override; defaults to `gpt-5.4-nano`
 
 4. Generate and run the database migration:
 
@@ -89,6 +91,11 @@ pnpm cron:reminders
   request, keyed by IP. Start in log mode, then challenge or deny after about
   5 requests per 10 minutes. Confirm the exact request path in Firewall logs;
   it should be `/golf-tournament` for the current Server Action form.
+- Set `OPENAI_API_KEY` in Vercel to enable the second-stage in-kind review. It
+  receives the submitted donor/business name, email address, and item
+  description. A plausible result can be forwarded to Michelle; suspicious,
+  uncertain, invalid, or timed-out reviews stay in the admin queue. If the key
+  is absent, the deterministic screen remains the fallback.
 - For the golf tournament spreadsheet mirror, set `GOLF_GOOGLE_SHEET_ID` and
   `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON`. Share the destination spreadsheet with
   the service account's `client_email` as an Editor. The JSON value should be

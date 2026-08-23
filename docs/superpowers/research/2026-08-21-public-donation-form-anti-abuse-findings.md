@@ -81,9 +81,14 @@ The smallest elegant change is to run the risk assessment after the hard gates b
 The first graduated version reduced obvious spam but still allowed
 Turnstile-passing bots with ordinary-looking item text to score as low risk.
 The classifier now treats the observed synthetic donor-name pattern as a
-high-confidence signal. Low-risk submissions remain `NEW` and are forwarded to
-Michelle; suspicious submissions are saved as `NEEDS_FOLLOW_UP` with the
-deterministic reasons attached and are not emailed. Records remain recoverable
+high-confidence signal. The deterministic screen now runs first, followed by
+an optional low-cost LLM plausibility check for submissions that would
+otherwise be forwarded. That check reads the donor/business name, email
+address, and item description; it is deliberately not identity verification or
+valuation. Only a `PLAUSIBLE` result is forwarded to Michelle. `SUSPICIOUS`,
+`UNCERTAIN`, invalid, or timed-out AI reviews are saved as `NEEDS_FOLLOW_UP`
+with the reason attached and are not emailed. If the AI key is unavailable,
+the deterministic screen remains the fallback. Records remain recoverable
 until an admin explicitly discards or otherwise resolves them.
 
 ## Sources

@@ -156,9 +156,10 @@ export function assessInKindSubmission({
     score += HOLD_SCORE;
   }
 
-  if (looksLikeSyntheticToken(itemDescription, 12)) {
+  const syntheticItemScore = scoreSyntheticToken(itemDescription, 12);
+  if (syntheticItemScore > 0) {
     reasons.push("Synthetic-looking item description");
-    score += 4;
+    score += syntheticItemScore;
   }
 
   const combinedText = [
@@ -265,29 +266,38 @@ export function normalizeInKindText(value: string) {
     .replaceAll(/\s+/g, " ");
 }
 
-function looksLikeSyntheticToken(value: string, minimumLength: number) {
+function scoreSyntheticToken(value: string, minimumLength: number) {
   const normalized = value.normalize("NFKC").trim();
   const letters = normalized.match(/[a-z]/gi)?.join("") ?? "";
   const vowelCount = letters.match(/[aeiou]/gi)?.length ?? 0;
+  const uppercaseCount = normalized.match(/[A-Z]/g)?.length ?? 0;
   const naturalWordRuns = normalized.match(/[a-z]{4,}/g) ?? [];
+  const looksLikeMixedCaseCode =
+    letters.length >= 18 &&
+    uppercaseCount / letters.length >= 0.4 &&
+    vowelCount / letters.length <= 0.3 &&
+    (normalized.match(/[a-z][A-Z]|[A-Z][a-z]/g)?.length ?? 0) >= 5;
 
   if (
     letters.length < minimumLength ||
     /\s/.test(normalized) ||
     !/[A-Z]/.test(normalized) ||
-    !/[a-z]/.test(normalized) ||
-    naturalWordRuns.some((run) => /[aeiou]/.test(run))
+    !/[a-z]/.test(normalized)
   ) {
-    return false;
+    return 0;
   }
 
-  return vowelCount / letters.length < 0.2;
+  if (looksLikeMixedCaseCode) return HOLD_SCORE;
+
+  if (naturalWordRuns.some((run) => /[aeiou]/.test(run))) return 0;
+
+  return vowelCount / letters.length < 0.2 ? 4 : 0;
 }
 
 function looksLikeSyntheticDonorName(value: string) {
   const normalized = value.normalize("NFKC").trim();
 
-  if (!/^[A-Z][a-z]+$/.test(normalized) || normalized.length < 6) {
+  if (!/^[A-Z][a-z]+$/.test(normalized) || normalized.length < 5) {
     return false;
   }
 
