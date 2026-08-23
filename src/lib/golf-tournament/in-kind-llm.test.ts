@@ -117,6 +117,9 @@ test("retries a transient judge failure before succeeding", async () => {
   assert.equal(review.status, "SUCCEEDED");
   assert.equal(review.verdict, "CLEAR");
   assert.equal(review.trace?.attempts, 2);
+  assert.equal(review.trace?.attemptLog.length, 2);
+  assert.equal(review.trace?.attemptLog[0]?.errorCode, "HTTP_ERROR");
+  assert.equal(review.trace?.attemptLog[1]?.outcome, "SUCCEEDED");
 });
 
 test("fails closed after exhausting judge retries", async () => {
@@ -135,6 +138,24 @@ test("fails closed after exhausting judge retries", async () => {
   assert.equal(review.verdict, "REVIEW");
   assert.equal(review.trace?.attempts, 3);
   assert.equal(review.trace?.errorCode, "HTTP_ERROR");
+  assert.equal(review.trace?.attemptLog.length, 3);
+});
+
+test("does not retry a permanent judge authorization error", async () => {
+  let calls = 0;
+  const review = await reviewInKindSubmissionWithLlm(testSubmission, {
+    apiKey: "test-key",
+    fetchImpl: async () => {
+      calls += 1;
+      return new Response("unauthorized", { status: 401 });
+    },
+    sleepImpl: async () => undefined,
+  });
+
+  assert.equal(calls, 1);
+  assert.equal(review.status, "FAILED");
+  assert.equal(review.trace?.attempts, 1);
+  assert.equal(review.trace?.attemptLog.length, 1);
 });
 
 test("reports a missing judge configuration without pretending to review", async () => {

@@ -4,9 +4,9 @@ import { env } from "@/lib/env";
 import type { InKindSubmissionContent } from "@/lib/golf-tournament/in-kind-spam";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-const REVIEW_TIMEOUT_MS = 2_500;
+const REVIEW_TIMEOUT_MS = 2_000;
 const MAX_REVIEW_ATTEMPTS = 3;
-const RETRY_BACKOFF_MS = [250, 500] as const;
+const RETRY_BACKOFF_MS = [150, 300] as const;
 const REVIEW_UNAVAILABLE_REASON =
   "AI review failed after retrying; the submission was not queued.";
 
@@ -57,6 +57,17 @@ export type InKindLlmResponseMetadata = {
   totalTokens: number | null;
 };
 
+export type InKindLlmAttemptTrace = {
+  attempt: number;
+  outcome: "SUCCEEDED" | "FAILED";
+  latencyMs: number;
+  model: string | null;
+  responseId: string | null;
+  requestId: string | null;
+  httpStatus: number | null;
+  errorCode: InKindLlmErrorCode | null;
+};
+
 export type InKindLlmReviewTrace = {
   model: string;
   responseId: string | null;
@@ -68,6 +79,7 @@ export type InKindLlmReviewTrace = {
   totalTokens: number | null;
   httpStatus: number | null;
   errorCode: InKindLlmErrorCode | null;
+  attemptLog: InKindLlmAttemptTrace[];
 };
 
 export type InKindLlmReview = {
@@ -113,6 +125,7 @@ export async function reviewInKindSubmissionWithLlm(
     Math.min(options.maxAttempts ?? MAX_REVIEW_ATTEMPTS, MAX_REVIEW_ATTEMPTS),
   );
   const timeoutMs = options.timeoutMs ?? REVIEW_TIMEOUT_MS;
+  const attemptLog: InKindLlmAttemptTrace[] = [];
 
   let lastFailure: {
     requestId: string | null;
@@ -126,6 +139,7 @@ export async function reviewInKindSubmissionWithLlm(
   };
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const attemptStartedAt = Date.now();
     try {
       const response = await fetchImpl(OPENAI_RESPONSES_URL, {
         method: "POST",
@@ -167,17 +181,28 @@ export async function reviewInKindSubmissionWithLlm(
           httpStatus: response.status,
           errorCode: "HTTP_ERROR",
         };
+        recordAttempt(attemptLog, {
+          attempt,
+          outcome: "FAILED",
+          latencyMs: Date.now() - attemptStartedAt,
+          model: requestedModel,
+          responseId: null,
+          requestId,
+          httpStatus: response.status,
+          errorCode: "HTTP_ERROR",
+        });
         console.error("[golf-in-kind-llm] request failed", {
           status: response.status,
           attempt,
           maxAttempts,
         });
 
-        if (!shouldRetryHttpStatus(response.status) || attempt === maxAttempts) {
+        if (
+          !shouldRetryHttpStatus(response.status) ||
+          !(await waitForRetry(attempt, maxAttempts, sleepImpl))
+        ) {
           break;
         }
-
-        await sleepImpl(RETRY_BACKOFF_MS[attempt - 1] ?? RETRY_BACKOFF_MS.at(-1)!);
         continue;
       }
 
@@ -190,12 +215,21 @@ export async function reviewInKindSubmissionWithLlm(
           httpStatus: response.status,
           errorCode: "INVALID_RESPONSE",
         };
+        recordAttempt(attemptLog, {
+          attempt,
+          outcome: "FAILED",
+          latencyMs: Date.now() - attemptStartedAt,
+          model: requestedModel,
+          responseId: null,
+          requestId,
+          httpStatus: response.status,
+          errorCode: "INVALID_RESPONSE",
+        });
         console.error("[golf-in-kind-llm] response was not valid JSON", {
           attempt,
           maxAttempts,
         });
-        if (attempt === maxAttempts) break;
-        await sleepImpl(RETRY_BACKOFF_MS[attempt - 1] ?? RETRY_BACKOFF_MS.at(-1)!);
+        if (!(await waitForRetry(attempt, maxAttempts, sleepImpl))) break;
         continue;
       }
 
@@ -208,14 +242,34 @@ export async function reviewInKindSubmissionWithLlm(
           httpStatus: response.status,
           errorCode: "INVALID_OUTPUT",
         };
+        recordAttempt(attemptLog, {
+          attempt,
+          outcome: "FAILED",
+          latencyMs: Date.now() - attemptStartedAt,
+          model: responseMetadata.model ?? requestedModel,
+          responseId: responseMetadata.responseId,
+          requestId,
+          httpStatus: response.status,
+          errorCode: "INVALID_OUTPUT",
+        });
         console.error("[golf-in-kind-llm] response was not valid structured output", {
           attempt,
           maxAttempts,
         });
-        if (attempt === maxAttempts) break;
-        await sleepImpl(RETRY_BACKOFF_MS[attempt - 1] ?? RETRY_BACKOFF_MS.at(-1)!);
+        if (!(await waitForRetry(attempt, maxAttempts, sleepImpl))) break;
         continue;
       }
+
+      recordAttempt(attemptLog, {
+        attempt,
+        outcome: "SUCCEEDED",
+        latencyMs: Date.now() - attemptStartedAt,
+        model: responseMetadata.model ?? requestedModel,
+        responseId: responseMetadata.responseId,
+        requestId,
+        httpStatus: response.status,
+        errorCode: null,
+      });
 
       return {
         status: "SUCCEEDED",
@@ -227,6 +281,7 @@ export async function reviewInKindSubmissionWithLlm(
           requestId,
           responseMetadata,
           httpStatus: response.status,
+          attemptLog,
         }),
       };
     } catch (error) {
@@ -235,25 +290,35 @@ export async function reviewInKindSubmissionWithLlm(
         httpStatus: null,
         errorCode: isTimeoutError(error) ? "TIMEOUT" : "REQUEST_FAILED",
       };
+      recordAttempt(attemptLog, {
+        attempt,
+        outcome: "FAILED",
+        latencyMs: Date.now() - attemptStartedAt,
+        model: requestedModel,
+        responseId: null,
+        requestId: null,
+        httpStatus: null,
+        errorCode: lastFailure.errorCode,
+      });
       console.error("[golf-in-kind-llm] review failed", {
         error: error instanceof Error ? error.message : "Unknown error",
         attempt,
         maxAttempts,
       });
-      if (attempt === maxAttempts) break;
-      await sleepImpl(RETRY_BACKOFF_MS[attempt - 1] ?? RETRY_BACKOFF_MS.at(-1)!);
+      if (!(await waitForRetry(attempt, maxAttempts, sleepImpl))) break;
     }
   }
 
   return unavailableReview(
     createReviewTrace({
       latencyMs: Date.now() - startedAt,
-      attempts: maxAttempts,
+      attempts: attemptLog.length,
       model: lastFailure.responseMetadata?.model ?? requestedModel,
       requestId: lastFailure.requestId,
       responseMetadata: lastFailure.responseMetadata,
       httpStatus: lastFailure.httpStatus,
       errorCode: lastFailure.errorCode,
+      attemptLog,
     }),
   );
 }
@@ -305,6 +370,7 @@ function unavailableReview(trace: InKindLlmReviewTrace): InKindLlmReview {
 function createReviewTrace({
   latencyMs,
   attempts,
+  attemptLog,
   model,
   requestId = null,
   responseMetadata = emptyResponseMetadata(),
@@ -313,6 +379,7 @@ function createReviewTrace({
 }: {
   latencyMs: number;
   attempts: number;
+  attemptLog: InKindLlmAttemptTrace[];
   model: string;
   requestId?: string | null;
   responseMetadata?: InKindLlmResponseMetadata;
@@ -330,6 +397,7 @@ function createReviewTrace({
     totalTokens: responseMetadata.totalTokens,
     httpStatus,
     errorCode,
+    attemptLog,
   };
 }
 
@@ -360,6 +428,23 @@ function isTimeoutError(error: unknown) {
 
 function shouldRetryHttpStatus(status: number) {
   return status === 408 || status === 409 || status === 429 || status >= 500;
+}
+
+function recordAttempt(
+  attemptLog: InKindLlmAttemptTrace[],
+  attempt: InKindLlmAttemptTrace,
+) {
+  attemptLog.push(attempt);
+}
+
+async function waitForRetry(
+  attempt: number,
+  maxAttempts: number,
+  sleepImpl: (delayMs: number) => Promise<void>,
+) {
+  if (attempt >= maxAttempts) return false;
+  await sleepImpl(RETRY_BACKOFF_MS[attempt - 1] ?? RETRY_BACKOFF_MS.at(-1)!);
+  return true;
 }
 
 function sleep(delayMs: number) {

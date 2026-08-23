@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { inArray } from "drizzle-orm";
 
 import {
   markGolfCheckReceivedAction,
@@ -20,7 +21,10 @@ import type {
   GolfFulfillmentStatus,
   GolfPaymentStatus,
 } from "@/db/schema";
-import { golfTournamentPurchases } from "@/db/schema";
+import {
+  golfTournamentInKindAiReviews,
+  golfTournamentPurchases,
+} from "@/db/schema";
 import { env, isGolfSpreadsheetConfigured } from "@/lib/env";
 import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
 import { scanInKindSubmissions } from "@/lib/golf-tournament/in-kind-spam";
@@ -106,11 +110,18 @@ export default async function GolfTournamentAdminPage({
     await db.query.golfTournamentInKindSubmissions.findMany({
       orderBy: (table, { desc }) => [desc(table.createdAt)],
     });
-  const inKindAiReviews = await db.query.golfTournamentInKindAiReviews.findMany(
-    {
-      orderBy: (table, { desc }) => [desc(table.createdAt)],
-    },
+  const inKindSubmissionIds = inKindSubmissions.map(
+    (submission) => submission.id,
   );
+  const inKindAiReviews = inKindSubmissionIds.length
+    ? await db.query.golfTournamentInKindAiReviews.findMany({
+        where: inArray(
+          golfTournamentInKindAiReviews.submissionId,
+          inKindSubmissionIds,
+        ),
+        orderBy: (table, { desc }) => [desc(table.createdAt)],
+      })
+    : [];
   const latestInKindAiReviewBySubmission = new Map<
     string,
     (typeof inKindAiReviews)[number]

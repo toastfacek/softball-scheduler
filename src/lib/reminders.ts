@@ -15,11 +15,13 @@ import { isTwilioConfigured } from "@/lib/env";
 import { sendTeamEmail } from "@/lib/notifications";
 import { sendTeamText } from "@/lib/text-notifications";
 import { renderEventRsvpText } from "@/lib/text-templates";
+import { purgeExpiredInKindQuarantine } from "@/lib/golf-tournament/in-kind-audit";
 
 type Guardian = Awaited<ReturnType<typeof getNonResponderGuardiansForEvent>>[number];
 type ReminderType = "NON_RESPONDER_24H" | "NON_RESPONDER_24H_SMS";
 
 export async function runReminderSweep(now = new Date()) {
+  await purgeExpiredInKindQuarantine(now);
   const pendingEvents = await getPendingReminderEvents(now);
   const results: {
     eventId: string;

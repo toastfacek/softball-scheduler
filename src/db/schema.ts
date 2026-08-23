@@ -108,6 +108,16 @@ export const golfInKindAiErrorCodeEnum = pgEnum("golf_in_kind_ai_error_code", [
   "TIMEOUT",
   "REQUEST_FAILED",
 ]);
+export const golfInKindScreeningOutcomeEnum = pgEnum(
+  "golf_in_kind_screening_outcome",
+  ["SPAM", "REVIEW", "CLEAR", "JUDGE_UNAVAILABLE"],
+);
+export const golfInKindJudgeStatusEnum = pgEnum("golf_in_kind_judge_status", [
+  "NOT_RUN",
+  "SUCCEEDED",
+  "SKIPPED",
+  "FAILED",
+]);
 
 export const adultUsers = pgTable(
   "adult_users",
@@ -791,15 +801,38 @@ export const golfTournamentInKindAiReviews = pgTable(
     totalTokens: integer("total_tokens"),
     httpStatus: integer("http_status"),
     errorCode: golfInKindAiErrorCodeEnum("error_code"),
-    screeningOutcome: text("screening_outcome").default("REVIEW").notNull(),
-    judgeStatus: text("judge_status").default("NOT_RUN").notNull(),
+    screeningOutcome: golfInKindScreeningOutcomeEnum("screening_outcome")
+      .default("REVIEW")
+      .notNull(),
+    judgeStatus: golfInKindJudgeStatusEnum("judge_status")
+      .default("NOT_RUN")
+      .notNull(),
     deterministicScore: integer("deterministic_score"),
     deterministicReasons: jsonb("deterministic_reasons").$type<string[]>(),
     inputFingerprint: text("input_fingerprint"),
     attemptCount: integer("attempt_count").default(0).notNull(),
+    attemptLog: jsonb("attempt_log").$type<
+      Array<{
+        attempt: number;
+        outcome: "SUCCEEDED" | "FAILED";
+        latencyMs: number;
+        model: string | null;
+        responseId: string | null;
+        requestId: string | null;
+        httpStatus: number | null;
+        errorCode: string | null;
+      }>
+    >(),
     emailAttempted: boolean("email_attempted").default(false).notNull(),
     emailProviderId: text("email_provider_id"),
     emailError: text("email_error"),
+    quarantineDonorName: text("quarantine_donor_name"),
+    quarantineEmail: text("quarantine_email"),
+    quarantineItemDescription: text("quarantine_item_description"),
+    quarantineUntil: timestamp("quarantine_until", {
+      withTimezone: true,
+      mode: "date",
+    }),
     createdAt,
   },
   (table) => [
