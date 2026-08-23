@@ -95,6 +95,7 @@ export const inKindStatusEnum = pgEnum("in_kind_status", [
   "ACCEPTED",
   "NEEDS_FOLLOW_UP",
   "DECLINED",
+  "DISCARDED",
 ]);
 export const golfInKindAiVerdictEnum = pgEnum("golf_in_kind_ai_verdict", [
   "PLAUSIBLE",

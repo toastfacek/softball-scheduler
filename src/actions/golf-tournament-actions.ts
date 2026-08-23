@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import Stripe from "stripe";
@@ -95,6 +95,10 @@ const purchaseAdminSchema = z.object({
 const inKindAdminSchema = z.object({
   submissionId: z.string().uuid(),
   status: z.enum(["NEW", "ACCEPTED", "NEEDS_FOLLOW_UP", "DECLINED"]),
+});
+
+const discardInKindAdminSchema = z.object({
+  submissionId: z.string().uuid(),
 });
 
 const assetAdminSchema = z.object({
@@ -578,13 +582,27 @@ export async function updateGolfInKindStatusAction(formData: FormData) {
     where: eq(golfTournamentInKindSubmissions.id, parsed.submissionId),
   });
 
-  await db
+  if (!submission || submission.status === "DISCARDED") {
+    redirect("/golf-admin?discard=not-found");
+  }
+
+  const [updated] = await db
     .update(golfTournamentInKindSubmissions)
     .set({
       status: parsed.status,
       updatedAt: new Date(),
     })
-    .where(eq(golfTournamentInKindSubmissions.id, parsed.submissionId));
+    .where(
+      and(
+        eq(golfTournamentInKindSubmissions.id, parsed.submissionId),
+        ne(golfTournamentInKindSubmissions.status, "DISCARDED"),
+      ),
+    )
+    .returning({ id: golfTournamentInKindSubmissions.id });
+
+  if (!updated) {
+    redirect("/golf-admin?discard=not-found");
+  }
 
   if (parsed.status === "ACCEPTED" && submission && !submission.acceptedEmailSentAt) {
     const emailResult = await sendGolfTournamentEmail({
@@ -621,13 +639,52 @@ export async function updateGolfInKindStatusAction(formData: FormData) {
   redirect("/golf-admin?saved=in-kind");
 }
 
+export async function discardGolfInKindSubmissionAction(formData: FormData) {
+  await requireGolfAdmin();
+  const parsed = discardInKindAdminSchema.parse({
+    submissionId: formData.get("submissionId"),
+  });
+
+  const submissions = await listGolfInKindSubmissions();
+  const candidate = scanInKindSubmissions(submissions).find(
+    ({ submission }) => submission.id === parsed.submissionId,
+  );
+
+  if (!candidate) {
+    redirect("/golf-admin?discard=not-found");
+  }
+
+  const now = new Date();
+  const existingNotes = candidate.submission.adminNotes?.trim();
+  const discardNote = `Discarded from cleanup review on ${now.toISOString()}.`;
+  const [discarded] = await db
+    .update(golfTournamentInKindSubmissions)
+    .set({
+      status: "DISCARDED",
+      adminNotes: [existingNotes, discardNote].filter(Boolean).join("\n"),
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(golfTournamentInKindSubmissions.id, candidate.submission.id),
+        eq(golfTournamentInKindSubmissions.status, candidate.submission.status),
+      ),
+    )
+    .returning({ id: golfTournamentInKindSubmissions.id });
+
+  if (!discarded) {
+    redirect("/golf-admin?discard=not-found");
+  }
+
+  scheduleGolfTournamentSpreadsheetSync();
+  revalidatePath("/golf-admin");
+  redirect("/golf-admin?discard=success");
+}
+
 export async function flagSuspiciousGolfInKindSubmissionsAction() {
   await requireGolfAdmin();
 
-  const submissions =
-    await db.query.golfTournamentInKindSubmissions.findMany({
-      orderBy: (table, { desc }) => [desc(table.createdAt)],
-    });
+  const submissions = await listGolfInKindSubmissions();
   const candidates = scanInKindSubmissions(submissions);
   const flaggableCandidates = candidates.filter(
     (candidate) => candidate.eligibleForFlag,
@@ -666,6 +723,12 @@ export async function flagSuspiciousGolfInKindSubmissionsAction() {
   redirect(
     `/golf-admin?scan=${flaggableCandidates.length > 0 ? "flagged" : "none"}&flagged=${flaggableCandidates.length}&candidates=${candidates.length}`,
   );
+}
+
+async function listGolfInKindSubmissions() {
+  return db.query.golfTournamentInKindSubmissions.findMany({
+    orderBy: (table, { desc }) => [desc(table.createdAt)],
+  });
 }
 
 export async function updateGolfAssetAdminAction(formData: FormData) {

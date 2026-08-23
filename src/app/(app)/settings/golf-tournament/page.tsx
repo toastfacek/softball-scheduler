@@ -2,6 +2,7 @@ import Link from "next/link";
 import { inArray } from "drizzle-orm";
 
 import {
+  discardGolfInKindSubmissionAction,
   markGolfCheckReceivedAction,
   flagSuspiciousGolfInKindSubmissionsAction,
   reconcileGolfStripePaymentsAction,
@@ -75,6 +76,7 @@ type GolfTournamentAdminPageProps = {
     rows?: string;
     tabs?: string;
     reason?: string;
+    discard?: string;
     scan?: string;
     flagged?: string;
     candidates?: string;
@@ -106,10 +108,13 @@ export default async function GolfTournamentAdminPage({
   const purchases = await db.query.golfTournamentPurchases.findMany({
     orderBy: (table, { desc }) => [desc(table.createdAt)],
   });
-  const inKindSubmissions =
+  const allInKindSubmissions =
     await db.query.golfTournamentInKindSubmissions.findMany({
       orderBy: (table, { desc }) => [desc(table.createdAt)],
     });
+  const inKindSubmissions = allInKindSubmissions.filter(
+    (submission) => submission.status !== "DISCARDED",
+  );
   const inKindSubmissionIds = inKindSubmissions.map(
     (submission) => submission.id,
   );
@@ -225,6 +230,18 @@ export default async function GolfTournamentAdminPage({
       {params.saved ? (
         <div className="saved-flash">Golf tournament changes saved.</div>
       ) : null}
+      {params.discard === "success" ? (
+        <div className="saved-flash">
+          Submission discarded. It is hidden from the dashboard and retained
+          in the audit trail.
+        </div>
+      ) : null}
+      {params.discard === "not-found" ? (
+        <div className="saved-flash">
+          That submission was already handled or is no longer eligible for
+          cleanup.
+        </div>
+      ) : null}
       {params.sync === "success" ? (
         <div className="saved-flash">
           Stripe sync complete: {params.imported ?? "0"} imported,{" "}
@@ -283,8 +300,8 @@ export default async function GolfTournamentAdminPage({
             <p>
               This conservative scan looks for obvious test data, spam links or
               language, and repeated submissions. It never deletes records or
-              contacts donors; it flags high-confidence matches for discard
-              review.
+              contacts donors; it flags matches for discard review. Discarding
+              hides a row while retaining its audit trail.
             </p>
           </div>
           <form action={flagSuspiciousGolfInKindSubmissionsAction}>
@@ -322,11 +339,28 @@ export default async function GolfTournamentAdminPage({
                       </span>
                     ))}
                   </div>
-                  <span className="admin-spam-state">
-                    {candidate.eligibleForFlag
-                      ? "Ready to flag"
-                      : "Flagged for discard review"}
-                  </span>
+                  <div className="admin-spam-actions">
+                    <span className="admin-spam-state">
+                      {candidate.eligibleForFlag
+                        ? "Ready to flag"
+                        : "Flagged for discard review"}
+                    </span>
+                    <form
+                      action={discardGolfInKindSubmissionAction}
+                      className="admin-spam-discard-form"
+                    >
+                      <input
+                        type="hidden"
+                        name="submissionId"
+                        value={candidate.submission.id}
+                      />
+                      <SubmitButton
+                        label="Discard"
+                        pendingLabel="Discarding..."
+                        className="admin-spam-discard-button"
+                      />
+                    </form>
+                  </div>
                 </div>
               </div>
             ))}

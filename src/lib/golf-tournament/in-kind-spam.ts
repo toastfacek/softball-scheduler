@@ -219,13 +219,15 @@ export function classifyInKindSubmission(
 export function scanInKindSubmissions(
   submissions: InKindSubmission[],
 ): InKindSpamCandidate[] {
-  const duplicateIndexes = findDuplicateIndexes(submissions);
+  const scannableSubmissions = submissions.filter(
+    (submission) =>
+      submission.status !== "ACCEPTED" &&
+      submission.status !== "DECLINED" &&
+      submission.status !== "DISCARDED",
+  );
+  const duplicateIndexes = findDuplicateIndexes(scannableSubmissions);
 
-  return submissions.flatMap((submission, index) => {
-    if (submission.status === "ACCEPTED" || submission.status === "DECLINED") {
-      return [];
-    }
-
+  return scannableSubmissions.flatMap((submission, index) => {
     const assessment = assessInKindSubmission({
       donorName: submission.donorName,
       email: submission.email,

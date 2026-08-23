@@ -1463,6 +1463,39 @@ when Jesse/Michelle provide real golf/course/candid photos.
   color: color-mix(in srgb, var(--navy) 66%, white);
 }
 
+.admin-spam-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.admin-spam-discard-form {
+  margin-left: auto;
+}
+
+.golf-admin-dashboard .admin-spam-discard-button {
+  min-height: 2.25rem;
+  padding: 0.4rem 0.7rem;
+  border-color: color-mix(in srgb, var(--orange-strong) 58%, var(--line));
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--orange) 13%, var(--panel));
+  box-shadow: none;
+  color: var(--navy-strong);
+  font-family: var(--font-sora), sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0;
+  text-transform: none;
+  transform: none;
+}
+
+.golf-admin-dashboard .admin-spam-discard-button:hover {
+  border-color: var(--orange-strong);
+  box-shadow: none;
+  transform: none;
+}
+
 .admin-spam-empty {
   padding: var(--admin-space-md);
   border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);

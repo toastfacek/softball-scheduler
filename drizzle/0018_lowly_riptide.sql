@@ -1,0 +1,1 @@
+ALTER TYPE "public"."in_kind_status" ADD VALUE 'DISCARDED';

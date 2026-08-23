@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   assessInKindSubmission,
   classifyInKindSubmission,
+  scanInKindSubmissions,
 } from "./in-kind-spam";
 
 test("holds a synthetic-looking donor and item combination", () => {
@@ -117,4 +118,58 @@ test("does not treat a terse but possible item as definite spam", () => {
   });
 
   assert.equal(decision.disposition, "REQUIRES_LLM");
+});
+
+test("does not resurface discarded submissions", () => {
+  const now = new Date("2026-08-23T12:00:00.000Z");
+  const submission = {
+    id: "00000000-0000-0000-0000-000000000001",
+    donorName: "Dpzal",
+    contactName: "Dpzal",
+    email: "person@gray.tv",
+    phone: null,
+    itemDescription: "AQTcclauhPEnnZQWJnCIylx",
+    estimatedValueCents: null,
+    pickupNotes: null,
+    status: "DISCARDED",
+    adminNotes: "Discarded by admin.",
+    acceptedEmailSentAt: null,
+    createdAt: now,
+    updatedAt: now,
+  } as Parameters<typeof scanInKindSubmissions>[0][number];
+
+  assert.deepEqual(scanInKindSubmissions([submission]), []);
+});
+
+test("does not let discarded submissions create duplicate flags", () => {
+  const older = new Date("2026-08-23T12:00:00.000Z");
+  const newer = new Date("2026-08-23T12:01:00.000Z");
+  const discardedSubmission = {
+    id: "00000000-0000-0000-0000-000000000001",
+    donorName: "Brynn",
+    contactName: "Brynn",
+    email: "person@gray.tv",
+    phone: null,
+    itemDescription: "$50 gift card",
+    estimatedValueCents: null,
+    pickupNotes: null,
+    status: "DISCARDED",
+    adminNotes: "Discarded by admin.",
+    acceptedEmailSentAt: null,
+    createdAt: older,
+    updatedAt: older,
+  } as Parameters<typeof scanInKindSubmissions>[0][number];
+  const liveSubmission = {
+    ...discardedSubmission,
+    id: "00000000-0000-0000-0000-000000000002",
+    status: "NEW",
+    adminNotes: null,
+    createdAt: newer,
+    updatedAt: newer,
+  } as Parameters<typeof scanInKindSubmissions>[0][number];
+
+  assert.deepEqual(
+    scanInKindSubmissions([discardedSubmission, liveSubmission]),
+    [],
+  );
 });
