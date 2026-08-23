@@ -15,6 +15,7 @@ import {
   updateGolfPurchaseAdminAction,
 } from "@/actions/golf-tournament-actions";
 import { signOutGolfAdminAction } from "@/actions/golf-admin-actions";
+import { GolfAdminRail } from "@/components/golf-admin-rail";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { db } from "@/db";
@@ -61,6 +62,7 @@ const purchaseViewLabels: Record<PurchaseView, string> = {
 type GolfPurchase = typeof golfTournamentPurchases.$inferSelect;
 
 type GolfTournamentAdminPageProps = {
+  standalone?: boolean;
   searchParams?: Promise<{
     saved?: string;
     view?: string;
@@ -99,6 +101,7 @@ const spreadsheetSyncMessages: Record<string, string> = {
 };
 
 export default async function GolfTournamentAdminPage({
+  standalone = false,
   searchParams,
 }: GolfTournamentAdminPageProps) {
   await requireGolfAdmin();
@@ -145,6 +148,8 @@ export default async function GolfTournamentAdminPage({
     orderBy: (table, { desc }) => [desc(table.createdAt)],
   });
   const spamCandidates = scanInKindSubmissions(openInKindSubmissions);
+  const openInKindCount = openInKindSubmissions.length;
+  const cleanupCount = spamCandidates.length;
   const flaggableSpamCandidates = spamCandidates.filter(
     (candidate) => candidate.eligibleForFlag,
   );
@@ -184,50 +189,60 @@ export default async function GolfTournamentAdminPage({
   }));
 
   return (
-    <div className="golf-admin-dashboard">
-      <PageHeader
-        title="Golf tournament"
-        action={
-          <div className="golf-admin-header-actions">
-            <form action={syncGolfTournamentSpreadsheetAction}>
-              <SubmitButton
-                label="Sync spreadsheet"
-                className="admin-primary-action"
-              />
-            </form>
-            <form action={reconcileGolfStripePaymentsAction}>
-              <SubmitButton
-                label="Sync Stripe"
-                className="admin-primary-action"
-              />
-            </form>
-            <Link
-              className="admin-header-link"
-              href="/settings/golf-tournament/export"
-            >
-              Export
-            </Link>
-            {isGolfSpreadsheetConfigured() ? (
+    <div
+      className={`golf-admin-shell${standalone ? "" : " golf-admin-shell--single"}`}
+    >
+      {standalone ? (
+        <GolfAdminRail
+          openInKindCount={openInKindCount}
+          cleanupCount={cleanupCount}
+        />
+      ) : null}
+
+      <div className="golf-admin-dashboard">
+        <PageHeader
+          title="Golf tournament"
+          action={
+            <div className="golf-admin-header-actions">
+              <form action={syncGolfTournamentSpreadsheetAction}>
+                <SubmitButton
+                  label="Sync spreadsheet"
+                  className="admin-primary-action"
+                />
+              </form>
+              <form action={reconcileGolfStripePaymentsAction}>
+                <SubmitButton
+                  label="Sync Stripe"
+                  className="admin-primary-action"
+                />
+              </form>
               <Link
                 className="admin-header-link"
-                href={`https://docs.google.com/spreadsheets/d/${env.GOLF_GOOGLE_SHEET_ID}/edit`}
-                target="_blank"
+                href="/settings/golf-tournament/export"
               >
-                Spreadsheet
+                Export
               </Link>
-            ) : null}
-            <details className="admin-tools-menu">
-              <summary>More</summary>
-              <div className="admin-tools-menu-panel">
-                <Link href="/golf-admin/email-preview">Email preview</Link>
-                <form action={signOutGolfAdminAction}>
-                  <SubmitButton label="Sign out" />
-                </form>
-              </div>
-            </details>
-          </div>
-        }
-      />
+              {isGolfSpreadsheetConfigured() ? (
+                <Link
+                  className="admin-header-link"
+                  href={`https://docs.google.com/spreadsheets/d/${env.GOLF_GOOGLE_SHEET_ID}/edit`}
+                  target="_blank"
+                >
+                  Spreadsheet
+                </Link>
+              ) : null}
+              <details className="admin-tools-menu">
+                <summary>More</summary>
+                <div className="admin-tools-menu-panel">
+                  <Link href="/golf-admin/email-preview">Email preview</Link>
+                  <form action={signOutGolfAdminAction}>
+                    <SubmitButton label="Sign out" />
+                  </form>
+                </div>
+              </details>
+            </div>
+          }
+        />
 
       {params.saved ? (
         <div className="saved-flash">Golf tournament changes saved.</div>
@@ -294,7 +309,11 @@ export default async function GolfTournamentAdminPage({
         </div>
       ) : null}
 
-      <section className="golf-admin-summary" aria-label="Payment summary">
+      <section
+        id="overview"
+        className="golf-admin-summary"
+        aria-label="Payment summary"
+      >
         <SummaryMetric
           label="Gross volume"
           value={formatGolfPackagePrice(grossPaid)}
@@ -310,7 +329,7 @@ export default async function GolfTournamentAdminPage({
         />
       </section>
 
-      <section className="golf-admin-ledger">
+      <section id="payments" className="golf-admin-ledger">
         <header className="admin-ledger-header">
           <div>
             <p className="eyebrow">Payments</p>
@@ -595,18 +614,19 @@ export default async function GolfTournamentAdminPage({
       </section>
 
       <details
+        id="in-kind"
         className="golf-admin-secondary-ledger"
-        open={openInKindSubmissions.length > 0}
+        open={openInKindCount > 0}
       >
         <summary>
           <span>
             <span className="eyebrow">Raffle</span>
             <strong>In-kind review queue</strong>
           </span>
-          <span>{openInKindSubmissions.length}</span>
+          <span>{openInKindCount}</span>
         </summary>
         <div className="admin-secondary-content">
-          {openInKindSubmissions.length > 0 ? (
+          {openInKindCount > 0 ? (
             openInKindSubmissions.map((submission) => {
               const aiReview = latestInKindAiReviewBySubmission.get(submission.id);
               return (
@@ -659,8 +679,11 @@ export default async function GolfTournamentAdminPage({
       </details>
 
       <details
+        id="cleanup"
         className="golf-admin-cleanup"
-        open={Boolean(params.scan || params.discard)}
+        open={Boolean(
+          params.scan || params.discard || cleanupCount > 0,
+        )}
       >
         <summary>
           <span>
@@ -669,13 +692,13 @@ export default async function GolfTournamentAdminPage({
           </span>
           <span
             className={
-              spamCandidates.length > 0
+              cleanupCount > 0
                 ? "golf-admin-cleanup-count has-items"
                 : "golf-admin-cleanup-count"
             }
           >
-            {spamCandidates.length > 0
-              ? `${spamCandidates.length} to review`
+            {cleanupCount > 0
+              ? `${cleanupCount} to review`
               : "Clear"}
           </span>
         </summary>
@@ -762,6 +785,7 @@ export default async function GolfTournamentAdminPage({
           )}
         </section>
       </details>
+      </div>
     </div>
   );
 }

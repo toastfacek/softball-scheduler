@@ -1204,6 +1204,22 @@ when Jesse/Michelle provide real golf/course/candid photos.
   font-kerning: normal;
 }
 
+.golf-admin-shell {
+  min-width: 0;
+}
+
+.golf-admin-rail {
+  display: none;
+}
+
+.golf-admin-dashboard {
+  min-width: 0;
+}
+
+.golf-admin-dashboard > [id] {
+  scroll-margin-top: 1rem;
+}
+
 .golf-admin-dashboard .app-top-bar {
   position: static;
   height: auto;
@@ -2257,6 +2273,174 @@ when Jesse/Michelle provide real golf/course/candid photos.
 
   .golf-admin-dashboard .admin-inline-form select {
     flex: 0 1 auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .golf-admin-shell {
+    display: grid;
+    grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
+    align-items: start;
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+  }
+
+  .golf-admin-shell--single {
+    display: block;
+  }
+
+  .golf-admin-rail {
+    position: sticky;
+    top: 1.5rem;
+    display: flex;
+    min-height: calc(100vh - 3rem);
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+    border-radius: 0.75rem;
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--orange) 8%, var(--panel)),
+        var(--panel) 8.5rem
+      );
+    color: var(--navy-strong);
+    font-family: var(--font-sora), sans-serif;
+  }
+
+  .golf-admin-rail-brand {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.7rem;
+    align-items: center;
+  }
+
+  .golf-admin-rail-mark {
+    display: grid;
+    width: 2.6rem;
+    height: 2.6rem;
+    place-items: center;
+    border-radius: 0.6rem;
+    background: var(--navy-strong);
+    color: var(--paper);
+    font-family: var(--font-barlow-condensed), sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .golf-admin-rail-brand > div {
+    display: grid;
+    gap: 0.18rem;
+    min-width: 0;
+  }
+
+  .golf-admin-rail-brand strong {
+    overflow: hidden;
+    font-family: var(--font-barlow-condensed), sans-serif;
+    font-size: 1.1rem;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .golf-admin-rail-brand span:not(.golf-admin-rail-mark) {
+    color: color-mix(in srgb, var(--navy) 58%, white);
+    font-size: 0.66rem;
+    font-weight: 650;
+  }
+
+  .golf-admin-rail-section {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .golf-admin-rail .eyebrow {
+    margin: 0;
+    color: color-mix(in srgb, var(--navy) 56%, white);
+    font-size: 0.62rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .golf-admin-rail-nav {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .golf-admin-rail-nav a {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 0.45rem;
+    color: color-mix(in srgb, var(--navy) 68%, white);
+    font-size: 0.74rem;
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  .golf-admin-rail-nav a > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .golf-admin-rail-nav a > span + span {
+    display: inline-flex;
+    min-width: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    color: color-mix(in srgb, var(--navy) 64%, white);
+    font-size: 0.64rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .golf-admin-rail-nav a:hover,
+  .golf-admin-rail-nav a:focus-visible {
+    border-color: color-mix(in srgb, var(--line) 90%, transparent);
+    background: color-mix(in srgb, var(--navy) 5%, var(--panel));
+    color: var(--navy-strong);
+    outline: none;
+  }
+
+  .golf-admin-rail-nav a.is-active {
+    border-color: var(--navy-strong);
+    background: var(--navy-strong);
+    color: var(--paper);
+  }
+
+  .golf-admin-rail-nav a.is-active > span + span {
+    color: var(--orange);
+  }
+
+  .golf-admin-rail-footer {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  }
+
+  .golf-admin-rail-footer a {
+    display: flex;
+    min-height: 2.5rem;
+    align-items: center;
+    color: color-mix(in srgb, var(--navy) 68%, white);
+    font-size: 0.7rem;
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  .golf-admin-rail-footer a:hover,
+  .golf-admin-rail-footer a:focus-visible {
+    color: var(--navy-strong);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
   }
 }
 
