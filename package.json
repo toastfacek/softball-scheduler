@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:in-kind": "tsx --test src/lib/golf-tournament/in-kind-spam.test.ts src/lib/golf-tournament/in-kind-llm.test.ts src/lib/golf-tournament/in-kind-routing.test.ts",
+    "test:in-kind": "tsx --test src/lib/golf-tournament/in-kind-spam.test.ts src/lib/golf-tournament/in-kind-llm.test.ts src/lib/golf-tournament/in-kind-routing.test.ts src/lib/golf-tournament/in-kind-audit.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/scripts/seed.ts",

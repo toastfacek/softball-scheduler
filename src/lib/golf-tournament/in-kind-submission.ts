@@ -1,11 +1,15 @@
 import { createHmac } from "node:crypto";
 
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, isNotNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { golfTournamentInKindAiReviews, golfTournamentInKindSubmissions } from "@/db/schema";
+import {
+  golfInKindJudgeStatusEnum,
+  golfTournamentInKindAiReviews,
+  golfTournamentInKindSubmissions,
+} from "@/db/schema";
 import {
   env,
   isResendConfigured,
@@ -68,7 +72,7 @@ export type InKindSubmissionProcessResult =
   | { kind: "redirect"; redirectState: InKindSubmissionRedirectState }
   | { kind: "invalid" };
 
-type InKindJudgeStatus = "NOT_RUN" | "SUCCEEDED" | "SKIPPED" | "FAILED";
+type InKindJudgeStatus = (typeof golfInKindJudgeStatusEnum.enumValues)[number];
 const EMAIL_DEDUP_WINDOW_MS = 24 * 60 * 60 * 1_000;
 
 type AuditContext = {
@@ -227,46 +231,11 @@ export async function processInKindSubmission({
   scheduleGolfTournamentSpreadsheetSync();
 
   if (routingOutcome === "EMAIL") {
-    const priorEmail = await findRecentInKindEmail(inputFingerprint);
-    if (priorEmail) {
-      await markInKindEmailAudit(auditId, {
-        providerMessageId: priorEmail.emailProviderId,
-        error: "DUPLICATE_SUPPRESSED",
-      });
-    } else if (await claimInKindEmailAudit(auditId)) {
-      let emailResult: GolfEmailResult;
-      try {
-        emailResult = await sendLegitimateInKindSubmissionEmail(content);
-      } catch (error) {
-        console.error("[golf-in-kind] legitimate submission email failed", {
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
-        emailResult = {
-          mode: "resend",
-          recipients: [golfTournamentContactEmail()],
-          providerMessageId: null,
-          error:
-            error instanceof Error ? error.message : "Unknown email error.",
-        };
-      }
-      const emailError =
-        emailResult.error ??
-        (!isResendConfigured()
-          ? "RESEND_NOT_CONFIGURED"
-          : emailResult.providerMessageId
-            ? null
-            : "EMAIL_PROVIDER_NO_MESSAGE_ID");
-
-      await markInKindEmailAudit(auditId, {
-        providerMessageId: emailResult.providerMessageId,
-        error: emailError,
-      });
-    } else {
-      await markInKindEmailAudit(auditId, {
-        providerMessageId: null,
-        error: "DUPLICATE_SUPPRESSED",
-      });
-    }
+    await sendInKindEmailWithClaim({
+      auditId,
+      inputFingerprint,
+      content,
+    });
   }
 
   revalidatePath("/golf-tournament");
@@ -339,53 +308,101 @@ async function recordInKindScreeningAudit(context: AuditContext) {
   );
 }
 
-async function findRecentInKindEmail(inputFingerprint: string) {
-  return db.query.golfTournamentInKindAiReviews.findFirst({
-    where: and(
-      eq(golfTournamentInKindAiReviews.inputFingerprint, inputFingerprint),
-      eq(golfTournamentInKindAiReviews.screeningOutcome, "CLEAR"),
-      eq(golfTournamentInKindAiReviews.emailAttempted, true),
-      gte(
-        golfTournamentInKindAiReviews.createdAt,
-        new Date(Date.now() - EMAIL_DEDUP_WINDOW_MS),
-      ),
-    ),
-    columns: {
-      emailProviderId: true,
-    },
+async function sendInKindEmailWithClaim({
+  auditId,
+  inputFingerprint,
+  content,
+}: {
+  auditId: string;
+  inputFingerprint: string;
+  content: AuditContext["content"];
+}) {
+  await db.transaction(async (tx) => {
+    // Serialize identical clear submissions across Vercel instances before
+    // checking the 24-hour notification window and claiming the send.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${inputFingerprint}, 0))`,
+    );
+
+    const [priorEmail] = await tx
+      .select({ providerMessageId: golfTournamentInKindAiReviews.emailProviderId })
+      .from(golfTournamentInKindAiReviews)
+      .where(
+        and(
+          eq(golfTournamentInKindAiReviews.inputFingerprint, inputFingerprint),
+          eq(golfTournamentInKindAiReviews.screeningOutcome, "CLEAR"),
+          eq(golfTournamentInKindAiReviews.emailAttempted, true),
+          or(
+            isNotNull(golfTournamentInKindAiReviews.emailProviderId),
+            eq(golfTournamentInKindAiReviews.emailError, "PENDING"),
+          ),
+          gte(
+            golfTournamentInKindAiReviews.createdAt,
+            new Date(Date.now() - EMAIL_DEDUP_WINDOW_MS),
+          ),
+        ),
+      )
+      .limit(1);
+
+    if (priorEmail) {
+      await tx
+        .update(golfTournamentInKindAiReviews)
+        .set({
+          emailAttempted: true,
+          emailProviderId: priorEmail.providerMessageId,
+          emailError: "DUPLICATE_SUPPRESSED",
+        })
+        .where(eq(golfTournamentInKindAiReviews.id, auditId));
+      return;
+    }
+
+    const [claimed] = await tx
+      .update(golfTournamentInKindAiReviews)
+      .set({
+        emailAttempted: true,
+        emailError: "PENDING",
+      })
+      .where(
+        and(
+          eq(golfTournamentInKindAiReviews.id, auditId),
+          eq(golfTournamentInKindAiReviews.emailAttempted, false),
+        ),
+      )
+      .returning({ id: golfTournamentInKindAiReviews.id });
+
+    if (!claimed) return;
+
+    let emailResult: GolfEmailResult;
+    try {
+      emailResult = await sendLegitimateInKindSubmissionEmail(content);
+    } catch (error) {
+      console.error("[golf-in-kind] legitimate submission email failed", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      emailResult = {
+        mode: "resend",
+        recipients: [golfTournamentContactEmail()],
+        providerMessageId: null,
+        error: error instanceof Error ? error.message : "Unknown email error.",
+      };
+    }
+    const emailError =
+      emailResult.error ??
+      (!isResendConfigured()
+        ? "RESEND_NOT_CONFIGURED"
+        : emailResult.providerMessageId
+          ? null
+          : "EMAIL_PROVIDER_NO_MESSAGE_ID");
+
+    await tx
+      .update(golfTournamentInKindAiReviews)
+      .set({
+        emailAttempted: true,
+        emailProviderId: emailResult.providerMessageId,
+        emailError,
+      })
+      .where(eq(golfTournamentInKindAiReviews.id, auditId));
   });
-}
-
-async function claimInKindEmailAudit(auditId: string) {
-  const [claimed] = await db
-    .update(golfTournamentInKindAiReviews)
-    .set({
-      emailAttempted: true,
-      emailError: "PENDING",
-    })
-    .where(
-      and(
-        eq(golfTournamentInKindAiReviews.id, auditId),
-        eq(golfTournamentInKindAiReviews.emailAttempted, false),
-      ),
-    )
-    .returning({ id: golfTournamentInKindAiReviews.id });
-
-  return Boolean(claimed);
-}
-
-async function markInKindEmailAudit(
-  auditId: string,
-  result: { providerMessageId: string | null; error: string | null },
-) {
-  await db
-    .update(golfTournamentInKindAiReviews)
-    .set({
-      emailAttempted: true,
-      emailProviderId: result.providerMessageId,
-      emailError: result.error,
-    })
-    .where(eq(golfTournamentInKindAiReviews.id, auditId));
 }
 
 function buildInKindAuditValues({

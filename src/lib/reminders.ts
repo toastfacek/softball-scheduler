@@ -21,7 +21,11 @@ type Guardian = Awaited<ReturnType<typeof getNonResponderGuardiansForEvent>>[num
 type ReminderType = "NON_RESPONDER_24H" | "NON_RESPONDER_24H_SMS";
 
 export async function runReminderSweep(now = new Date()) {
-  await purgeExpiredInKindQuarantine(now);
+  try {
+    await purgeExpiredInKindQuarantine(now);
+  } catch (error) {
+    console.error("[in-kind-quarantine] cleanup failed", error);
+  }
   const pendingEvents = await getPendingReminderEvents(now);
   const results: {
     eventId: string;

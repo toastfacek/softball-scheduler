@@ -1,13 +1,13 @@
 import { and, isNotNull, lte } from "drizzle-orm";
 
 import { db } from "@/db";
-import { golfTournamentInKindAiReviews } from "@/db/schema";
+import {
+  golfInKindScreeningOutcomeEnum,
+  golfTournamentInKindAiReviews,
+} from "@/db/schema";
 
 export type InKindScreeningOutcome =
-  | "SPAM"
-  | "REVIEW"
-  | "CLEAR"
-  | "JUDGE_UNAVAILABLE";
+  (typeof golfInKindScreeningOutcomeEnum.enumValues)[number];
 
 const SPAM_QUARANTINE_RETENTION_MS = 14 * 24 * 60 * 60 * 1_000;
 const JUDGE_FAILURE_RETENTION_MS = 24 * 60 * 60 * 1_000;
