@@ -292,86 +292,6 @@ export default async function GolfTournamentAdminPage({
         </div>
       ) : null}
 
-      <section className="golf-admin-spam-review" aria-labelledby="spam-review-title">
-        <header className="admin-spam-review-header">
-          <div className="admin-spam-review-copy">
-            <p className="eyebrow">Cleanup review</p>
-            <h2 id="spam-review-title">Suspicious submissions</h2>
-            <p>
-              This conservative scan looks for obvious test data, spam links or
-              language, and repeated submissions. It never deletes records or
-              contacts donors; it flags matches for discard review. Discarding
-              hides a row while retaining its audit trail.
-            </p>
-          </div>
-          <form action={flagSuspiciousGolfInKindSubmissionsAction}>
-            <SubmitButton
-              label={
-                flaggableSpamCandidates.length > 0
-                  ? `Flag ${flaggableSpamCandidates.length} for cleanup`
-                  : "Run scan again"
-              }
-              pendingLabel="Scanning..."
-              className="admin-primary-action"
-            />
-          </form>
-        </header>
-        {spamCandidates.length > 0 ? (
-          <div className="admin-spam-list">
-            {spamCandidates.map((candidate) => (
-              <div
-                key={candidate.submission.id}
-                className="admin-spam-row"
-              >
-                <div className="admin-spam-submission">
-                  <strong>{candidate.submission.donorName}</strong>
-                  <span>{candidate.submission.email}</span>
-                  <span>
-                    {candidate.submission.itemDescription} ·{" "}
-                    {formatAdminDate(candidate.submission.createdAt)}
-                  </span>
-                </div>
-                <div className="admin-spam-meta">
-                  <div className="admin-spam-reasons">
-                    {candidate.reasons.map((reason) => (
-                      <span key={reason} className="admin-spam-reason">
-                        {reason}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="admin-spam-actions">
-                    <span className="admin-spam-state">
-                      {candidate.eligibleForFlag
-                        ? "Ready to flag"
-                        : "Flagged for discard review"}
-                    </span>
-                    <form
-                      action={discardGolfInKindSubmissionAction}
-                      className="admin-spam-discard-form"
-                    >
-                      <input
-                        type="hidden"
-                        name="submissionId"
-                        value={candidate.submission.id}
-                      />
-                      <SubmitButton
-                        label="Discard"
-                        pendingLabel="Discarding..."
-                        className="admin-spam-discard-button"
-                      />
-                    </form>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="admin-spam-empty">
-            No high-confidence matches found in the current submissions.
-          </div>
-        )}
-      </section>
-
       <section className="golf-admin-summary" aria-label="Payment summary">
         <SummaryMetric
           label="Gross volume"
@@ -734,6 +654,111 @@ export default async function GolfTournamentAdminPage({
             <p>No raffle or in-kind submissions yet.</p>
           )}
         </div>
+      </details>
+
+      <details
+        className="golf-admin-cleanup"
+        open={Boolean(params.scan || params.discard)}
+      >
+        <summary>
+          <span>
+            <span className="eyebrow">Maintenance</span>
+            <strong>Suspicious submissions</strong>
+          </span>
+          <span
+            className={
+              spamCandidates.length > 0
+                ? "golf-admin-cleanup-count has-items"
+                : "golf-admin-cleanup-count"
+            }
+          >
+            {spamCandidates.length > 0
+              ? `${spamCandidates.length} to review`
+              : "Clear"}
+          </span>
+        </summary>
+        <section
+          className="golf-admin-spam-review"
+          aria-labelledby="spam-review-title"
+        >
+          <header className="admin-spam-review-header">
+            <div className="admin-spam-review-copy">
+              <p className="eyebrow">Cleanup review</p>
+              <h2 id="spam-review-title">Review suspicious submissions</h2>
+              <p>
+                This conservative scan looks for obvious test data, spam links
+                or language, and repeated submissions. It never deletes records
+                or contacts donors; it flags matches for discard review.
+                Discarding hides a row while retaining its audit trail.
+              </p>
+            </div>
+            <form action={flagSuspiciousGolfInKindSubmissionsAction}>
+              <SubmitButton
+                label={
+                  flaggableSpamCandidates.length > 0
+                    ? `Flag ${flaggableSpamCandidates.length} for cleanup`
+                    : "Run scan again"
+                }
+                pendingLabel="Scanning..."
+                className="admin-primary-action"
+              />
+            </form>
+          </header>
+          {spamCandidates.length > 0 ? (
+            <div className="admin-spam-list">
+              {spamCandidates.map((candidate) => (
+                <div
+                  key={candidate.submission.id}
+                  className="admin-spam-row"
+                >
+                  <div className="admin-spam-submission">
+                    <strong>{candidate.submission.donorName}</strong>
+                    <span>{candidate.submission.email}</span>
+                    <span>
+                      {candidate.submission.itemDescription} ·{" "}
+                      {formatAdminDate(candidate.submission.createdAt)}
+                    </span>
+                  </div>
+                  <div className="admin-spam-meta">
+                    <div className="admin-spam-reasons">
+                      {candidate.reasons.map((reason) => (
+                        <span key={reason} className="admin-spam-reason">
+                          {reason}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="admin-spam-actions">
+                      <span className="admin-spam-state">
+                        {candidate.eligibleForFlag
+                          ? "Ready to flag"
+                          : "Flagged for discard review"}
+                      </span>
+                      <form
+                        action={discardGolfInKindSubmissionAction}
+                        className="admin-spam-discard-form"
+                      >
+                        <input
+                          type="hidden"
+                          name="submissionId"
+                          value={candidate.submission.id}
+                        />
+                        <SubmitButton
+                          label="Discard"
+                          pendingLabel="Discarding..."
+                          className="admin-spam-discard-button"
+                        />
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="admin-spam-empty">
+              No high-confidence matches found in the current submissions.
+            </div>
+          )}
+        </section>
       </details>
     </div>
   );

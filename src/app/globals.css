@@ -1504,6 +1504,72 @@ when Jesse/Michelle provide real golf/course/candid photos.
   line-height: 1.5;
 }
 
+.golf-admin-cleanup {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 0.75rem;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--orange) 4%, var(--panel)),
+      var(--panel) 5.5rem
+    );
+}
+
+.golf-admin-cleanup > summary {
+  display: flex;
+  min-height: 3.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-space-md);
+  padding: var(--admin-space-md);
+  cursor: pointer;
+  list-style: none;
+}
+
+.golf-admin-cleanup > summary::-webkit-details-marker {
+  display: none;
+}
+
+.golf-admin-cleanup > summary > span:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.golf-admin-cleanup > summary strong {
+  font-family: var(--font-barlow-condensed), sans-serif;
+  font-size: 1.1rem;
+}
+
+.golf-admin-cleanup-count {
+  display: inline-flex;
+  min-height: 1.8rem;
+  align-items: center;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--navy) 6%, var(--panel));
+  color: color-mix(in srgb, var(--navy) 66%, white);
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.golf-admin-cleanup-count.has-items {
+  background: color-mix(in srgb, var(--orange) 17%, var(--panel));
+  color: var(--navy-strong);
+}
+
+.golf-admin-cleanup[open] > summary {
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  background: color-mix(in srgb, var(--orange) 4%, var(--panel));
+}
+
+.golf-admin-cleanup .golf-admin-spam-review {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .golf-admin-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
