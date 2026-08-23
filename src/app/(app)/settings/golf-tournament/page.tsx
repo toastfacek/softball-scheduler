@@ -112,10 +112,12 @@ export default async function GolfTournamentAdminPage({
     await db.query.golfTournamentInKindSubmissions.findMany({
       orderBy: (table, { desc }) => [desc(table.createdAt)],
     });
-  const inKindSubmissions = allInKindSubmissions.filter(
-    (submission) => submission.status !== "DISCARDED",
+  const openInKindSubmissions = allInKindSubmissions.filter(
+    (submission) =>
+      submission.status === "NEW" ||
+      submission.status === "NEEDS_FOLLOW_UP",
   );
-  const inKindSubmissionIds = inKindSubmissions.map(
+  const inKindSubmissionIds = openInKindSubmissions.map(
     (submission) => submission.id,
   );
   const inKindAiReviews = inKindSubmissionIds.length
@@ -142,7 +144,7 @@ export default async function GolfTournamentAdminPage({
   const assets = await db.query.golfTournamentAssets.findMany({
     orderBy: (table, { desc }) => [desc(table.createdAt)],
   });
-  const spamCandidates = scanInKindSubmissions(inKindSubmissions);
+  const spamCandidates = scanInKindSubmissions(openInKindSubmissions);
   const flaggableSpamCandidates = spamCandidates.filter(
     (candidate) => candidate.eligibleForFlag,
   );
@@ -594,18 +596,18 @@ export default async function GolfTournamentAdminPage({
 
       <details
         className="golf-admin-secondary-ledger"
-        open={inKindSubmissions.length > 0}
+        open={openInKindSubmissions.length > 0}
       >
         <summary>
           <span>
             <span className="eyebrow">Raffle</span>
-            <strong>In-kind submissions</strong>
+            <strong>In-kind review queue</strong>
           </span>
-          <span>{inKindSubmissions.length}</span>
+          <span>{openInKindSubmissions.length}</span>
         </summary>
         <div className="admin-secondary-content">
-          {inKindSubmissions.length > 0 ? (
-            inKindSubmissions.map((submission) => {
+          {openInKindSubmissions.length > 0 ? (
+            openInKindSubmissions.map((submission) => {
               const aiReview = latestInKindAiReviewBySubmission.get(submission.id);
               return (
                 <div key={submission.id} className="admin-secondary-row">
@@ -651,7 +653,7 @@ export default async function GolfTournamentAdminPage({
               );
             })
           ) : (
-            <p>No raffle or in-kind submissions yet.</p>
+            <p>No open raffle or in-kind submissions.</p>
           )}
         </div>
       </details>
