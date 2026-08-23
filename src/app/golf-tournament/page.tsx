@@ -6,7 +6,6 @@ import { and, count, eq } from "drizzle-orm";
 
 import {
   createGolfCheckoutSessionAction,
-  submitGolfInKindDonationAction,
 } from "@/actions/golf-tournament-actions";
 import { db } from "@/db";
 import {
@@ -610,7 +609,8 @@ export default async function GolfTournamentPage({
           {turnstileConfigured ? (
             <form
               className="golf-form"
-              action={submitGolfInKindDonationAction}
+              method="post"
+              action="/api/golf-tournament/in-kind"
             >
               <div className="golf-honeypot" aria-hidden="true">
                 <label htmlFor="website">Website</label>
@@ -868,6 +868,15 @@ function GolfNotice({
       <div className="golf-wrap golf-alert" role="alert">
         The online donation form is temporarily unavailable. Please email {contactEmail}
         directly.
+      </div>
+    );
+  }
+
+  if (inKind === "temporarily-unavailable") {
+    return (
+      <div className="golf-wrap golf-alert" role="alert">
+        We couldn’t process that submission right now. Please try again in a
+        few minutes.
       </div>
     );
   }

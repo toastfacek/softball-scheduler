@@ -27,7 +27,7 @@ test("flags the latest synthetic submission pattern", () => {
     itemDescription: "AQTcclauhPEnnZQWJnCIylx",
   });
 
-  assert.equal(decision.disposition, "FLAG_FOR_DISCARD");
+  assert.equal(decision.disposition, "DEFINITE_SPAM");
 });
 
 test("flags a gibberish item even with an ordinary donor", () => {
@@ -37,7 +37,7 @@ test("flags a gibberish item even with an ordinary donor", () => {
     itemDescription: "AQTcclauhPEnnZQWJnCIylx",
   });
 
-  assert.equal(decision.disposition, "FLAG_FOR_DISCARD");
+  assert.equal(decision.disposition, "DEFINITE_SPAM");
 });
 
 test("does not hold an ordinary raffle donation", () => {
@@ -75,7 +75,7 @@ test("does not hold ordinary names with common consonant clusters", () => {
       itemDescription: "$50 gift card for the raffle",
     });
 
-    assert.equal(decision.disposition, "FORWARD_TO_MICHELLE", donorName);
+    assert.equal(decision.disposition, "REQUIRES_LLM", donorName);
   }
 });
 
@@ -95,7 +95,7 @@ test("flags rotating synthetic donor names for discard", () => {
       itemDescription: "$50 gift card for the raffle",
     });
 
-    assert.equal(decision.disposition, "FLAG_FOR_DISCARD", donorName);
+    assert.equal(decision.disposition, "REQUIRES_LLM", donorName);
   }
 });
 
@@ -106,5 +106,15 @@ test("forwards ordinary donation names", () => {
     itemDescription: "$50 gift card for the raffle",
   });
 
-  assert.equal(decision.disposition, "FORWARD_TO_MICHELLE");
+  assert.equal(decision.disposition, "REQUIRES_LLM");
+});
+
+test("does not treat a terse but possible item as definite spam", () => {
+  const decision = classifyInKindSubmission({
+    donorName: "Brynn",
+    email: "brynn@beverlyhardware.com",
+    itemDescription: "BlackTshirtXXL",
+  });
+
+  assert.equal(decision.disposition, "REQUIRES_LLM");
 });

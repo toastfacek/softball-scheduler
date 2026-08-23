@@ -4,7 +4,14 @@ import test from "node:test";
 import {
   extractInKindLlmResponseMetadata,
   parseInKindLlmResponse,
+  reviewInKindSubmissionWithLlm,
 } from "./in-kind-llm";
+
+const testSubmission = {
+  donorName: "Beverly Hardware",
+  email: "donor@beverlyhardware.com",
+  itemDescription: "$50 gift card for the raffle",
+};
 
 test("extracts response metadata without retaining model content", () => {
   assert.deepEqual(
@@ -12,7 +19,7 @@ test("extracts response metadata without retaining model content", () => {
       id: "resp_123",
       model: "gpt-5.4-nano-2026-01-01",
       output_text: JSON.stringify({
-        verdict: "PLAUSIBLE",
+        verdict: "CLEAR",
         reason: "A coherent gift basket donation.",
       }),
       usage: {
@@ -31,16 +38,16 @@ test("extracts response metadata without retaining model content", () => {
   );
 });
 
-test("parses a structured plausible review", () => {
+test("parses a structured clear review", () => {
   assert.deepEqual(
     parseInKindLlmResponse({
       output_text: JSON.stringify({
-        verdict: "PLAUSIBLE",
+        verdict: "CLEAR",
         reason: "The donor and gift card description are coherent.",
       }),
     }),
     {
-      verdict: "PLAUSIBLE",
+      verdict: "CLEAR",
       reason: "The donor and gift card description are coherent.",
     },
   );
@@ -56,7 +63,7 @@ test("parses structured output nested in a response item", () => {
             {
               type: "output_text",
               text: JSON.stringify({
-                verdict: "SUSPICIOUS",
+                verdict: "SPAM",
                 reason: "The item is an unrecognizable random string.",
               }),
             },
@@ -65,7 +72,7 @@ test("parses structured output nested in a response item", () => {
       ],
     }),
     {
-      verdict: "SUSPICIOUS",
+      verdict: "SPAM",
       reason: "The item is an unrecognizable random string.",
     },
   );
@@ -79,4 +86,65 @@ test("rejects malformed or out-of-schema model output", () => {
     }),
     null,
   );
+});
+
+test("retries a transient judge failure before succeeding", async () => {
+  let calls = 0;
+  const review = await reviewInKindSubmissionWithLlm(testSubmission, {
+    apiKey: "test-key",
+    fetchImpl: async () => {
+      calls += 1;
+      if (calls === 1) {
+        return new Response("temporarily unavailable", { status: 503 });
+      }
+
+      return new Response(
+        JSON.stringify({
+          id: "resp_success",
+          model: "gpt-5.4-nano",
+          output_text: JSON.stringify({
+            verdict: "CLEAR",
+            reason: "The gift card is a coherent donation.",
+          }),
+        }),
+        { status: 200 },
+      );
+    },
+    sleepImpl: async () => undefined,
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(review.status, "SUCCEEDED");
+  assert.equal(review.verdict, "CLEAR");
+  assert.equal(review.trace?.attempts, 2);
+});
+
+test("fails closed after exhausting judge retries", async () => {
+  let calls = 0;
+  const review = await reviewInKindSubmissionWithLlm(testSubmission, {
+    apiKey: "test-key",
+    fetchImpl: async () => {
+      calls += 1;
+      return new Response("temporarily unavailable", { status: 503 });
+    },
+    sleepImpl: async () => undefined,
+  });
+
+  assert.equal(calls, 3);
+  assert.equal(review.status, "FAILED");
+  assert.equal(review.verdict, "REVIEW");
+  assert.equal(review.trace?.attempts, 3);
+  assert.equal(review.trace?.errorCode, "HTTP_ERROR");
+});
+
+test("reports a missing judge configuration without pretending to review", async () => {
+  const review = await reviewInKindSubmissionWithLlm(testSubmission, {
+    apiKey: "",
+  });
+
+  assert.deepEqual(review, {
+    status: "SKIPPED",
+    verdict: "SKIPPED",
+    reason: "AI review is not configured.",
+  });
 });

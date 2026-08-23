@@ -19,20 +19,37 @@ type SendGolfEmailInput = {
   body: string;
 };
 
+export type GolfEmailResult = {
+  mode: "console" | "resend";
+  recipients: string[];
+  providerMessageId: string | null;
+  error: string | null;
+};
+
 export async function sendGolfTournamentEmail(input: SendGolfEmailInput) {
   const recipients = Array.from(
     new Set(input.to.map(normalizeEmail).filter(Boolean)),
   );
 
   if (recipients.length === 0) {
-    return null;
+    return {
+      mode: "resend" as const,
+      recipients,
+      providerMessageId: null,
+      error: "No recipients were provided.",
+    } satisfies GolfEmailResult;
   }
 
   if (!isResendConfigured()) {
     console.info(
       `[golf-email:console] ${input.subject} -> ${recipients.join(", ")}\n${input.body}`,
     );
-    return { mode: "console" as const, recipients };
+    return {
+      mode: "console" as const,
+      recipients,
+      providerMessageId: null,
+      error: null,
+    } satisfies GolfEmailResult;
   }
 
   const response = await resend.emails.send({
@@ -47,5 +64,13 @@ export async function sendGolfTournamentEmail(input: SendGolfEmailInput) {
     console.error("[golf-email:error]", response.error);
   }
 
-  return response;
+  const providerMessageId = response.data?.id ?? null;
+  return {
+    mode: "resend" as const,
+    recipients,
+    providerMessageId,
+    error:
+      response.error?.message ??
+      (providerMessageId ? null : "Email provider returned no message id."),
+  } satisfies GolfEmailResult;
 }

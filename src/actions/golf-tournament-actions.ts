@@ -2,7 +2,6 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -10,7 +9,6 @@ import { z } from "zod";
 import { db } from "@/db";
 import {
   golfTournamentAssets,
-  golfTournamentInKindAiReviews,
   golfTournamentInKindSubmissions,
   golfTournamentPlayers,
   golfTournamentPurchases,
@@ -19,7 +17,6 @@ import {
   env,
   isR2Configured,
   isStripeConfigured,
-  isTurnstileConfigured,
 } from "@/lib/env";
 import { sendGolfTournamentEmail } from "@/lib/golf-tournament/email";
 import { requireGolfAdmin } from "@/lib/golf-tournament/admin-auth";
@@ -30,18 +27,8 @@ import {
   golfTournamentAdminEmails,
   golfTournamentContactEmail,
 } from "@/lib/golf-tournament/event";
-import {
-  consumeInKindSubmissionRateLimit,
-  getClientIp,
-} from "@/lib/golf-tournament/in-kind-protection";
 import { golfInventoryCommitmentCondition } from "@/lib/golf-tournament/inventory";
-import { reviewInKindSubmissionWithLlm } from "@/lib/golf-tournament/in-kind-llm";
-import {
-  classifyInKindSubmission,
-  normalizeInKindText,
-  scanInKindSubmissions,
-} from "@/lib/golf-tournament/in-kind-spam";
-import { sendLegitimateInKindSubmissionEmail } from "@/lib/golf-tournament/in-kind-notifications";
+import { scanInKindSubmissions } from "@/lib/golf-tournament/in-kind-spam";
 import {
   formatGolfPackagePrice,
   getGolfTournamentPackage,
@@ -65,8 +52,6 @@ import {
   scheduleGolfTournamentSpreadsheetSync,
   syncGolfTournamentSpreadsheet,
 } from "@/lib/golf-tournament/spreadsheet";
-import { verifyInKindTurnstileToken } from "@/lib/golf-tournament/turnstile";
-import { normalizeEmail } from "@/lib/utils";
 
 const checkoutSchema = z.object({
   packageId: z.string().trim().min(1),
@@ -79,26 +64,6 @@ const paymentLinkCheckoutSchema = z.object({
   email: z.union([z.literal(""), z.string().email()]).optional(),
   phone: z.string().trim().optional(),
   playerNames: z.array(z.string().trim()).length(4),
-});
-
-const inKindSchema = z.object({
-  donorName: z
-    .string()
-    .trim()
-    .min(1, "Donor name is required.")
-    .max(120, "Donor name is too long."),
-  email: z
-    .string()
-    .trim()
-    .email()
-    .max(254, "Please enter a valid email address."),
-  description: z
-    .string()
-    .trim()
-    .min(3, "Item description is required.")
-    .max(2_000, "Please keep the item description under 2,000 characters."),
-  website: z.string().trim().max(200).optional(),
-  turnstileToken: z.string().trim().max(2_048).optional(),
 });
 
 const completionSchema = z.object({
@@ -325,139 +290,6 @@ export async function startGolfPaymentLinkCheckoutAction(formData: FormData) {
     checkoutUrl.searchParams.set("prefilled_email", parsed.email);
   }
   redirect(checkoutUrl.toString());
-}
-
-export async function submitGolfInKindDonationAction(formData: FormData) {
-  const parsed = inKindSchema.parse({
-    donorName: formData.get("donorName"),
-    email: formData.get("email"),
-    description: formData.get("description"),
-    website: formData.get("website") || undefined,
-    turnstileToken: formData.get("cf-turnstile-response") || undefined,
-  });
-
-  // Honeypots are intentionally handled as a successful no-op so simple bots
-  // do not learn which field identified them.
-  if (parsed.website) {
-    redirect("/golf-tournament?inKind=thanks");
-  }
-
-  const normalizedEmail = normalizeEmail(parsed.email);
-  const requestHeaders = await headers();
-  const clientIp = getClientIp(requestHeaders);
-
-  if (!isTurnstileConfigured()) {
-    if (process.env.NODE_ENV === "production") {
-      redirect("/golf-tournament?inKind=verification-unavailable");
-    }
-  } else {
-    const verification = await verifyInKindTurnstileToken(
-      parsed.turnstileToken ?? "",
-      clientIp,
-    );
-    if (!verification.success) {
-      redirect("/golf-tournament?inKind=verification-failed");
-    }
-  }
-
-  const withinRateLimit = await consumeInKindSubmissionRateLimit({
-    email: normalizedEmail,
-    ip: clientIp,
-  });
-  if (!withinRateLimit) {
-    redirect("/golf-tournament?inKind=rate-limited");
-  }
-
-  const priorSubmissions =
-    await db.query.golfTournamentInKindSubmissions.findMany({
-      where: eq(golfTournamentInKindSubmissions.email, normalizedEmail),
-      columns: { itemDescription: true },
-    });
-  const repeated = priorSubmissions.some(
-    ({ itemDescription }) =>
-      normalizeInKindText(itemDescription) ===
-      normalizeInKindText(parsed.description),
-  );
-
-  const decision = classifyInKindSubmission({
-    donorName: parsed.donorName,
-    email: normalizedEmail,
-    itemDescription: parsed.description,
-    repeated,
-  });
-  const llmReview =
-    decision.disposition === "FORWARD_TO_MICHELLE"
-      ? await reviewInKindSubmissionWithLlm({
-          donorName: parsed.donorName,
-          email: normalizedEmail,
-          itemDescription: parsed.description,
-        })
-      : null;
-  const llmFlagsForReview =
-    llmReview?.verdict === "SUSPICIOUS" ||
-    llmReview?.verdict === "UNCERTAIN";
-  const shouldFlagForDiscardReview =
-    decision.disposition === "FLAG_FOR_DISCARD" || llmFlagsForReview;
-  const automaticReviewReasons = [
-    ...decision.assessment.reasons,
-    ...(llmFlagsForReview && llmReview
-      ? [`AI review (${llmReview.verdict.toLowerCase()}): ${llmReview.reason}`]
-      : []),
-  ];
-
-  await db.transaction(async (tx) => {
-    const [submission] = await tx
-      .insert(golfTournamentInKindSubmissions)
-      .values({
-        donorName: parsed.donorName,
-        contactName: parsed.donorName,
-        email: normalizedEmail,
-        itemDescription: parsed.description,
-        status: shouldFlagForDiscardReview ? "NEEDS_FOLLOW_UP" : "NEW",
-        adminNotes: shouldFlagForDiscardReview
-          ? `Automatic discard review: ${automaticReviewReasons.join("; ")}.`
-          : null,
-      })
-      .returning({ id: golfTournamentInKindSubmissions.id });
-
-    if (!submission) {
-      throw new Error("In-kind submission was not created.");
-    }
-
-    if (llmReview?.trace && llmReview.verdict !== "SKIPPED") {
-      await tx.insert(golfTournamentInKindAiReviews).values({
-        submissionId: submission.id,
-        verdict: llmReview.verdict,
-        reason: llmReview.reason,
-        model: llmReview.trace.model,
-        responseId: llmReview.trace.responseId,
-        requestId: llmReview.trace.requestId,
-        latencyMs: llmReview.trace.latencyMs,
-        inputTokens: llmReview.trace.inputTokens,
-        outputTokens: llmReview.trace.outputTokens,
-        totalTokens: llmReview.trace.totalTokens,
-        httpStatus: llmReview.trace.httpStatus,
-        errorCode: llmReview.trace.errorCode,
-      });
-    }
-  });
-
-  scheduleGolfTournamentSpreadsheetSync();
-
-  if (
-    decision.disposition === "FORWARD_TO_MICHELLE" &&
-    !llmFlagsForReview
-  ) {
-    await sendLegitimateInKindSubmissionEmail({
-      donorName: parsed.donorName,
-      email: normalizedEmail,
-      itemDescription: parsed.description,
-    });
-  }
-
-  revalidatePath("/golf-tournament");
-  revalidatePath("/golf-admin");
-  redirect("/golf-tournament?inKind=thanks");
 }
 
 export async function updateGolfCompletionAction(formData: FormData) {
@@ -769,8 +601,7 @@ export async function updateGolfInKindStatusAction(formData: FormData) {
       ].join("\n"),
     });
 
-    const emailFailed =
-      emailResult && "error" in emailResult && Boolean(emailResult.error);
+    const emailFailed = Boolean(emailResult.error);
     if (emailFailed) {
       console.error("[golf-email] accepted in-kind email failed", {
         submissionId: submission.id,

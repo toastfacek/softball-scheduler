@@ -18,11 +18,12 @@ export type InKindSubmissionAssessment = {
   reasons: string[];
   score: number;
   shouldHold: boolean;
+  isDefiniteSpam: boolean;
 };
 
 export type InKindSubmissionDisposition =
-  | "FORWARD_TO_MICHELLE"
-  | "FLAG_FOR_DISCARD";
+  | "DEFINITE_SPAM"
+  | "REQUIRES_LLM";
 
 export type InKindSubmissionDecision = {
   assessment: InKindSubmissionAssessment;
@@ -183,10 +184,22 @@ export function assessInKindSubmission({
     score += 3;
   }
 
+  // Only use deterministic suppression for signals that are highly unlikely
+  // to belong to a real donor. Everything else goes to the LLM so a terse,
+  // unfamiliar, or imperfectly formatted offer is not discarded outright.
+  const isDefiniteSpam =
+    PLACEHOLDER_MARKERS.has(emailLocalPart) ||
+    PLACEHOLDER_MARKERS.has(emailLocalPart.replaceAll(/[._+-]/g, "")) ||
+    PLACEHOLDER_DOMAINS.has(emailDomain) ||
+    PLACEHOLDER_MARKERS.has(normalizedDonorName) ||
+    syntheticItemScore >= HOLD_SCORE ||
+    (looksLikeSyntheticDonorName(donorName) && syntheticItemScore > 0);
+
   return {
     reasons,
     score,
     shouldHold: score >= HOLD_SCORE,
+    isDefiniteSpam,
   };
 }
 
@@ -197,9 +210,9 @@ export function classifyInKindSubmission(
 
   return {
     assessment,
-    disposition: assessment.shouldHold
-      ? "FLAG_FOR_DISCARD"
-      : "FORWARD_TO_MICHELLE",
+    disposition: assessment.isDefiniteSpam
+      ? "DEFINITE_SPAM"
+      : "REQUIRES_LLM",
   };
 }
 

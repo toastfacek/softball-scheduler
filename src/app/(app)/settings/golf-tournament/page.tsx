@@ -106,6 +106,23 @@ export default async function GolfTournamentAdminPage({
     await db.query.golfTournamentInKindSubmissions.findMany({
       orderBy: (table, { desc }) => [desc(table.createdAt)],
     });
+  const inKindAiReviews = await db.query.golfTournamentInKindAiReviews.findMany(
+    {
+      orderBy: (table, { desc }) => [desc(table.createdAt)],
+    },
+  );
+  const latestInKindAiReviewBySubmission = new Map<
+    string,
+    (typeof inKindAiReviews)[number]
+  >();
+  for (const review of inKindAiReviews) {
+    if (
+      review.submissionId &&
+      !latestInKindAiReviewBySubmission.has(review.submissionId)
+    ) {
+      latestInKindAiReviewBySubmission.set(review.submissionId, review);
+    }
+  }
   const assets = await db.query.golfTournamentAssets.findMany({
     orderBy: (table, { desc }) => [desc(table.createdAt)],
   });
@@ -623,38 +640,51 @@ export default async function GolfTournamentAdminPage({
         </summary>
         <div className="admin-secondary-content">
           {inKindSubmissions.length > 0 ? (
-            inKindSubmissions.map((submission) => (
-              <div key={submission.id} className="admin-secondary-row">
-                <div>
-                  <strong>{submission.donorName}</strong>
-                  <span>
-                    {submission.itemDescription} ·{" "}
-                    {submission.status.replaceAll("_", " ")}
-                  </span>
-                </div>
-                <form
-                  action={updateGolfInKindStatusAction}
-                  className="admin-inline-form"
-                >
-                  <input
-                    type="hidden"
-                    name="submissionId"
-                    value={submission.id}
-                  />
-                  <select
-                    name="status"
-                    defaultValue={submission.status}
-                    aria-label="In-kind status"
+            inKindSubmissions.map((submission) => {
+              const aiReview = latestInKindAiReviewBySubmission.get(submission.id);
+              return (
+                <div key={submission.id} className="admin-secondary-row">
+                  <div>
+                    <strong>{submission.donorName}</strong>
+                    <span>
+                      {submission.itemDescription} ·{" "}
+                      {submission.status.replaceAll("_", " ")}
+                    </span>
+                    {aiReview ? (
+                      <small>
+                        Screening: {aiReview.screeningOutcome.replaceAll("_", " ").toLowerCase()}
+                        {aiReview.attemptCount > 1
+                          ? ` · ${aiReview.attemptCount} judge attempts`
+                          : ""}
+                        {aiReview.emailError ? ` · email: ${aiReview.emailError}` : ""}
+                        {aiReview.reason ? ` · ${aiReview.reason}` : ""}
+                      </small>
+                    ) : null}
+                  </div>
+                  <form
+                    action={updateGolfInKindStatusAction}
+                    className="admin-inline-form"
                   >
-                    <option value="NEW">New</option>
-                    <option value="ACCEPTED">Accepted</option>
-                    <option value="NEEDS_FOLLOW_UP">Needs follow-up</option>
-                    <option value="DECLINED">Declined</option>
-                  </select>
-                  <button type="submit">Save</button>
-                </form>
-              </div>
-            ))
+                    <input
+                      type="hidden"
+                      name="submissionId"
+                      value={submission.id}
+                    />
+                    <select
+                      name="status"
+                      defaultValue={submission.status}
+                      aria-label="In-kind status"
+                    >
+                      <option value="NEW">New</option>
+                      <option value="ACCEPTED">Accepted</option>
+                      <option value="NEEDS_FOLLOW_UP">Needs follow-up</option>
+                      <option value="DECLINED">Declined</option>
+                    </select>
+                    <button type="submit">Save</button>
+                  </form>
+                </div>
+              );
+            })
           ) : (
             <p>No raffle or in-kind submissions yet.</p>
           )}

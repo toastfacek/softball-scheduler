@@ -777,7 +777,6 @@ export const golfTournamentInKindAiReviews = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     submissionId: uuid("submission_id")
-      .notNull()
       .references(() => golfTournamentInKindSubmissions.id, {
         onDelete: "cascade",
       }),
@@ -792,6 +791,15 @@ export const golfTournamentInKindAiReviews = pgTable(
     totalTokens: integer("total_tokens"),
     httpStatus: integer("http_status"),
     errorCode: golfInKindAiErrorCodeEnum("error_code"),
+    screeningOutcome: text("screening_outcome").default("REVIEW").notNull(),
+    judgeStatus: text("judge_status").default("NOT_RUN").notNull(),
+    deterministicScore: integer("deterministic_score"),
+    deterministicReasons: jsonb("deterministic_reasons").$type<string[]>(),
+    inputFingerprint: text("input_fingerprint"),
+    attemptCount: integer("attempt_count").default(0).notNull(),
+    emailAttempted: boolean("email_attempted").default(false).notNull(),
+    emailProviderId: text("email_provider_id"),
+    emailError: text("email_error"),
     createdAt,
   },
   (table) => [
