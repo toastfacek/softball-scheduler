@@ -13,7 +13,7 @@ import {
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const REVIEW_CONCURRENCY = 8;
+const REVIEW_CONCURRENCY = 4;
 
 export async function GET(request: Request) {
   if (!(await hasGolfAdminSession())) {
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const submissions = await db
+  const allSubmissions = await db
     .select({
       id: golfTournamentInKindSubmissions.id,
       donorName: golfTournamentInKindSubmissions.donorName,
@@ -38,6 +38,17 @@ export async function GET(request: Request) {
     })
     .from(golfTournamentInKindSubmissions)
     .orderBy(asc(golfTournamentInKindSubmissions.createdAt));
+  const requestedIds = new Set(
+    new URL(request.url).searchParams
+      .get("ids")
+      ?.split(",")
+      .map((id) => id.trim())
+      .filter(Boolean),
+  );
+  const submissions =
+    requestedIds.size > 0
+      ? allSubmissions.filter(({ id }) => requestedIds.has(id))
+      : allSubmissions;
 
   const repeatedKeys = new Set(
     submissions
