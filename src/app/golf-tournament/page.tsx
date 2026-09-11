@@ -195,6 +195,10 @@ const confirmedSponsors = [
     name: "Fibber McGee’s Bar + Kitchen",
     logo: "/golf-tournament/sponsor-logos/fibber-mcgees.svg",
   },
+  {
+    name: "CGI Business Solutions",
+    logo: "/golf-tournament/sponsor-logos/cgi-business-solutions.svg",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
