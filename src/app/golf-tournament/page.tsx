@@ -199,6 +199,10 @@ const confirmedSponsors = [
     name: "CGI Business Solutions",
     logo: "/golf-tournament/sponsor-logos/cgi-business-solutions.svg",
   },
+  {
+    name: "Beauport Financial Services",
+    logo: "/golf-tournament/sponsor-logos/beauport-financial-services.svg",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
