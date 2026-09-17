@@ -203,6 +203,10 @@ const confirmedSponsors = [
     name: "Beauport Financial Services",
     logo: "/golf-tournament/sponsor-logos/beauport-financial-services.svg",
   },
+  {
+    name: "The AMG Charitable Foundation",
+    logo: "/golf-tournament/sponsor-logos/amg-charitable-foundation.png",
+  },
 ] as const;
 
 function formatGolfPackageDisplayName(
