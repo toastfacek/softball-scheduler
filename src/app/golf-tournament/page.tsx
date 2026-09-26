@@ -262,17 +262,22 @@ export default async function GolfTournamentPage({
           </nav>
         </header>
 
+        <aside className="golf-weather-banner golf-wrap" aria-label="Tournament weather update">
+          <strong>Weather Update: Final decision by noon Sunday</strong>
+          <p>
+            We’re keeping a close eye on the forecast and plan to keep the
+            tournament on schedule for Monday, September 28. Our top priority is
+            ensuring the course is playable and everyone can enjoy a great day
+            of golf. If postponed, the likely rain date is Monday, November 2.
+            Watch this page for updates.
+          </p>
+        </aside>
+
         <GolfNotice
           checkout={params.checkout}
           inKind={params.inKind}
           contactEmail={contactEmail}
         />
-        {GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED ? (
-          <div className="golf-wrap golf-alert" role="status">
-            {GOLF_REGISTRATION_CLOSED_MESSAGE}
-          </div>
-        ) : null}
-
         <section className="golf-hero golf-wrap">
           <div className="golf-hero-copy">
             <h1>{GOLF_TOURNAMENT_TITLE}</h1>
