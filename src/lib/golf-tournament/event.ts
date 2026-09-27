@@ -3,8 +3,8 @@ import { env } from "@/lib/env";
 export const GOLF_TOURNAMENT_TITLE = "Tee Up for Beverly Girls Softball";
 // Set this to false when the tournament can accept additional golfer entries.
 export const GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED = true;
-export const GOLF_TOURNAMENT_START = new Date("2026-09-28T10:00:00-04:00");
-export const GOLF_TOURNAMENT_END = new Date("2026-09-28T16:00:00-04:00");
+export const GOLF_TOURNAMENT_START = new Date("2026-11-02T10:00:00-05:00");
+export const GOLF_TOURNAMENT_END = new Date("2026-11-02T16:00:00-05:00");
 export const GOLF_TOURNAMENT_VENUE = "Beverly Golf & Tennis Club";
 export const GOLF_TOURNAMENT_ADDRESS =
   "134 McKay Street, Beverly, MA 01915";

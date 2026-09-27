@@ -40,8 +40,8 @@ export const metadata: Metadata = {
   title: GOLF_TOURNAMENT_TITLE,
   description:
     GOLF_TOURNAMENT_GOLFER_REGISTRATION_CLOSED
-      ? "Support the inaugural Beverly Girls Softball League golf tournament through sponsorships and raffle donations."
-      : "Register or sponsor the inaugural Beverly Girls Softball League golf tournament at Beverly Golf & Tennis Club on Monday, September 28, 2026.",
+      ? "Postponed due to inclement weather: the Beverly Girls Softball League golf tournament is now Monday, November 2, 2026. Support the event through sponsorships and raffle donations."
+      : "Register or sponsor the Beverly Girls Softball League golf tournament at Beverly Golf & Tennis Club on Monday, November 2, 2026.",
   formatDetection: {
     address: false,
     email: false,
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: GOLF_TOURNAMENT_TITLE,
     description:
-      "Golf, sponsorships, raffles, and community support for Beverly Girls Softball League.",
+      "Postponed due to inclement weather. The BGSL golf tournament is now Monday, November 2, 2026, with registration at 9 AM and a 10 AM shotgun start.",
     url: "https://www.beverlysoftball.com/",
     siteName: "Beverly Girls Softball League",
     images: [
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: GOLF_TOURNAMENT_TITLE,
     description:
-      "Golf, sponsorships, raffles, and community support for Beverly Girls Softball League.",
+      "Postponed due to inclement weather. The BGSL golf tournament is now Monday, November 2, 2026, with registration at 9 AM and a 10 AM shotgun start.",
     images: [
       "https://www.beverlysoftball.com/golf-tournament/course-images/beverly-club-hero.jpg",
     ],
@@ -262,14 +262,13 @@ export default async function GolfTournamentPage({
           </nav>
         </header>
 
-        <aside className="golf-weather-banner golf-wrap" aria-label="Tournament weather update">
-          <strong>Weather Update: Final decision by noon Sunday</strong>
+        <aside className="golf-weather-banner golf-wrap" aria-label="Tournament postponement update">
+          <strong>Tournament postponed to Monday, November 2</strong>
           <p>
-            We’re keeping a close eye on the forecast and plan to keep the
-            tournament on schedule for Monday, September 28. Our top priority is
-            ensuring the course is playable and everyone can enjoy a great day
-            of golf. If postponed, the likely rain date is Monday, November 2.
-            Watch this page for updates.
+            Due to inclement weather, we’re moving the tournament to Monday,
+            November 2. Registration begins at 9 AM, followed by a 10 AM
+            shotgun start. Thank you for your flexibility; we look forward to
+            seeing you on the course.
           </p>
         </aside>
 
@@ -299,8 +298,8 @@ export default async function GolfTournamentPage({
           </div>
           <div className="golf-hero-art" aria-hidden="true">
             <div className="golf-tournament-card">
-              <strong className="golf-tournament-date">September 28</strong>
-              <em>Registration 9 AM · Tee off 10 AM</em>
+              <strong className="golf-tournament-date">November 2</strong>
+              <em>Registration 9 AM · Shotgun start 10 AM</em>
             </div>
           </div>
         </section>
@@ -309,11 +308,11 @@ export default async function GolfTournamentPage({
       <section className="golf-scoreboard golf-wrap" aria-label="Tournament details">
         <div className="golf-fact">
           <span>Date</span>
-          <strong>Monday, Sep. 28, 2026</strong>
+          <strong>Monday, Nov. 2, 2026</strong>
         </div>
         <div className="golf-fact">
           <span>Schedule</span>
-          <strong>Registration 9:00 AM · Start 10:00 AM</strong>
+          <strong>Registration 9:00 AM · Shotgun start 10:00 AM</strong>
         </div>
         <div className="golf-fact">
           <span>Venue</span>

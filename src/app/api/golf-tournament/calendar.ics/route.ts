@@ -24,7 +24,7 @@ export async function GET() {
         type: "TEAM_EVENT",
         status: "SCHEDULED",
         title: GOLF_TOURNAMENT_TITLE,
-        description: `${GOLF_TOURNAMENT_SAFE_PROCEEDS}\n\nRegister or sponsor: ${appUrl}/golf-tournament`,
+        description: `Postponed due to inclement weather. Registration begins at 9:00 AM; shotgun start at 10:00 AM.\n\n${GOLF_TOURNAMENT_SAFE_PROCEEDS}\n\nTournament details: ${appUrl}/golf-tournament`,
         startsAt: GOLF_TOURNAMENT_START,
         endsAt: GOLF_TOURNAMENT_END,
         venueName: GOLF_TOURNAMENT_VENUE,
@@ -33,7 +33,7 @@ export async function GET() {
         city: null,
         state: null,
         postalCode: null,
-        updatedAt: new Date("2026-06-17T00:00:00-04:00"),
+        updatedAt: new Date("2026-09-27T10:13:20-04:00"),
       },
     ],
   });
